@@ -10,6 +10,18 @@ if (!clientId) {
   sessionStorage.setItem('pub_client_id', clientId);
 }
 
+// Mã hồ sơ bền vững (khác clientId theo từng tab): giữ tên, cấp bậc, tủ đồ giữa các lần vào quán.
+let profileId = null;
+try {
+  profileId = localStorage.getItem('pub_pid');
+  if (!profileId) {
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    profileId = 'p' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem('pub_pid', profileId);
+  }
+} catch (_) { profileId = null; /* Không có localStorage: vào như khách, không lưu tiến trình. */ }
+const PERF = window.PUB_PERF || { lite: false, coarse: false };
+
 let ws = null;
 let selfMember = null;
 let remotePlayers = new Map(); // id -> { mesh, data, targetPos, targetRot, walkCycle }
@@ -65,6 +77,7 @@ function toggleScenicView() {
       viewRiverBtn.classList.add('is-viewing');
       if (viewRiverText) viewRiverText.textContent = "Thoát Ngắm Cảnh";
       setTicker("🌆 Đang ngắm Sông Sài Gòn và Tòa Nhà Landmark 81 rực rỡ...");
+      if (window.Features) Features.send({ action: 'quest_event', kind: 'scenic' });
     } else {
       viewRiverBtn.classList.remove('is-viewing');
       if (viewRiverText) viewRiverText.textContent = "Ngắm Landmark 81";
@@ -309,10 +322,10 @@ scene.background = new THREE.Color(0x070b14);
 scene.fog = new THREE.FogExp2(0x070b14, 0.013);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ antialias: !PERF.lite, powerPreference: PERF.lite ? "default" : "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
-renderer.shadowMap.enabled = !matchMedia('(pointer: coarse)').matches;
+renderer.setPixelRatio(PERF.lite ? 1 : Math.min(window.devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+renderer.shadowMap.enabled = !PERF.lite && !matchMedia('(pointer: coarse)').matches;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.90;
@@ -328,20 +341,25 @@ let composer = null;
 // ========================================================
 // 2.2. Image-Based Lighting (IBL) via Saigon Night HDRI
 // ========================================================
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-pmremGenerator.compileEquirectangularShader();
-
-if (typeof THREE.RGBELoader !== 'undefined') {
-  new THREE.RGBELoader()
-    .load('environment/night_city_1k.hdr', function (texture) {
-      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-      scene.environment = envMap;
+// HDRI (1.6MB) và RGBELoader chỉ nạp SAU khung hình đầu tiên, và bỏ hẳn ở chế độ nhẹ.
+function loadHDREnvironment() {
+  if (PERF.lite) return;
+  const apply = () => {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    new THREE.RGBELoader().load('environment/night_city_1k.hdr', function (texture) {
+      scene.environment = pmremGenerator.fromEquirectangular(texture).texture;
       texture.dispose();
       pmremGenerator.dispose();
-      console.log('🌃 [PBR] Saigon Night HDRI Environment loaded!');
     }, undefined, function (err) {
       console.warn('[PBR] HDR environment load notice:', err);
     });
+  };
+  if (typeof THREE.RGBELoader !== 'undefined') return apply();
+  const tag = document.createElement('script');
+  tag.src = 'vendor/RGBELoader.js';
+  tag.onload = () => typeof THREE.RGBELoader !== 'undefined' && apply();
+  document.head.appendChild(tag);
 }
 
 // Lighting: Dịu mắt, ấm áp đêm phố Sài Gòn (Không bị chói lóa)
@@ -699,25 +717,15 @@ const pbrLoader = new THREE.TextureLoader();
 
 // 1. Mặt đường nhựa PBR (Realistic Wet Asphalt Pavement Sài Gòn Đêm)
 const asphaltDiff = pbrLoader.load('textures/asphalt/diff_1k.jpg');
-const asphaltNor = pbrLoader.load('textures/asphalt/nor_gl_1k.jpg');
-const asphaltRough = pbrLoader.load('textures/asphalt/rough_1k.jpg');
-const asphaltAO = pbrLoader.load('textures/asphalt/ao_1k.jpg');
-
-[asphaltDiff, asphaltNor, asphaltRough, asphaltAO].forEach(tex => {
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(12, 3);
-});
+asphaltDiff.wrapS = asphaltDiff.wrapT = THREE.RepeatWrapping;
+asphaltDiff.repeat.set(12, 3);
 
 const streetGeo = new THREE.PlaneGeometry(70, 12);
 streetGeo.setAttribute('uv2', streetGeo.attributes.uv);
 
 const streetMat = new THREE.MeshStandardMaterial({
   map: asphaltDiff,
-  normalMap: asphaltNor,
   normalScale: new THREE.Vector2(0.85, 0.85),
-  roughnessMap: asphaltRough,
-  aoMap: asphaltAO,
   aoMapIntensity: 1.2,
   color: 0x1e2430,
   roughness: 0.55,
@@ -753,25 +761,15 @@ for (let cz = 4.0; cz <= 11.0; cz += 1.1) {
 
 // 2. Vỉa hè quán nhậu lát gạch bông PBR (Checkered Pavement Tiles Sài Gòn)
 const sidewalkDiff = pbrLoader.load('textures/sidewalk/diff_1k.jpg');
-const sidewalkNor = pbrLoader.load('textures/sidewalk/nor_gl_1k.jpg');
-const sidewalkRough = pbrLoader.load('textures/sidewalk/rough_1k.jpg');
-const sidewalkAO = pbrLoader.load('textures/sidewalk/ao_1k.jpg');
-
-[sidewalkDiff, sidewalkNor, sidewalkRough, sidewalkAO].forEach(tex => {
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(16, 4);
-});
+sidewalkDiff.wrapS = sidewalkDiff.wrapT = THREE.RepeatWrapping;
+sidewalkDiff.repeat.set(16, 4);
 
 const sidewalkGeo = new THREE.BoxGeometry(36, 0.3, 8.8);
 sidewalkGeo.setAttribute('uv2', sidewalkGeo.attributes.uv);
 
 const sidewalkMat = new THREE.MeshStandardMaterial({
   map: sidewalkDiff,
-  normalMap: sidewalkNor,
   normalScale: new THREE.Vector2(0.9, 0.9),
-  roughnessMap: sidewalkRough,
-  aoMap: sidewalkAO,
   aoMapIntensity: 1.2,
   color: 0x8898aa,
   roughness: 0.65,
@@ -781,6 +779,21 @@ const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
 sidewalk.position.set(0, 0.15, -0.75);
 sidewalk.receiveShadow = true;
 scene.add(sidewalk);
+
+// Normal / roughness / AO map (~3.3MB) là chi tiết phụ: nạp sau khung hình đầu, bỏ ở chế độ nhẹ.
+function loadPBRDetailMaps() {
+  if (PERF.lite) return;
+  [[streetMat, 'asphalt', 12, 3], [sidewalkMat, 'sidewalk', 16, 4]].forEach(([mat, dir, rx, ry]) => {
+    for (const [prop, file] of [['normalMap', 'nor_gl'], ['roughnessMap', 'rough'], ['aoMap', 'ao']]) {
+      pbrLoader.load(`textures/${dir}/${file}_1k.jpg`, (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(rx, ry);
+        mat[prop] = tex;
+        mat.needsUpdate = true;
+      });
+    }
+  });
+}
 
 // Curb stone (Gờ đá bó vỉa hè quán)
 const curb = new THREE.Mesh(
@@ -1715,6 +1728,7 @@ function buildRiversidePark() {
   lampPositions.forEach((lx) => {
     const lampGroup = new THREE.Group();
     lampGroup.position.set(lx, 0.32, 27.5);
+    pubDetails.obstacles.push({ x: lx, z: 27.5, w: 0.4, d: 0.4 }); // cột đèn
 
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 3.8, 8), ironMat);
@@ -1742,6 +1756,7 @@ function buildRiversidePark() {
     const tz = 15.0 + (i % 2) * 3;
     const treeGroup = new THREE.Group();
     treeGroup.position.set(tx, 0.32, tz);
+    pubDetails.obstacles.push({ x: tx, z: tz, w: 1.3, d: 1.3 }); // bồn cây
 
     // Bồn xi măng vuông quanh gốc cây đặc trưng vỉa hè
     const planter = new THREE.Mesh(
@@ -1798,7 +1813,7 @@ function buildRiversidePark() {
   }
   scene.add(railingGroup);
 }
-buildRiversidePark();
+PubLoader.defer(buildRiversidePark, 'buildRiversidePark');
 
 // Đăng ký các điểm đái bậy cố định
 peeSpots.push(
@@ -1810,6 +1825,17 @@ peeSpots.push(
 // 5.5. CẢNH VẬT ĐƯỜNG PHỐ SÀI GÒN (KARAOKE, MASSAGE, WC, CỘT ĐIỆN)
 // ========================================================
 const pubDetails = createPubDetails(scene);
+
+// Vật cản cứng để không đi xuyên: tòa nhà Karaoke/Massage, cột điện, xe nước mía, xe máy đậu vỉa hè.
+// (Tường WC đã có sẵn trong pubDetails.obstacles; cây và cột đèn công viên thêm khi dựng công viên.)
+[
+  { x: 24, z: -1, w: 14, d: 10 },     // Karaoke 69
+  { x: -31, z: -1, w: 14, d: 10 },    // Massage Ánh Sao
+  { x: 16.5, z: 3.2, w: 0.6, d: 0.6 },// cột điện
+  { x: 13.8, z: 1.4, w: 1.7, d: 0.9 },// xe nước mía
+  { x: -13.8, z: 3.0, w: 1.3, d: 1.3 }, { x: 14.2, z: 3.1, w: 1.3, d: 1.3 },
+  { x: -10.2, z: 2.6, w: 1.3, d: 1.3 }, { x: 10.5, z: 2.6, w: 1.3, d: 1.3 },
+].forEach(o => pubDetails.obstacles.push(o));
 
 function buildSaigonStreetScenery() {
   // 2. Bờ Tường Sơn Xịt "CẤM ĐÁI BẬY - CAMERA PHẠT 500K"
@@ -2296,7 +2322,7 @@ function buildSaigonRiver() {
 
   scene.add(cruiseBoat);
 }
-buildSaigonRiver();
+PubLoader.defer(buildSaigonRiver, 'buildSaigonRiver');
 
 // ========================================================
 // 7. TÒA THÁP LANDMARK 81 & SKYLINE SÀI GÒN VỀ ĐÊM
@@ -2515,7 +2541,7 @@ function buildLandmark81AndSkyline() {
   skylineGroup.add(landmarkGroup);
   scene.add(skylineGroup);
 }
-buildLandmark81AndSkyline();
+PubLoader.defer(buildLandmark81AndSkyline, 'buildLandmark81AndSkyline');
 
 // ========================================================
 // 8. 3D Character Avatar Factory (Chibi Bợm Nhậu Má Hồng Y Hệt Hình)
@@ -2660,7 +2686,9 @@ function createCharacter3D(colorHex) {
     head,
     beerMug,
     leftLeg: leftLegGroup,
-    rightLeg: rightLegGroup
+    rightLeg: rightLegGroup,
+    // Các bộ phận để Features.dress() thay đồ (mũ, áo, giày...).
+    shirtMat, hairTop, capParts: [cap, visor], shoeMat, shoes: [leftShoe, rightShoe]
   };
 }
 
@@ -2716,8 +2744,35 @@ function pointerSpan() {
   const [a, b] = [...cameraPointers.values()];
   return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
 }
+// ---- Click chuột để di chuyển (PC): nhấp nhanh, không kéo, lên mặt đất là nhân vật tự đi tới ----
+let clickTarget = null;       // { x, z }
+let clickStuckTime = 0;
+let clickDown = null;         // { x, y, t } của lần nhấn chuột trái đang theo dõi
+const clickRaycaster = new THREE.Raycaster();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.3);
+const clickHit = new THREE.Vector3();
+const clickMarker = new THREE.Mesh(
+  new THREE.RingGeometry(0.28, 0.4, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide })
+);
+clickMarker.rotation.x = -Math.PI / 2;
+clickMarker.visible = false;
+clickMarker.renderOrder = 5;
+scene.add(clickMarker);
+function clearClickTarget() { clickTarget = null; clickMarker.visible = false; clickStuckTime = 0; localPlayerState._lastClickDist = undefined; }
+function setClickTarget(clientX, clientY) {
+  if (isScenicView || !localCharacter || localPlayerState.is_sitting || (selfMember && selfMember.status === 'guc_nga')) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  clickRaycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
+  if (!clickRaycaster.ray.intersectPlane(groundPlane, clickHit) || clickHit.distanceTo(camera.position) > 60) return;
+  clickTarget = { x: Math.max(-23, Math.min(23, clickHit.x)), z: Math.max(-4.5, Math.min(27.6, clickHit.z)) };
+  clickStuckTime = 0;
+  clickMarker.position.set(clickTarget.x, 0.33, clickTarget.z);
+  clickMarker.visible = true;
+}
 canvasContainer.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
+  clickDown = e.pointerType === 'mouse' ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
   if (cameraPointers.size >= 2) return;
   canvasContainer.setPointerCapture(e.pointerId);
   cameraPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2742,6 +2797,11 @@ canvasContainer.addEventListener('pointermove', (e) => {
   cameraPitch = Math.max(0.18, Math.min(1.05, cameraPitch + dy * 0.0025));
 });
 function endCameraPointer(e) {
+  if (e.type === 'pointerup' && clickDown && e.pointerType === 'mouse' && e.button === 0 &&
+      Math.hypot(e.clientX - clickDown.x, e.clientY - clickDown.y) < 6 && performance.now() - clickDown.t < 400) {
+    setClickTarget(e.clientX, e.clientY);
+  }
+  clickDown = null;
   cameraPointers.delete(e.pointerId);
   pinchDistance = pointerSpan();
 }
@@ -2799,6 +2859,44 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) clear
 window.addEventListener('resize', clearControls);
 
 const comfortBtn = document.getElementById('comfortBtn');
+// "Một, hai, ba, dô!" bằng giọng đọc tiếng Việt của trình duyệt (Web Speech). Máy không có giọng Việt thì bỏ qua.
+let viVoice = null;
+let lastSpeak = 0;
+function pickVietnameseVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = speechSynthesis.getVoices();
+  return voices.find(v => /^vi/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window) {
+  viVoice = pickVietnameseVoice();
+  speechSynthesis.addEventListener('voiceschanged', () => { viVoice = pickVietnameseVoice(); });
+}
+function speakCheer(isSelf, drunk = 0) {
+  if (!soundEnabled || !viVoice) return;
+  const now = performance.now();
+  if (now - lastSpeak < (isSelf ? 900 : 2500)) return; // người khác cụng dồn dập thì không đọc chồng chéo
+  lastSpeak = now;
+  // Càng xỉn càng lè nhè: nói chậm, trầm, kéo dài chữ, cao độ chập chờn từng tiếng và nấc cụt.
+  const words = drunk >= 65 ? ['Mộtttt', 'haiii', 'bạaa', 'dôôô', 'hức']
+    : drunk >= 30 ? ['Một', 'haiii', 'ba', 'dôôô']
+    : ['Một', 'hai', 'ba', 'dô'];
+  const wobble = drunk >= 65 ? 0.28 : drunk >= 30 ? 0.12 : 0;
+  const baseRate = drunk >= 65 ? 0.55 : drunk >= 30 ? 0.85 : 1.1;
+  const basePitch = drunk >= 65 ? 0.6 : drunk >= 30 ? 0.85 : 1;
+  try {
+    if (isSelf) speechSynthesis.cancel();
+    words.forEach((word, i) => {
+      const u = new SpeechSynthesisUtterance(word + (i === words.length - 1 ? '!' : ','));
+      u.voice = viVoice;
+      u.lang = viVoice.lang;
+      u.rate = Math.max(0.3, baseRate * (1 + (Math.random() - 0.5) * wobble * 1.2));
+      u.pitch = Math.max(0.1, (isSelf ? basePitch : basePitch * 0.85) * (1 + (Math.random() - 0.5) * wobble * 2));
+      u.volume = isSelf ? 1 : 0.5;
+      speechSynthesis.speak(u);
+    });
+  } catch (_) { /* trình duyệt không cho đọc: bỏ qua */ }
+}
+
 function updateComfort() {
   document.body.classList.toggle('comfort-mode', comfortMode);
   comfortBtn.setAttribute('aria-pressed', String(comfortMode));
@@ -2916,6 +3014,7 @@ function findNearestChair() {
 }
 
 function handleToggleSit() {
+  clearClickTarget();
   if (localPlayerState.is_sitting) {
     // Đứng dậy
     localPlayerState.is_sitting = false;
@@ -3384,6 +3483,7 @@ function enableOfflineDemo() {
   updateDrunkVisuals(0, "Tỉnh Táo");
   updateBladderVisuals(0);
   setTicker("🌟 Chế độ xem trước Cloudflare Pages! Dùng W/A/S/D đi lại, chuột xoay 360°, [P] đái bậy/WC, [V] ngắm Landmark 81.");
+  window.dispatchEvent(new Event('pub:ready'));
 }
 
 function connectWebSocket() {
@@ -3398,6 +3498,10 @@ function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     wsUrl = `${protocol}//${window.location.host}/ws/${roomId}/${clientId}`;
   }
+  const wsQuery = new URLSearchParams();
+  if (profileId) wsQuery.set('pid', profileId);
+  if (urlParams.get('private') === '1') wsQuery.set('private', '1');
+  if ([...wsQuery].length) wsUrl += '?' + wsQuery.toString();
 
   // Tự động kích hoạt Offline Demo nếu sau 2.5s không nhận được WebSocket (VD khi host trên Cloudflare Pages tĩnh)
   if (!offlineFallbackTimer) {
@@ -3426,6 +3530,7 @@ function connectWebSocket() {
   ws.onmessage = (event) => {
     if (offlineFallbackTimer) clearTimeout(offlineFallbackTimer);
     const data = JSON.parse(event.data);
+    if (window.Features && Features.onMessage(data)) return;
 
     switch (data.type) {
       case 'wc_state':
@@ -3479,6 +3584,7 @@ function connectWebSocket() {
           if (!localCharacter) {
             localCharacter = createCharacter3D(selfMember.color);
             scene.add(localCharacter.mesh);
+            if (window.Features) Features.dress(localCharacter, selfMember.outfit, selfMember.color);
           }
           updateDrunkVisuals(selfMember.drunk_level, selfMember.status);
           updateBladderVisuals(selfMember.bladder_level || 0);
@@ -3533,6 +3639,7 @@ function connectWebSocket() {
       case 'cheer_event':
         totalCheersDisplay.textContent = data.total_cheers;
         playClinkSound();
+        speakCheer(data.member_id === clientId, data.drunk_level || 0);
         show3DShoutBubble(data.member_id, "🍻 1, 2, 3 DÔÔÔ!");
         setTicker(data.message);
 
@@ -3741,6 +3848,7 @@ function spawnRemotePlayer(memberData) {
   if (remotePlayers.has(memberData.id)) return;
 
   const char3D = createCharacter3D(memberData.color);
+  if (window.Features) Features.dress(char3D, memberData.outfit, memberData.color);
   char3D.mesh.position.set(memberData.x, 0.3, memberData.z);
   char3D.mesh.rotation.y = memberData.ry;
   scene.add(char3D.mesh);
@@ -3845,6 +3953,7 @@ function setTicker(msg) {
 // ========================================================
 const clock = new THREE.Clock();
 let networkTimer = 0;
+let firstFrameDone = false;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -3874,11 +3983,27 @@ function animate() {
 
     let moveX = 0;
     let moveZ = 0;
-    const inputMag = Math.min(1.0, Math.hypot(inputForward, inputRight));
+    let inputMag = Math.min(1.0, Math.hypot(inputForward, inputRight));
 
     if (inputMag > 0.05) {
+      clearClickTarget(); // bàn phím/cần gạt luôn ưu tiên hơn click-to-move
       moveX = forwardX * inputForward + rightX * inputRight;
       moveZ = forwardZ * inputForward + rightZ * inputRight;
+    } else if (clickTarget) {
+      const toX = clickTarget.x - localPlayerState.x, toZ = clickTarget.z - localPlayerState.z;
+      const dist = Math.hypot(toX, toZ);
+      if (dist < 0.2) {
+        clearClickTarget();
+      } else {
+        moveX = toX / dist; moveZ = toZ / dist;
+        inputMag = 1;
+        clickMarker.material.opacity = 0.55 + Math.sin(clock.elapsedTime * 8) * 0.3;
+        // Kẹt vật cản (bàn, tường...) quá lâu thì bỏ điểm đến.
+        clickStuckTime = (clickStuckTime || 0) + delta;
+        if (localPlayerState._lastClickDist !== undefined && localPlayerState._lastClickDist - dist > 0.02) clickStuckTime = 0;
+        localPlayerState._lastClickDist = dist;
+        if (clickStuckTime > 0.7) clearClickTarget();
+      }
     }
 
     // Drunk Drift / Loạng choạng xiêu vẹo khi say xỉn
@@ -4073,11 +4198,14 @@ function animate() {
   // Update Projected 2D HUD Tags
   updatePlayerHUDPositions();
 
+  if (window.Features) Features.tick(delta, clock.elapsedTime);
+
   if (composer) {
     composer.render();
   } else {
     renderer.render(scene, camera);
   }
+  if (!firstFrameDone) { firstFrameDone = true; PubLoader.firstFrame(); }
 }
 animate();
 
@@ -4314,4 +4442,8 @@ audioToggleBtn.addEventListener('click', () => {
 });
 
 // Kết nối WebSocket ngay khi tải xong
+PubLoader.step(70, 'Đang vào quán...');
+if (window.Features) Features.start();
 connectWebSocket();
+// Chi tiết phụ chạy sau khung hình đầu tiên để vào quán nhanh nhất có thể.
+PubLoader.afterFirstFrame(() => { loadHDREnvironment(); loadPBRDetailMaps(); });

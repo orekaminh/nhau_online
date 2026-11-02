@@ -4,10 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
-  <link rel="stylesheet" href="style.css?v=20261102_10">
+  <meta name="theme-color" content="#0d1117">
+  <style>
+    /* Màn hình chờ: CSS nội tuyến để hiện ngay lập tức, không đợi file ngoài. */
+    #loadingScreen { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; color: #fde68a; background: radial-gradient(circle at 50% 35%, #2a1747 0%, #0d1117 70%); font-family: system-ui, "Be Vietnam Pro", sans-serif; transition: opacity .5s ease, visibility .5s; }
+    #loadingScreen.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+    #loadingScreen h1 { font-size: clamp(1.4rem, 5vw, 2.2rem); letter-spacing: 1px; text-shadow: 0 0 14px #f59e0b99; }
+    .load-mug { position: relative; width: 74px; height: 92px; border: 5px solid #fde68a; border-top-width: 3px; border-radius: 6px 6px 14px 14px; overflow: hidden; background: #ffffff10; }
+    .load-mug::after { content: ""; position: absolute; right: -24px; top: 18px; width: 20px; height: 40px; border: 5px solid #fde68a; border-left: 0; border-radius: 0 18px 18px 0; }
+    .load-mug i { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: linear-gradient(#fbbf24, #d97706); transform-origin: bottom; animation: loadFill 2.4s ease-in-out infinite; }
+    .load-mug i::before { content: ""; position: absolute; left: -4px; right: -4px; top: -10px; height: 16px; background: #fff; border-radius: 50% 50% 40% 40%; opacity: .92; }
+    @keyframes loadFill { 0% { transform: scaleY(.08); } 80%, 100% { transform: scaleY(.82); } }
+    .load-track { width: min(320px, 78vw); height: 8px; border-radius: 99px; background: #ffffff1f; overflow: hidden; }
+    #loadingBar { width: 8%; height: 100%; background: linear-gradient(90deg, #f59e0b, #ef4444); border-radius: inherit; transition: width .35s ease; }
+    #loadingText { font-size: .95rem; color: #e5e7eb; }
+    #loadingTip { max-width: 340px; font-size: .8rem; color: #94a3b8; }
+    @media (prefers-reduced-motion: reduce) { .load-mug i { animation: none; transform: scaleY(.6); } }
+  </style>
+  <link rel="stylesheet" href="style.css?v=20261103_1">
+  <link rel="stylesheet" href="features.css?v=20261103_1">
+  <link rel="stylesheet" href="features/karaoke.css?v=20261103_1">
+  <link rel="stylesheet" href="features/voice-events.css?v=20261103_1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
+  <!-- Font không chặn hiển thị: tải nền rồi mới áp dụng -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap"></noscript>
   <!-- Three.js 3D Library (CDN with Local Fallback) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
@@ -15,17 +37,28 @@
       document.write('<script src="vendor/three.r128.min.js"><\/script>');
     }
   </script>
-  <!-- Three.js Cinematic Post-Processing & Realistic PBR Addons -->
-  <script src="vendor/CopyShader.js"></script>
-  <script src="vendor/LuminosityHighPassShader.js"></script>
-  <script src="vendor/EffectComposer.js"></script>
-  <script src="vendor/RenderPass.js"></script>
-  <script src="vendor/ShaderPass.js"></script>
-  <script src="vendor/UnrealBloomPass.js"></script>
-  <script src="vendor/RGBELoader.js"></script>
-  <script src="vendor/GLTFLoader.js"></script>
+  <!-- Mã của game: tải song song với Three.js, chạy theo đúng thứ tự sau khi trang dựng xong -->
+  <script defer src="world-details.js?v=20261103_1"></script>
+  <script defer src="features/core.js?v=20261103_1"></script>
+  <script defer src="features/perf.js?v=20261103_1"></script>
+  <script defer src="features/profile.js?v=20261103_1"></script>
+  <script defer src="features/rooms.js?v=20261103_1"></script>
+  <script defer src="features/games.js?v=20261103_1"></script>
+  <script defer src="features/photo.js?v=20261103_1"></script>
+  <script defer src="features/karaoke.js?v=20261103_1"></script>
+  <script defer src="features/voice.js?v=20261103_1"></script>
+  <script defer src="features/events.js?v=20261103_1"></script>
+  <script defer src="app.js?v=20261103_1"></script>
 </head>
 <body class="street-vibe-3d">
+  <!-- Màn hình chờ -->
+  <div id="loadingScreen" role="status" aria-live="polite">
+    <div class="load-mug" aria-hidden="true"><i></i></div>
+    <h1>🍻 QUÁN NHẬU ẢO 3D</h1>
+    <div class="load-track"><div id="loadingBar"></div></div>
+    <div id="loadingText">Đang chuẩn bị quán nhậu...</div>
+    <div id="loadingTip"></div>
+  </div>
   <!-- 3D Canvas Viewport -->
   <div id="canvas3d-container"></div>
   <nav class="camera-tools" aria-label="Góc nhìn">
@@ -107,6 +140,7 @@
     <div class="hint-title">🕹️ ĐIỀU KHIỂN:</div>
     <div>• <strong>Giữ chuột & Kéo</strong>: Xoay góc nhìn 360° 🔄</div>
     <div>• <strong>Cuộn chuột</strong>: Thu phóng gần / xa 🔍</div>
+    <div>• <strong>Click chuột trái</strong> lên mặt đất: tự đi tới đó 🖱️</div>
     <div>• <strong>WASD / Mũi tên</strong>: Đi lại (Băng qua đường ra bờ sông)</div>
     <div>• <strong>E</strong>: Ngồi ghế nhậu / Ngồi ghế đá công viên</div>
     <div>• <strong>P</strong>: Xả lũ / Đái bậy (WC, gốc cây, bờ tường) 🚽</div>
@@ -114,6 +148,8 @@
     <div>• <strong>F</strong>: Nói chuyện với Em Gái PG Tiếp Thị Bia 💃</div>
     <div>• <strong>V</strong>: Chế độ Cinematic Ngắm Landmark 81 🌆</div>
     <div>• <strong>Space</strong>: 1 2 3 DÔ! 🍻</div>
+    <div>• <strong>K</strong> Karaoke · <strong>G</strong> Mini-game · <strong>M</strong> Mic · <strong>C</strong> Chụp ảnh</div>
+    <div>• <strong>I</strong> Hồ sơ · <strong>L</strong> Xếp hạng · Nút <strong>☰ Menu</strong> có tất cả</div>
   </div>
 
   <!-- Bottom Action Deck -->
@@ -244,7 +280,5 @@
     </div>
   </div>
 
-  <script src="world-details.js?v=20261102_10"></script>
-  <script src="app.js?v=20261102_10"></script>
 </body>
 </html>

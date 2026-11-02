@@ -1,0 +1,214 @@
+/* ===== Tính năng mở rộng: menu, panel, hồ sơ, mini-game, ảnh, chế độ nhẹ ===== */
+:root {
+  --fx-bg: #101827;
+  --fx-card: #1a2438;
+  --fx-line: #ffffff22;
+  --fx-text: #f1f5f9;
+  --fx-dim: #94a3b8;
+  --fx-gold: #fbbf24;
+  --fx-green: #34d399;
+}
+
+/* ---------- Panel / bottom-sheet ---------- */
+#fx-panels { position: fixed; inset: 0; z-index: 400; pointer-events: none; }
+.fx-backdrop {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: #05070dcc; pointer-events: auto; animation: fxFade .18s ease-out;
+}
+.fx-panel {
+  width: min(460px, 100%); max-height: min(86dvh, 760px); display: flex; flex-direction: column;
+  background: var(--fx-bg); color: var(--fx-text); border: 1px solid var(--fx-line); border-radius: 18px;
+  box-shadow: 0 20px 60px #000a; font-family: 'Be Vietnam Pro', system-ui, sans-serif; overflow: hidden;
+  animation: fxPop .22s ease-out;
+}
+.fx-panel.fx-wide { width: min(640px, 100%); }
+.fx-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--fx-line); background: #ffffff08; }
+.fx-panel > header h3 { margin: 0; font-size: 1.05rem; color: var(--fx-gold); }
+.fx-x { min-width: 44px; min-height: 44px; border: 0; border-radius: 10px; background: #ffffff14; color: var(--fx-text); font-size: 16px; cursor: pointer; }
+.fx-panel-body { padding: 14px 16px 18px; overflow-y: auto; overscroll-behavior: contain; font-size: .92rem; line-height: 1.45; }
+.fx-panel-body h4 { margin: 18px 0 8px; font-size: .95rem; color: var(--fx-gold); }
+.fx-panel-body h4:first-child { margin-top: 0; }
+.fx-empty { color: var(--fx-dim); text-align: center; padding: 14px 6px; }
+.fx-note { color: var(--fx-dim); font-size: .8rem; margin: 6px 0; }
+.fx-banner-warn { background: #7c2d1255; border: 1px solid #f97316aa; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+body.fx-panel-open #joystickZone { pointer-events: none; }
+@keyframes fxFade { from { opacity: 0; } }
+@keyframes fxPop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@media (pointer: coarse), (max-width: 640px) {
+  .fx-backdrop { align-items: flex-end; padding: 0; }
+  .fx-panel, .fx-panel.fx-wide { width: 100%; max-height: 88dvh; border-radius: 20px 20px 0 0; }
+  @supports (animation-timeline: view()) { .fx-panel { animation: fxFade .2s ease-out; } }
+}
+
+/* ---------- Nút / chip / thanh / thẻ ---------- */
+.fx-btn {
+  min-height: 44px; padding: 8px 16px; border: 1px solid var(--fx-line); border-radius: 12px; background: #2a3750; color: var(--fx-text);
+  font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  touch-action: manipulation;
+}
+.fx-btn:hover:not(:disabled) { background: #34456a; }
+.fx-btn:disabled { opacity: .45; cursor: not-allowed; }
+.fx-btn.fx-primary { background: linear-gradient(180deg, #f59e0b, #d97706); color: #1a1205; border-color: #fbbf24; }
+.fx-btn.fx-primary:hover:not(:disabled) { background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+.fx-btn.fx-ghost { background: transparent; }
+.fx-btn.fx-small { min-height: 36px; padding: 4px 12px; font-size: .82rem; }
+.fx-btn.fx-big { min-height: 64px; font-size: 1.3rem; width: 100%; }
+button:focus-visible, .fx-btn:focus-visible, .fx-tile:focus-visible, .fx-chip:focus-visible { outline: 3px solid #9edfff; outline-offset: 2px; }
+.fx-card { background: var(--fx-card); border: 1px solid var(--fx-line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
+.fx-card h4 { margin-top: 0; }
+.fx-card p { color: #cbd5e1; margin: 4px 0 10px; }
+.fx-bar { height: 10px; border-radius: 99px; background: #ffffff18; overflow: hidden; margin: 6px 0 4px; }
+.fx-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #fbbf24); transition: width .35s ease; }
+.fx-bar.fx-thin { height: 6px; }
+.fx-bar.fx-thick { height: 16px; flex: 1; margin: 0 8px; }
+.fx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-chip {
+  min-height: 38px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--fx-line); background: #ffffff0d; color: var(--fx-text);
+  font: inherit; font-size: .82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; touch-action: manipulation;
+}
+.fx-chip.is-active { background: #f59e0b33; border-color: var(--fx-gold); color: #fde68a; }
+.fx-chip.is-locked { opacity: .45; cursor: not-allowed; }
+.fx-chip small { font-size: .7rem; color: var(--fx-dim); }
+.fx-swatch { width: 38px; padding: 0; justify-content: center; }
+.fx-swatch i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ffffff66; display: block; }
+.fx-swatch small { position: absolute; }
+.fx-swatch.is-active i { border-color: #fff; box-shadow: 0 0 0 2px var(--fx-gold); }
+.fx-input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--fx-line); background: #0b1220; color: var(--fx-text); font: inherit; text-transform: uppercase; letter-spacing: 2px; }
+.fx-form { display: flex; flex-direction: column; gap: 8px; }
+.fx-form.fx-inline { flex-direction: row; }
+.fx-check { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
+
+/* ---------- Menu ---------- */
+.fx-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.fx-tile {
+  position: relative; min-height: 98px; padding: 12px 8px; border: 1px solid var(--fx-line); border-radius: 14px; background: var(--fx-card); color: var(--fx-text);
+  font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; cursor: pointer; touch-action: manipulation;
+}
+.fx-tile:hover { background: #26334f; border-color: var(--fx-gold); }
+.fx-tile-ico { font-size: 1.9rem; line-height: 1; }
+.fx-tile-label { font-weight: 700; font-size: .85rem; }
+.fx-tile small { color: var(--fx-dim); font-size: .7rem; }
+.fx-badge { position: absolute; top: 6px; right: 8px; min-width: 20px; padding: 0 6px; border-radius: 99px; background: #ef4444; color: #fff; font-style: normal; font-size: .72rem; font-weight: 800; line-height: 20px; }
+#fxMenuBtn { background: #7c3aed !important; border-color: #a78bfa !important; font-weight: 800; }
+
+/* ---------- Toast ---------- */
+#fx-toasts { position: fixed; left: 50%; transform: translateX(-50%); top: 150px; z-index: 450; width: min(440px, calc(100vw - 24px)); display: grid; gap: 6px; pointer-events: none; }
+.fx-toast {
+  padding: 9px 14px; border-radius: 12px; background: #0f172af2; color: var(--fx-text); border: 1px solid var(--fx-line); box-shadow: 0 8px 24px #0007;
+  font: 600 .86rem/1.35 'Be Vietnam Pro', system-ui, sans-serif; animation: fxToastIn .25s ease-out; text-align: center;
+}
+.fx-toast.fx-out { opacity: 0; transform: translateY(-8px); transition: .3s; }
+.fx-toast.fx-level { border-color: var(--fx-gold); background: linear-gradient(135deg, #78350f, #1e1b4b); font-size: .95rem; }
+.fx-toast.fx-quest { border-color: var(--fx-green); }
+.fx-toast.fx-warn { border-color: #f97316; }
+@keyframes fxToastIn { from { opacity: 0; transform: translateY(-10px); } }
+@media (pointer: coarse), (max-width: 768px) { #fx-toasts { top: 27%; } }
+
+/* ---------- Dock (thẻ nổi: mini-game, karaoke, gợi ý) ---------- */
+#fx-dock {
+  position: fixed; left: max(12px, env(safe-area-inset-left)); top: 126px; z-index: 70; width: min(330px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+#fx-dock > * { pointer-events: auto; }
+@media (pointer: coarse), (max-width: 768px) { #fx-dock { top: calc(env(safe-area-inset-top) + 268px); left: 8px; width: calc(100vw - 16px); } }
+body.fx-panel-open #fx-dock { display: none; }
+
+/* ---------- Thanh cấp bậc ---------- */
+.fx-xp-pill { cursor: pointer; display: flex !important; align-items: center; gap: 6px; font: inherit; color: inherit; }
+.fx-xp-lv { font-weight: 900; color: var(--fx-gold); white-space: nowrap; }
+.fx-xp-track { width: 52px; height: 6px; border-radius: 99px; background: #ffffff25; overflow: hidden; flex: none; }
+.fx-xp-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #34d399, #fbbf24); transition: width .4s; }
+.fx-xp-num { font-size: .68rem; opacity: .75; white-space: nowrap; }
+@media (pointer: coarse), (max-width: 768px) { .fx-xp-track { width: 34px; } .fx-xp-num { display: none; } }
+.fx-xp-float { position: fixed; z-index: 460; pointer-events: none; font: 800 .9rem 'Be Vietnam Pro', sans-serif; color: #fde68a; text-shadow: 0 2px 6px #000; animation: fxFloat 1.7s ease-out forwards; }
+@keyframes fxFloat { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34px); } }
+.tag-title { margin-top: 2px; padding: 1px 8px; border-radius: 99px; background: #0f172acc; color: #fde68a; font-size: .62rem; font-weight: 700; white-space: nowrap; border: 1px solid #fbbf2455; }
+
+/* ---------- Hồ sơ ---------- */
+.fx-level-card { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; }
+.fx-lv-big { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; font: 900 1.7rem 'Bungee', sans-serif; color: #1a1205; background: radial-gradient(circle at 30% 25%, #fde68a, #f59e0b); box-shadow: 0 0 18px #f59e0b88; }
+.fx-lv-info { display: grid; min-width: 0; }
+.fx-title { color: #fde68a; font-weight: 700; }
+.fx-level-card .fx-btn { grid-column: 1 / -1; justify-self: start; }
+.fx-quests { display: grid; gap: 8px; }
+.fx-quest { padding: 8px 12px; border-radius: 12px; background: #ffffff0a; border: 1px solid var(--fx-line); }
+.fx-quest.is-done { border-color: #34d39988; background: #064e3b33; }
+.fx-quest-top { display: flex; justify-content: space-between; gap: 8px; }
+.fx-quest-top b { color: var(--fx-gold); white-space: nowrap; }
+.fx-slot { margin-bottom: 10px; }
+.fx-slot-name { display: block; font-size: .78rem; color: var(--fx-dim); margin-bottom: 4px; }
+.fx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fx-stat { padding: 8px; text-align: center; border-radius: 12px; background: #ffffff0a; }
+.fx-stat b { display: block; font-size: 1.2rem; color: var(--fx-gold); }
+.fx-stat small { color: var(--fx-dim); font-size: .68rem; }
+
+/* ---------- Bảng xếp hạng / danh sách ---------- */
+.fx-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+.fx-tab { flex: none; min-height: 40px; padding: 4px 14px; border-radius: 99px; border: 1px solid var(--fx-line); background: transparent; color: var(--fx-text); font: inherit; font-size: .82rem; cursor: pointer; }
+.fx-tab.is-active { background: #f59e0b33; border-color: var(--fx-gold); color: #fde68a; }
+.fx-board, .fx-roomlist { display: grid; gap: 6px; }
+.fx-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: #ffffff0a; }
+.fx-row.is-me { background: #f59e0b22; outline: 1px solid #fbbf2488; }
+.fx-rank { width: 30px; text-align: center; font-weight: 900; font-size: 1.1rem; }
+.fx-who { flex: 1; min-width: 0; display: grid; }
+.fx-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-who small { color: var(--fx-dim); font-size: .7rem; }
+.fx-score { font-weight: 800; color: var(--fx-gold); white-space: nowrap; }
+.fx-room-now { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fx-room-now > div { display: grid; }
+.fx-code { font: 900 1.9rem 'Bungee', monospace; letter-spacing: 6px; color: var(--fx-gold); }
+
+/* ---------- Mini-game ---------- */
+.fx-game-card { padding: 10px 12px; border-radius: 14px; background: #101827f2; color: var(--fx-text); border: 1px solid var(--fx-gold); box-shadow: 0 8px 26px #0008; font: .85rem/1.35 'Be Vietnam Pro', system-ui, sans-serif; display: grid; gap: 6px; }
+.fx-game-title { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; color: #fde68a; }
+.fx-timer { font-variant-numeric: tabular-nums; color: #fff; }
+.fx-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fx-players li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 8px; background: #ffffff0d; }
+.fx-players li.is-me { outline: 1px solid #fbbf2499; }
+.fx-dice { font-size: 1.35rem; line-height: 1; white-space: nowrap; color: var(--fx-dim); }
+.fx-dice.is-rolled { color: #fff; font-weight: 800; animation: fxRoll .45s ease-out; }
+@keyframes fxRoll { 0% { transform: rotate(-25deg) scale(1.5); } 60% { transform: rotate(10deg) scale(.95); } 100% { transform: none; } }
+.fx-game-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fx-game-actions .fx-btn { min-height: 40px; padding: 4px 12px; }
+.fx-game-actions .fx-big { min-height: 56px; }
+.fx-result { font-weight: 800; color: #fde68a; margin: 2px 0; }
+.fx-vs { display: flex; align-items: center; gap: 4px; }
+.fx-vs > span { width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+.fx-vs.is-me > span { color: #fde68a; font-weight: 800; }
+.fx-vs b { width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.fx-countdown { text-align: center; font: 900 2.4rem 'Bungee', sans-serif; color: var(--fx-gold); text-shadow: 0 0 16px #f59e0b; }
+.fx-tapbtn { min-height: 64px !important; font-size: 1.15rem; width: 100%; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.fx-tapbtn:active:not(:disabled) { transform: scale(.97); }
+
+/* ---------- Gợi ý chế độ nhẹ ---------- */
+.fx-lite-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #0f172af2; border: 1px solid #f59e0b; color: var(--fx-text); font: .8rem/1.35 'Be Vietnam Pro', sans-serif; }
+.fx-lite-offer button { min-height: 36px; padding: 4px 12px; border-radius: 10px; border: 0; background: #f59e0b; color: #1a1205; font: inherit; font-weight: 800; cursor: pointer; }
+.fx-lite-offer .fx-ghost { background: transparent; color: var(--fx-text); border: 1px solid var(--fx-line); min-width: 36px; }
+
+/* ---------- Chế độ chụp ảnh ---------- */
+body.fx-photo .hud-top, body.fx-photo .hud-bottom, body.fx-photo .camera-tools, body.fx-photo .hud-ticker, body.fx-photo .control-hints-card,
+body.fx-photo #joystickZone, body.fx-photo .mobile-camera-hint, body.fx-photo #fx-dock, body.fx-photo #fx-mic, body.fx-photo #fx-event-banner,
+body.fx-photo #interactPrompt, body.fx-photo .wc-controls { display: none !important; }
+.fx-photo-bar {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: max(18px, env(safe-area-inset-bottom)); z-index: 120;
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 99px; background: #0b1220e6; border: 1px solid var(--fx-line); max-width: calc(100vw - 16px); overflow-x: auto;
+}
+.fx-photo-bar button { min-height: 44px; padding: 4px 14px; border-radius: 99px; border: 1px solid var(--fx-line); background: #263449; color: #fff; font: 700 .82rem 'Be Vietnam Pro', sans-serif; cursor: pointer; white-space: nowrap; touch-action: manipulation; }
+.fx-photo-bar .fx-shutter { width: 64px; min-height: 64px; padding: 0; font-size: 1.7rem; background: #fff; border: 4px solid #ffffff88; }
+.fx-photo-bar .fx-ghost { background: transparent; }
+.fx-flash { position: fixed; inset: 0; z-index: 480; background: #fff; pointer-events: none; animation: fxFlash .4s ease-out forwards; }
+@keyframes fxFlash { to { opacity: 0; } }
+.fx-photo-img { width: 100%; border-radius: 12px; display: block; margin-bottom: 12px; background: #000; }
+
+/* ---------- Chế độ nhẹ: bỏ hiệu ứng tốn GPU của lớp giao diện ---------- */
+html.lite .fx-backdrop { backdrop-filter: none; }
+html.lite .fx-panel, html.lite .fx-game-card { box-shadow: none; }
+html.lite * { text-shadow: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-backdrop, .fx-panel, .fx-toast, .fx-dice.is-rolled, .fx-xp-float, .fx-flash { animation: none; }
+}
+
+/* Thanh công cụ góc phải (đã thêm nút Menu) nằm đè lên thẻ phím tắt cũ: đẩy thẻ xuống dưới. */
+.control-hints-card { top: 164px; }

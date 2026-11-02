@@ -5,3 +5,5 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     plan: free
+    # Hồ sơ người chơi lưu ở ./data/profiles.json. Gói free của Render có đĩa tạm thời, nên cấp bậc sẽ mất
+    # khi deploy lại. Muốn giữ lâu dài: gắn Persistent Disk (gói trả phí) rồi đặt biến PUB_DATA_DIR trỏ vào đó.

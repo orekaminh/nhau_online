@@ -34,3 +34,6 @@ demo_*.jpg
 static/demo_*.jpg
 .vscode/
 .idea/
+
+# Hồ sơ người chơi (cấp bậc, tủ đồ...) sinh ra khi chạy server
+data/

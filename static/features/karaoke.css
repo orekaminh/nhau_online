@@ -1,0 +1,64 @@
+/* Karaoke 69 VIP - giao diện panel + chip đang phát */
+.kj-chip {
+  display: block; max-width: min(78vw, 320px); margin: 6px 0 0; padding: 8px 14px; min-height: 40px;
+  border: 1px solid #f0abfc88; border-radius: 999px; background: #3b0a52ee; color: #fdf4ff;
+  font: 600 13px/1.2 'Be Vietnam Pro', sans-serif; text-align: left; cursor: pointer; pointer-events: auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 4px 14px #0005;
+}
+.kj-chip[hidden] { display: none; }
+
+.kj-now { padding: 12px; border-radius: 14px; background: linear-gradient(160deg, #2a0a3a, #12041d); border: 1px solid #d946ef55; }
+.kj-now-title { font: 800 1.15rem/1.3 'Be Vietnam Pro', sans-serif; color: #fde68a; overflow-wrap: anywhere; }
+.kj-muted { color: #ffffff99; font-size: 0.85rem; overflow-wrap: anywhere; }
+.kj-bar { height: 8px; margin: 10px 0 6px; border-radius: 99px; background: #ffffff22; overflow: hidden; }
+.kj-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, #22d3ee, #d946ef); }
+.kj-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.kj-time { font-size: 0.8rem; color: #ffffffb0; font-variant-numeric: tabular-nums; }
+.kj-idle .kj-bar, .kj-idle .kj-row { opacity: 0.4; }
+
+.kj-lyrics { margin-top: 10px; min-height: 8.5em; text-align: center; }
+.kj-line { margin: 4px 0; font: 700 1rem/1.4 'Be Vietnam Pro', sans-serif; color: #ffffff88; overflow-wrap: anywhere; }
+.kj-line.kj-past { color: #ffffff44; }
+.kj-line.kj-cur { font-size: clamp(1.15rem, 4.6vw, 1.55rem); color: #fff; }
+.kj-w { display: inline; }
+.kj-cur .kj-done { color: #ffd000; }
+.kj-cur .kj-now {
+  background: linear-gradient(90deg, #ffd000 var(--p, 0%), #fff var(--p, 0%));
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+.kj-lastscore { margin-top: 8px; font-size: 0.8rem; color: #fcd34d; text-align: center; overflow-wrap: anywhere; }
+.kj-lastscore:empty { display: none; }
+
+.fx-panel h4 { margin: 16px 0 8px; font-size: 0.95rem; color: #f0abfc; }
+.kj-list { display: grid; gap: 8px; }
+.kj-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: 12px; background: #ffffff10; border: 1px solid #ffffff1c;
+}
+.kj-card-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.kj-card-info strong { color: #fff; overflow-wrap: anywhere; }
+.kj-card-info small { color: #ffffff99; }
+.kj-queue { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; font-size: 0.9rem; color: #fff; }
+.kj-queue small { color: #ffffff99; }
+
+.kj-btn {
+  min-height: 44px; padding: 8px 14px; border: 1px solid #ffffff33; border-radius: 10px;
+  background: #334155; color: #fff; font: 700 0.85rem 'Be Vietnam Pro', sans-serif; cursor: pointer; touch-action: manipulation;
+}
+.kj-btn[hidden] { display: none; }
+.kj-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.kj-btn.kj-primary { background: #c026d3; border-color: #f0abfc; flex-shrink: 0; }
+.kj-ctrl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; font-size: 0.9rem; color: #fff; }
+.kj-ctrl input[type="range"] { vertical-align: middle; width: 140px; max-width: 100%; }
+.kj-check { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer; }
+.kj-check input { width: 20px; height: 20px; }
+.kj-hint { margin-top: 12px; font-size: 0.8rem; color: #ffffff99; line-height: 1.5; }
+
+.kj-score { text-align: center; padding: 8px 0; color: #fff; }
+.kj-score-num { font: 900 4rem/1 'Bungee', sans-serif; color: #ffd000; text-shadow: 0 0 18px #f59e0b99; }
+.kj-stars { margin: 6px 0 10px; font-size: 1.6rem; color: #fbbf24; letter-spacing: 4px; }
+
+@media (max-width: 400px) {
+  .kj-card { flex-direction: column; align-items: stretch; }
+  .kj-ctrl input[type="range"] { width: 100%; }
+}
