@@ -507,42 +507,160 @@ body.drunk-wobble-3 {
   border-color: var(--neon-yellow);
 }
 
-/* Mobile D-Pad (Shown on Touch Screens) */
-.mobile-dpad {
+/* Desktop / Mobile Visibility Helpers */
+.mobile-only { display: none !important; }
+.desktop-only { display: flex !important; }
+
+/* Mobile Player HUD (Mini MOBA Top Bar) */
+.mobile-player-hud {
   display: none;
-  position: absolute;
-  bottom: 180px;
-  left: 20px;
-  z-index: 60;
-  flex-direction: column;
   align-items: center;
-}
-
-@media (pointer: coarse), (max-width: 768px) {
-  .mobile-dpad { display: flex; }
-  .control-hints-card { display: none; }
-}
-
-.dpad-middle { display: flex; gap: 8px; }
-
-.dpad-btn {
-  width: 48px;
-  height: 48px;
+  gap: 7px;
   background: rgba(15, 23, 42, 0.85);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  color: #fff;
-  font-size: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 3px 8px 3px 5px;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.mob-avatar-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
-  user-select: none;
-  touch-action: manipulation;
+  font-size: 0.95rem;
+  border: 1.5px solid #fff;
+  flex-shrink: 0;
 }
 
-.dpad-btn:active {
-  background: var(--neon-yellow);
-  color: #000;
+.mob-bars-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mob-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mob-edit-btn {
+  background: none;
+  border: none;
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mob-gauge-track {
+  width: 85px;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.mob-gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.mob-drunk-fill {
+  background: linear-gradient(90deg, #eab308, #ef4444);
+}
+
+.mob-bladder-fill {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.mob-gauge-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  white-space: nowrap;
+}
+
+/* Virtual Analog Joystick (Liên Quân Mobile Style) */
+.joystick-zone {
+  display: none;
+  position: fixed;
+  bottom: 30px;
+  left: 25px;
+  width: 140px;
+  height: 140px;
+  z-index: 85;
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.joystick-base {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(15, 23, 42, 0.5) 30%, rgba(30, 41, 59, 0.8) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 215, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+
+.joystick-base.is-active {
+  border-color: rgba(255, 215, 0, 0.85);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.joystick-ring {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+
+.joystick-knob {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fbbf24 0%, #d97706 65%, #78350f 100%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 12px rgba(251, 191, 36, 0.8);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.knob-glow {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  filter: blur(2px);
 }
 
 /* Modals */
@@ -603,21 +721,302 @@ body.drunk-wobble-3 {
   outline: none;
 }
 
-/* Floating Audio Toggle */
-.audio-control {
-  position: fixed;
-  top: 60px;
-  left: 16px;
-  z-index: 50;
-}
-
-.sound-toggle {
+.sound-toggle-mini {
   background: rgba(30, 41, 59, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
-  font-size: 0.72rem;
-  padding: 5px 10px;
-  border-radius: 999px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 8px;
   cursor: pointer;
-  backdrop-filter: blur(4px);
+}
+
+/* ========================================================
+   RESPONSIVE: MOBILE & TABLET (LIÊN QUÂN STYLE GAMING UI)
+   ======================================================== */
+@media (pointer: coarse), (max-width: 768px) {
+  .mobile-only { display: flex !important; }
+  .desktop-only { display: none !important; }
+  .control-hints-card { display: none !important; }
+
+  /* Bật cần gạt Joystick Liên Quân */
+  .joystick-zone { display: block !important; }
+
+  /* Top HUD gọn gàng 1 dòng tinh tế */
+  .hud-top {
+    top: 6px;
+    left: 8px;
+    right: 8px;
+  }
+
+  .hud-stats-group {
+    gap: 4px;
+  }
+
+  .hud-stat-pill {
+    padding: 3px 7px;
+    font-size: 0.68rem;
+    border-radius: 10px;
+  }
+
+  .hud-ticker {
+    top: 48px;
+    left: 8px;
+    right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+
+  .ticker-text {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    background: rgba(15, 23, 42, 0.6);
+  }
+
+  /* Nút prompt kéo ghế ở giữa màn hình */
+  .interact-prompt {
+    bottom: 220px;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 2px solid var(--neon-yellow);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  /* Thanh đáy desktop biến thành trong suốt */
+  .hud-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    z-index: 70;
+  }
+
+  .hud-user-card {
+    display: none !important;
+  }
+
+  /* CỤM PHÍM KỸ NĂNG TAY PHẢI (LIÊN QUÂN STYLE) */
+  .hud-actions-group {
+    position: fixed;
+    bottom: 18px;
+    right: 16px;
+    width: 200px;
+    height: 200px;
+    display: block !important;
+    pointer-events: auto;
+  }
+
+  /* Nút đánh thường to nhất: 1, 2, 3 DÔÔÔ! */
+  .btn-cheer {
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 35% 35%, #f59e0b 0%, #b45309 80%);
+    border: 3px solid #fef08a;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.7), 0 4px 10px rgba(0,0,0,0.6);
+    z-index: 10;
+  }
+
+  .btn-cheer .btn-icon {
+    font-size: 1.7rem;
+    margin: 0;
+  }
+
+  .btn-cheer .btn-text {
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    margin-top: -2px;
+  }
+
+  .btn-cheer:active {
+    transform: scale(0.92);
+  }
+
+  /* Các phím kỹ năng vệ tinh tròn */
+  .btn-action {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.88);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    z-index: 5;
+  }
+
+  .btn-action .btn-icon {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .btn-action span:not(.btn-icon) {
+    font-size: 0.5rem;
+    font-weight: 700;
+    white-space: nowrap;
+    line-height: 1;
+    margin-top: 1px;
+    max-width: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-action:active {
+    transform: scale(0.9);
+  }
+
+  /* Skill 1: Ngồi/Đứng (Bên trái nút Dô) */
+  .btn-sit {
+    bottom: 8px;
+    right: 90px;
+    width: 46px;
+    height: 46px;
+    border-color: #38bdf8;
+  }
+
+  /* Skill 2: Xả Lũ WC/Tè (Trên đỉnh nút Dô) */
+  .btn-pee {
+    bottom: 88px;
+    right: 6px;
+    width: 50px;
+    height: 50px;
+    border-color: #facc15;
+    background: rgba(30, 41, 59, 0.95);
+  }
+
+  /* Skill 3: Gắp Mồi (Chéo góc nút Dô) */
+  .btn-snack {
+    bottom: 84px;
+    right: 84px;
+    width: 44px;
+    height: 44px;
+    border-color: #fb923c;
+  }
+
+  /* Skill 4: Ngắm Landmark 81 (Vệ tinh góc trên) */
+  .btn-view {
+    bottom: 150px;
+    right: 14px;
+    width: 42px;
+    height: 42px;
+    border-color: #c084fc;
+  }
+
+  /* Skill 5: Trà đá giải rượu */
+  .btn-sober {
+    bottom: 145px;
+    right: 70px;
+    width: 38px;
+    height: 38px;
+    border-color: #a3e635;
+  }
+
+  /* Skill 6: Tính tiền */
+  .btn-bill {
+    bottom: 125px;
+    right: 122px;
+    width: 38px;
+    height: 38px;
+    border-color: #f43f5e;
+  }
+
+  /* Nút Chat Cửa Miệng đặt giữa màn hình dưới */
+  .mob-shout-toggle {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.88);
+    border: 1.5px solid var(--neon-yellow);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    pointer-events: auto;
+    z-index: 75;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+    white-space: nowrap;
+  }
+
+  .mob-shout-toggle:active {
+    background: var(--neon-yellow);
+    color: #000;
+  }
+
+  /* Bảng menu câu cửa miệng bật/tắt (Drawer) */
+  .hud-shouts-bar {
+    display: none;
+    position: fixed;
+    bottom: 55px;
+    left: 12px;
+    right: 12px;
+    max-width: 320px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 2px solid var(--neon-yellow);
+    border-radius: 14px;
+    padding: 10px;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: auto;
+    z-index: 95;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .hud-shouts-bar.is-open {
+    display: flex !important;
+  }
+
+  .shout-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--neon-yellow);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+  }
+
+  .close-shout-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .shout-chip {
+    font-size: 0.72rem;
+    padding: 5px 8px;
+    text-align: left;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+  }
 }

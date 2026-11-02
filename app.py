@@ -116,6 +116,14 @@ def get_or_create_room(room_id: str) -> Pub3DRoom:
 async def get_index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
+@app.get("/style.css")
+async def get_style():
+    return FileResponse(os.path.join(STATIC_DIR, "style.css"))
+
+@app.get("/app.js")
+async def get_script():
+    return FileResponse(os.path.join(STATIC_DIR, "app.js"))
+
 @app.websocket("/ws/{room_id}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str):
     await websocket.accept()

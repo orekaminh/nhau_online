@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="style.css?v=20261102_04">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
@@ -20,9 +20,29 @@
 
   <!-- Top HUD: Room & Stats Bar -->
   <header class="hud-top">
-    <div class="hud-brand">
+    <!-- Desktop Brand (Hidden on Mobile) -->
+    <div class="hud-brand desktop-only">
       <h1 class="hud-title">🍻 QUÁN NHẬU 3D 🍺</h1>
       <span class="hud-badge">VỈA HÈ EDITION</span>
+    </div>
+
+    <!-- Mobile Mini Status Bar (MOBA Style - Thanh Máu/Mana Say & Bọng Đái) -->
+    <div class="mobile-player-hud mobile-only">
+      <div class="mob-avatar-badge" id="mobAvatarBadge">🍺</div>
+      <div class="mob-bars-col">
+        <div class="mob-name-row">
+          <span id="mobNameDisplay">Bợm Nhậu</span>
+          <button id="mobEditNameBtn" class="mob-edit-btn" title="Đổi tên">✏️</button>
+        </div>
+        <div class="mob-gauge-track mob-drunk-track" title="Nồng độ cồn">
+          <div id="mobDrunkBar" class="mob-gauge-fill mob-drunk-fill" style="width: 0%;"></div>
+          <span id="mobDrunkText" class="mob-gauge-text">🍺 0% Tỉnh</span>
+        </div>
+        <div class="mob-gauge-track mob-bladder-track" title="Bọng đái">
+          <div id="mobBladderBar" class="mob-gauge-fill mob-bladder-fill" style="width: 0%;"></div>
+          <span id="mobBladderText" class="mob-gauge-text">💧 0% Êm</span>
+        </div>
+      </div>
     </div>
 
     <div class="hud-stats-group">
@@ -31,11 +51,12 @@
         <button id="copyLinkBtn" class="pill-btn" title="Gửi link rủ bạn bè vào chung quán">🔗 Rủ Bạn</button>
       </div>
       <div class="hud-stat-pill">
-        <span>Cụng ly: <strong id="totalCheersDisplay">0</strong> 🍻</span>
+        <span>Cụng: <strong id="totalCheersDisplay">0</strong> 🍻</span>
       </div>
-      <div class="hud-stat-pill highlight">
+      <div class="hud-stat-pill desktop-only">
         <span>Mồi tặc: <strong id="topMoiTacDisplay">Chưa ai</strong> 🥢</span>
       </div>
+      <button id="audioToggleBtn" class="pill-btn sound-toggle-mini" title="Bật/Tắt âm thanh">🔊</button>
     </div>
   </header>
 
@@ -132,9 +153,16 @@
       </button>
     </div>
 
-    <!-- Soundboard Quick Shouts -->
-    <div class="hud-shouts-bar">
-      <span class="shout-title">🗣️ Cửa miệng:</span>
+    <!-- Mobile Shout Toggle Button (Only on Mobile) -->
+    <button id="shoutToggleBtn" class="mob-shout-toggle mobile-only" title="Mở danh sách câu cửa miệng">💬 Cửa Miệng</button>
+
+    <!-- Soundboard Quick Shouts (Desktop bar / Mobile Pop-out Drawer) -->
+    <div id="hudShoutsBar" class="hud-shouts-bar">
+      <div class="shout-header-mobile mobile-only">
+        <span>🗣️ CÂU NÓI CỬA MIỆNG</span>
+        <button id="closeShoutBtn" class="close-shout-btn">✕</button>
+      </div>
+      <span class="shout-title desktop-only">🗣️ Cửa miệng:</span>
       <button class="shout-chip" data-shout="Không say không về!">"Không say không về!"</button>
       <button class="shout-chip" data-shout="Chú không nể anh à?">"Chú không nể anh!"</button>
       <button class="shout-chip" data-shout="Nhấp môi đấy à? Trăm phần trăm!">"Nhấp môi đấy à?"</button>
@@ -143,13 +171,13 @@
     </div>
   </footer>
 
-  <!-- Virtual D-Pad for Mobile Touch -->
-  <div class="mobile-dpad" id="mobileDpad">
-    <button class="dpad-btn up" id="dpadUp">▲</button>
-    <div class="dpad-middle">
-      <button class="dpad-btn left" id="dpadLeft">◀</button>
-      <button class="dpad-btn down" id="dpadDown">▼</button>
-      <button class="dpad-btn right" id="dpadRight">▶</button>
+  <!-- Virtual Analog Joystick for Mobile (Liên Quân Mobile Style) -->
+  <div class="joystick-zone mobile-only" id="joystickZone">
+    <div class="joystick-base" id="joystickBase">
+      <div class="joystick-ring"></div>
+      <div class="joystick-knob" id="joystickKnob">
+        <div class="knob-glow"></div>
+      </div>
     </div>
   </div>
 
@@ -177,11 +205,6 @@
     </div>
   </div>
 
-  <!-- Floating Audio Toggle -->
-  <div class="audio-control">
-    <button id="audioToggleBtn" class="sound-toggle" title="Bật/Tắt âm thanh">🔊 Âm Thanh: Bật</button>
-  </div>
-
-  <script src="/static/app.js?v=20261102_03"></script>
+  <script src="app.js?v=20261102_04"></script>
 </body>
 </html>

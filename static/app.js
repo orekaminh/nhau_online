@@ -1590,35 +1590,150 @@ window.addEventListener('wheel', (e) => {
   cameraDistance = Math.max(3.2, Math.min(13.5, cameraDistance + e.deltaY * 0.006));
 }, { passive: true });
 
+// ========================================================
 // Touch Drag để xoay camera trên điện thoại / tablet
+// ========================================================
 let lastTouchX = 0;
 let lastTouchY = 0;
 let isTouchDragging = false;
+let cameraTouchId = null;
 
 canvasContainer.addEventListener('touchstart', (e) => {
-  if (e.touches.length === 1) {
-    isTouchDragging = true;
-    lastTouchX = e.touches[0].clientX;
-    lastTouchY = e.touches[0].clientY;
+  for (let i = 0; i < e.touches.length; i++) {
+    const touch = e.touches[i];
+    // Không xoay camera nếu chạm vào khu vực Joystick bên trái (45% chiều rộng và 60% chiều cao phía dưới)
+    if (touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.38) continue;
+    // Không xoay camera nếu chạm vào các nút điều khiển kỹ năng
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (target && (target.closest('.hud-actions-group') || target.closest('.hud-top') || target.closest('.hud-shouts-bar') || target.closest('.mob-shout-toggle') || target.closest('.modal-card') || target.closest('.interact-prompt'))) continue;
+
+    if (!isTouchDragging) {
+      isTouchDragging = true;
+      cameraTouchId = touch.identifier;
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
+      break;
+    }
   }
 }, { passive: true });
 
 window.addEventListener('touchmove', (e) => {
-  if (!isTouchDragging || e.touches.length !== 1) return;
-  const touch = e.touches[0];
-  const deltaX = touch.clientX - lastTouchX;
-  const deltaY = touch.clientY - lastTouchY;
-  lastTouchX = touch.clientX;
-  lastTouchY = touch.clientY;
+  if (!isTouchDragging) return;
+  for (let i = 0; i < e.touches.length; i++) {
+    const touch = e.touches[i];
+    if (touch.identifier === cameraTouchId) {
+      const deltaX = touch.clientX - lastTouchX;
+      const deltaY = touch.clientY - lastTouchY;
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
 
-  cameraYaw -= deltaX * 0.0065;
-  cameraPitch += deltaY * 0.005;
-  cameraPitch = Math.max(0.08, Math.min(Math.PI / 2.25, cameraPitch));
+      cameraYaw -= deltaX * 0.0065;
+      cameraPitch += deltaY * 0.005;
+      cameraPitch = Math.max(0.08, Math.min(Math.PI / 2.25, cameraPitch));
+      break;
+    }
+  }
 }, { passive: true });
 
-window.addEventListener('touchend', () => {
-  isTouchDragging = false;
+window.addEventListener('touchend', (e) => {
+  if (!isTouchDragging) return;
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === cameraTouchId) {
+      isTouchDragging = false;
+      cameraTouchId = null;
+      break;
+    }
+  }
 });
+
+// ========================================================
+// Virtual Analog Joystick (Phong cách Liên Quân Mobile 360°)
+// ========================================================
+let joystickState = { active: false, touchId: null, x: 0, y: 0 };
+
+function setupVirtualJoystick() {
+  const joystickZone = document.getElementById('joystickZone');
+  const joystickBase = document.getElementById('joystickBase');
+  const joystickKnob = document.getElementById('joystickKnob');
+  if (!joystickZone || !joystickBase || !joystickKnob) return;
+
+  const maxRadius = 45; // Bán kính kéo tối đa của núm
+
+  function getBaseCenter() {
+    const rect = joystickBase.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+  }
+
+  function handleTouchStart(e) {
+    if (joystickState.active) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      // Nhận diện chạm ở nửa dưới bên trái màn hình
+      if (touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.38) {
+        joystickState.active = true;
+        joystickState.touchId = touch.identifier;
+        joystickBase.classList.add('is-active');
+
+        updateKnobPosition(touch.clientX, touch.clientY);
+        break;
+      }
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (!joystickState.active) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      if (touch.identifier === joystickState.touchId) {
+        updateKnobPosition(touch.clientX, touch.clientY);
+        break;
+      }
+    }
+  }
+
+  function updateKnobPosition(touchX, touchY) {
+    const center = getBaseCenter();
+    const dx = touchX - center.x;
+    const dy = touchY - center.y;
+    const dist = Math.hypot(dx, dy);
+
+    const clampedDist = Math.min(dist, maxRadius);
+    const angle = Math.atan2(dy, dx);
+
+    const knobX = Math.cos(angle) * clampedDist;
+    const knobY = Math.sin(angle) * clampedDist;
+
+    joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+    // Vector chuẩn hóa (-1 đến 1)
+    joystickState.x = knobX / maxRadius;
+    joystickState.y = -knobY / maxRadius; // Màn hình hướng Y xuống, hướng tới là âm Y
+  }
+
+  function handleTouchEnd(e) {
+    if (!joystickState.active) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickState.touchId) {
+        joystickState.active = false;
+        joystickState.touchId = null;
+        joystickState.x = 0;
+        joystickState.y = 0;
+        joystickBase.classList.remove('is-active');
+        joystickKnob.style.transform = 'translate(0px, 0px)';
+        break;
+      }
+    }
+  }
+
+  window.addEventListener('touchstart', handleTouchStart, { passive: true });
+  window.addEventListener('touchmove', handleTouchMove, { passive: true });
+  window.addEventListener('touchend', handleTouchEnd, { passive: true });
+  window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+}
+setupVirtualJoystick();
 
 window.addEventListener('keydown', (e) => {
   if (nameModal.style.display === 'flex') return;
@@ -1652,24 +1767,6 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
   if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
 });
-
-// Mobile D-Pad Touch Handlers
-function setupMobileDpad() {
-  const dpadUp = document.getElementById('dpadUp');
-  const dpadDown = document.getElementById('dpadDown');
-  const dpadLeft = document.getElementById('dpadLeft');
-  const dpadRight = document.getElementById('dpadRight');
-
-  const addTouch = (elem, key) => {
-    elem.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
-    elem.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
-  };
-  addTouch(dpadUp, 'w');
-  addTouch(dpadDown, 's');
-  addTouch(dpadLeft, 'a');
-  addTouch(dpadRight, 'd');
-}
-setupMobileDpad();
 
 // ========================================================
 // 7. Interactive Sit/Stand Logic
@@ -1777,6 +1874,12 @@ function updateBladderVisuals(level) {
   else if (level >= 60) desc = "Buồn tiểu rồi 💧";
   else if (level >= 30) desc = "Hơi buồn buồn";
   if (selfBladderText) selfBladderText.textContent = `${level}% (${desc})`;
+
+  // Mobile MOBA mini bar
+  const mobBladderBar = document.getElementById('mobBladderBar');
+  const mobBladderText = document.getElementById('mobBladderText');
+  if (mobBladderBar) mobBladderBar.style.width = `${level}%`;
+  if (mobBladderText) mobBladderText.textContent = `💧 ${level}%`;
 
   if (peeBtnText) {
     const near = findNearestPeeSpot();
@@ -1895,6 +1998,10 @@ function enableOfflineDemo() {
   };
   selfNameDisplay.textContent = selfMember.name;
   selfColorBadge.style.backgroundColor = selfMember.color;
+  const mobName = document.getElementById('mobNameDisplay');
+  const mobAvatar = document.getElementById('mobAvatarBadge');
+  if (mobName) mobName.textContent = selfMember.name;
+  if (mobAvatar) mobAvatar.style.backgroundColor = selfMember.color;
   localPlayerState.x = selfMember.x;
   localPlayerState.z = selfMember.z;
   localPlayerState.ry = selfMember.ry;
@@ -1955,6 +2062,10 @@ function connectWebSocket() {
         if (selfMember) {
           selfNameDisplay.textContent = selfMember.name;
           selfColorBadge.style.backgroundColor = selfMember.color;
+          const mobNameInit = document.getElementById('mobNameDisplay');
+          const mobAvatarInit = document.getElementById('mobAvatarBadge');
+          if (mobNameInit) mobNameInit.textContent = selfMember.name;
+          if (mobAvatarInit) mobAvatarInit.style.backgroundColor = selfMember.color;
           localPlayerState.x = selfMember.x;
           localPlayerState.z = selfMember.z;
           localPlayerState.ry = selfMember.ry;
@@ -2079,6 +2190,8 @@ function connectWebSocket() {
       case 'name_changed':
         if (data.member_id === clientId) {
           selfNameDisplay.textContent = data.new_name;
+          const mobName = document.getElementById('mobNameDisplay');
+          if (mobName) mobName.textContent = data.new_name;
           const hud = playerHUDTags.get(clientId);
           if (hud) hud.nameElem.textContent = '⭐ ' + data.new_name;
         } else {
@@ -2227,6 +2340,12 @@ function updateDrunkVisuals(level, status) {
 
   selfDrunkText.textContent = `${level}% (${label})`;
 
+  // Mobile MOBA mini bar
+  const mobDrunkBar = document.getElementById('mobDrunkBar');
+  const mobDrunkText = document.getElementById('mobDrunkText');
+  if (mobDrunkBar) mobDrunkBar.style.width = `${level}%`;
+  if (mobDrunkText) mobDrunkText.textContent = `🍺 ${level}%`;
+
   document.body.classList.remove('drunk-wobble-1', 'drunk-wobble-2', 'drunk-wobble-3');
 
   if (level >= 100) {
@@ -2282,10 +2401,17 @@ function animate() {
     if (keys.a) inputRight -= 1;
     if (keys.d) inputRight += 1;
 
+    // Hỗ trợ Analog Joystick Liên Quân Mobile 360 độ
+    if (joystickState.active && (Math.abs(joystickState.x) > 0.05 || Math.abs(joystickState.y) > 0.05)) {
+      inputForward = joystickState.y;
+      inputRight = joystickState.x;
+    }
+
     let moveX = 0;
     let moveZ = 0;
+    const inputMag = Math.min(1.0, Math.hypot(inputForward, inputRight));
 
-    if (inputForward !== 0 || inputRight !== 0) {
+    if (inputMag > 0.05) {
       moveX = forwardX * inputForward + rightX * inputRight;
       moveZ = forwardZ * inputForward + rightZ * inputRight;
     }
@@ -2302,8 +2428,9 @@ function animate() {
       moveX /= len;
       moveZ /= len;
 
-      localPlayerState.x += moveX * localPlayerState.speed * delta;
-      localPlayerState.z += moveZ * localPlayerState.speed * delta;
+      const currentSpeed = localPlayerState.speed * Math.max(0.4, inputMag);
+      localPlayerState.x += moveX * currentSpeed * delta;
+      localPlayerState.z += moveZ * currentSpeed * delta;
 
       // Giới hạn trong khuôn viên: từ quán vỉa hè, qua đường, đến tận bờ sông Sài Gòn
       localPlayerState.x = Math.max(-23, Math.min(23, localPlayerState.x));
@@ -2500,13 +2627,50 @@ billBtn.addEventListener('click', () => {
 });
 
 // Quick Shouts Soundboard
+const hudShoutsBarElem = document.getElementById('hudShoutsBar');
 document.querySelectorAll('.shout-chip').forEach(chip => {
   chip.addEventListener('click', (e) => {
     getAudioContext();
     const text = e.target.getAttribute('data-shout');
     sendAction({ action: 'quick_shout', text });
+    if (hudShoutsBarElem) hudShoutsBarElem.classList.remove('is-open');
   });
 });
+
+// Mobile Cửa Miệng Toggle Drawer
+const shoutToggleBtn = document.getElementById('shoutToggleBtn');
+const closeShoutBtn = document.getElementById('closeShoutBtn');
+if (shoutToggleBtn && hudShoutsBarElem) {
+  shoutToggleBtn.addEventListener('click', () => {
+    hudShoutsBarElem.classList.toggle('is-open');
+  });
+}
+if (closeShoutBtn && hudShoutsBarElem) {
+  closeShoutBtn.addEventListener('click', () => {
+    hudShoutsBarElem.classList.remove('is-open');
+  });
+}
+
+// Bấm trực tiếp vào thông báo kéo ghế ngồi trên màn hình cảm ứng
+if (interactPrompt) {
+  interactPrompt.addEventListener('click', () => {
+    handleToggleSit();
+  });
+  interactPrompt.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleToggleSit();
+  });
+}
+
+// Mobile Đổi Tên
+const mobEditNameBtn = document.getElementById('mobEditNameBtn');
+if (mobEditNameBtn) {
+  mobEditNameBtn.addEventListener('click', () => {
+    nameInput.value = selfMember ? selfMember.name : '';
+    nameModal.style.display = 'flex';
+    nameInput.focus();
+  });
+}
 
 // Rủ bạn nhậu (Copy link)
 copyLinkBtn.addEventListener('click', () => {
@@ -2544,7 +2708,7 @@ nameInput.addEventListener('keypress', (e) => {
 // Audio Toggle
 audioToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
-  audioToggleBtn.textContent = soundEnabled ? '🔊 Âm Thanh: Bật' : '🔇 Âm Thanh: Tắt';
+  audioToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
 });
 
 // Kết nối WebSocket ngay khi tải xong
