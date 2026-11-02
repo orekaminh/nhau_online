@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
+  <!-- Three.js 3D Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="street-vibe-3d">
+  <!-- 3D Canvas Viewport -->
+  <div id="canvas3d-container"></div>
+
+  <!-- Drunk Wobble Filter Overlay -->
+  <div id="drunkFilter" class="drunk-layer"></div>
+
+  <!-- Top HUD: Room & Stats Bar -->
+  <header class="hud-top">
+    <div class="hud-brand">
+      <h1 class="hud-title">🍻 QUÁN NHẬU 3D 🍺</h1>
+      <span class="hud-badge">VỈA HÈ EDITION</span>
+    </div>
+
+    <div class="hud-stats-group">
+      <div class="hud-stat-pill">
+        <span>Bàn: <strong id="roomIdDisplay">PHÒNG 1</strong></span>
+        <button id="copyLinkBtn" class="pill-btn" title="Gửi link rủ bạn bè vào chung quán">🔗 Rủ Bạn</button>
+      </div>
+      <div class="hud-stat-pill">
+        <span>Cụng ly: <strong id="totalCheersDisplay">0</strong> 🍻</span>
+      </div>
+      <div class="hud-stat-pill highlight">
+        <span>Mồi tặc: <strong id="topMoiTacDisplay">Chưa ai</strong> 🥢</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Prompt when near a chair -->
+  <div id="interactPrompt" class="interact-prompt" style="display: none;">
+    <div class="prompt-key">E</div>
+    <div class="prompt-text">Kéo ghế ngồi vào bàn nhậu</div>
+  </div>
+
+  <!-- 3D Player Overlays (Floating Names & Chat Bubbles Container) -->
+  <div id="hudOverlay" class="hud-overlay-container"></div>
+
+  <!-- Ticker Broadcast Notification -->
+  <div class="hud-ticker">
+    <div id="tickerMsg" class="ticker-text">
+      🎮 Dùng phím [W][A][S][D] hoặc Mũi tên để đi lại. Đến gần bàn bấm [E] để ngồi nhậu!
+    </div>
+  </div>
+
+  <!-- Control Help & Drunk Gauge (Top Right & Bottom Left) -->
+  <div class="control-hints-card">
+    <div class="hint-title">🕹️ ĐIỀU KHIỂN:</div>
+    <div>• <strong>Giữ chuột & Kéo</strong>: Xoay góc nhìn 360° 🔄</div>
+    <div>• <strong>Cuộn chuột</strong>: Thu phóng gần / xa 🔍</div>
+    <div>• <strong>WASD / Mũi tên</strong>: Đi lại (Băng qua đường ra bờ sông)</div>
+    <div>• <strong>E</strong>: Ngồi ghế nhậu / Ngồi ghế đá công viên</div>
+    <div>• <strong>P</strong>: Xả lũ / Đái bậy (WC, gốc cây, bờ tường) 🚽</div>
+    <div>• <strong>V</strong>: Chế độ Cinematic Ngắm Landmark 81 🌆</div>
+    <div>• <strong>Space</strong>: 1 2 3 DÔ! 🍻</div>
+  </div>
+
+  <!-- Bottom Action Deck -->
+  <footer class="hud-bottom">
+    <!-- User Profile & Drunk Gauge -->
+    <div class="hud-user-card">
+      <div class="hud-avatar-circle" id="selfColorBadge">🍺</div>
+      <div class="hud-user-details">
+        <div class="hud-username-row">
+          <strong id="selfNameDisplay">Đang vào quán...</strong>
+          <button id="editNameBtn" class="icon-btn" title="Đổi danh xưng">✏️</button>
+        </div>
+        <div class="hud-gauge-row">
+          <span class="gauge-label">Nồng độ cồn:</span>
+          <div class="gauge-track">
+            <div id="selfDrunkBar" class="gauge-fill" style="width: 0%;"></div>
+          </div>
+          <span id="selfDrunkText" class="gauge-number">0% (Tỉnh táo)</span>
+        </div>
+        <div class="hud-gauge-row">
+          <span class="gauge-label">💧 Bọng đái:</span>
+          <div class="gauge-track">
+            <div id="selfBladderBar" class="gauge-fill bladder-fill" style="width: 0%;"></div>
+          </div>
+          <span id="selfBladderText" class="gauge-number">0% (Êm ái)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="hud-actions-group">
+      <button id="cheerBtn" class="btn-cheer">
+        <span class="btn-icon">🍻</span>
+        <span class="btn-text">1, 2, 3 DÔÔÔ!</span>
+      </button>
+
+      <button id="sitStandBtn" class="btn-action btn-sit">
+        <span class="btn-icon">🪑</span>
+        <span id="sitStandText">Ngồi Ghế</span>
+      </button>
+
+      <button id="eatSnackBtn" class="btn-action btn-snack">
+        <span class="btn-icon">🥢</span>
+        <span>Gắp Mồi</span>
+      </button>
+
+      <button id="peeBtn" class="btn-action btn-pee" title="Vào WC hoặc Đái bậy nếu đang ở gốc cây/bờ tường [P]">
+        <span class="btn-icon">🚽</span>
+        <span id="peeBtnText">Xả Lũ (WC/Tè)</span>
+      </button>
+
+      <button id="viewRiverBtn" class="btn-action btn-view" title="Góc nhìn điện ảnh ngắm sông Sài Gòn & Landmark 81">
+        <span class="btn-icon">🌆</span>
+        <span id="viewRiverText">Ngắm Landmark 81</span>
+      </button>
+
+      <button id="soberBtn" class="btn-action btn-sober" title="Uống cốc trà đá chanh giải rượu">
+        <span class="btn-icon">🍋</span>
+        <span>Trà Đá Chanh</span>
+      </button>
+
+      <button id="billBtn" class="btn-action btn-bill" title="Ai bao bàn này?">
+        <span class="btn-icon">🧾</span>
+        <span>Tính Tiền!</span>
+      </button>
+    </div>
+
+    <!-- Soundboard Quick Shouts -->
+    <div class="hud-shouts-bar">
+      <span class="shout-title">🗣️ Cửa miệng:</span>
+      <button class="shout-chip" data-shout="Không say không về!">"Không say không về!"</button>
+      <button class="shout-chip" data-shout="Chú không nể anh à?">"Chú không nể anh!"</button>
+      <button class="shout-chip" data-shout="Nhấp môi đấy à? Trăm phần trăm!">"Nhấp môi đấy à?"</button>
+      <button class="shout-chip" data-shout="Tao còn tỉnh lắm, rót tiếp!">"Tao còn tỉnh lắm!"</button>
+      <button class="shout-chip" data-shout="Mồi tặc nào gắp hết dĩa rồi?">"Kêu thêm dĩa mồi!"</button>
+    </div>
+  </footer>
+
+  <!-- Virtual D-Pad for Mobile Touch -->
+  <div class="mobile-dpad" id="mobileDpad">
+    <button class="dpad-btn up" id="dpadUp">▲</button>
+    <div class="dpad-middle">
+      <button class="dpad-btn left" id="dpadLeft">◀</button>
+      <button class="dpad-btn down" id="dpadDown">▼</button>
+      <button class="dpad-btn right" id="dpadRight">▶</button>
+    </div>
+  </div>
+
+  <!-- Drunk Passed Out Modal (Gục Tại Bàn) -->
+  <div id="passoutModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-emoji">😵💤</div>
+      <h2>BẠN ĐÃ GỤC TẠI CHỖ!</h2>
+      <p class="modal-desc">Nồng độ cồn đạt 100%. Bạn đã say mèm ngã lăn quay ra sàn quán nhậu, ngủ ngáy <strong>khò khò zZz</strong>...</p>
+      <div class="modal-actions">
+        <button id="modalWakeBtn" class="modal-btn">🍋 Tu Cốc Trà Đá Chanh Hồi Tỉnh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Name Modal -->
+  <div id="nameModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <h3>ĐỔI DANH XƯNG BỢM NHẬU</h3>
+      <input type="text" id="nameInput" maxlength="25" placeholder="Nhập biệt danh nhậu của bạn..." class="name-input">
+      <div class="modal-actions">
+        <button id="saveNameBtn" class="modal-btn">Xác Nhận</button>
+        <button id="cancelNameBtn" class="modal-btn secondary">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Audio Toggle -->
+  <div class="audio-control">
+    <button id="audioToggleBtn" class="sound-toggle" title="Bật/Tắt âm thanh">🔊 Âm Thanh: Bật</button>
+  </div>
+
+  <script src="/static/app.js?v=20261102_03"></script>
+</body>
+</html>
