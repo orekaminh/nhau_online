@@ -38,6 +38,8 @@ const eatSnackBtn = document.getElementById('eatSnackBtn');
 const soberBtn = document.getElementById('soberBtn');
 const peeBtn = document.getElementById('peeBtn');
 const peeBtnText = document.getElementById('peeBtnText');
+const vomitBtn = document.getElementById('vomitBtn');
+const vomitBtnText = document.getElementById('vomitBtnText');
 const billBtn = document.getElementById('billBtn');
 const copyLinkBtn = document.getElementById('copyLinkBtn');
 const audioToggleBtn = document.getElementById('audioToggleBtn');
@@ -226,6 +228,69 @@ function playSirenSound() {
   gain.connect(ctx.destination);
   osc.start(now);
   osc.stop(now + 0.6);
+}
+
+// Âm Thanh Ói Mửa / Nôn Thốc Nôn Tháo (Huệ ơi là Huệ)
+function playVomitSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(160, now);
+  osc1.frequency.exponentialRampToValueAtTime(55, now + 0.35);
+  gain1.gain.setValueAtTime(0.35, now);
+  gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+  osc1.connect(gain1);
+  gain1.connect(ctx.destination);
+  osc1.start(now);
+  osc1.stop(now + 0.4);
+
+  setTimeout(() => {
+    if (!soundEnabled) return;
+    const ctxNow = ctx.currentTime;
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(220, ctxNow);
+    osc2.frequency.linearRampToValueAtTime(45, ctxNow + 0.65);
+    gain2.gain.setValueAtTime(0.4, ctxNow);
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctxNow + 0.7);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctxNow);
+    osc2.stop(ctxNow + 0.7);
+  }, 350);
+}
+
+// Âm thanh Em PG rót bia sủi bọt mát lạnh
+function playPourBeerSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const bufferSize = ctx.sampleRate * 0.9;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.45));
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(1700, now);
+  filter.Q.setValueAtTime(3.5, now);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.3, now);
+  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  noise.start(now);
 }
 
 // ========================================================
@@ -1229,6 +1294,155 @@ function buildSaigonStreetScenery() {
 buildSaigonStreetScenery();
 
 // ========================================================
+// 5.5. CÁC EM GÁI TIẾP THỊ BIA (PG BIA 3D CHIBI)
+// ========================================================
+const pgGirls = []; // { id, name, brand, mesh, tray, tagElem, tagBubble, x, z }
+
+function createPGBiaCharacter(id, name, brand, x, z, ry) {
+  const root = new THREE.Group();
+  const isTiger = brand === 'tiger';
+  const dressColor = isTiger ? 0x1d4ed8 : 0x15803d;
+  const trimColor = isTiger ? 0xe2e8f0 : 0xffffff;
+
+  const dressMat = new THREE.MeshStandardMaterial({ color: dressColor, roughness: 0.4 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, roughness: 0.3 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdfc4, roughness: 0.7 });
+
+  // Váy body ngắn
+  const dress = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.65, 12), dressMat);
+  dress.position.y = 0.55;
+  root.add(dress);
+
+  // Dải ruy băng thương hiệu
+  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.285, 0.12, 12), trimMat);
+  sash.position.y = 0.65;
+  root.add(sash);
+
+  // Đôi chân thon thả & Bốt cao cổ
+  const bootMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 8), skinMat);
+  leftLeg.position.set(-0.1, 0.25, 0);
+  root.add(leftLeg);
+
+  const leftBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8), bootMat);
+  leftBoot.position.set(-0.1, 0.12, 0.02);
+  root.add(leftBoot);
+
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 8), skinMat);
+  rightLeg.position.set(0.1, 0.25, 0);
+  root.add(rightLeg);
+
+  const rightBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8), bootMat);
+  rightBoot.position.set(0.1, 0.12, 0.02);
+  root.add(rightBoot);
+
+  // Đầu Chibi xinh xắn
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.45), skinMat);
+  head.position.y = 1.05;
+  root.add(head);
+
+  // Mái tóc dài & đuôi ngựa
+  const hairColor = isTiger ? 0x451a03 : 0x18181b;
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
+  const hairTop = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.25, 0.48), hairMat);
+  hairTop.position.set(0, 1.2, -0.02);
+  root.add(hairTop);
+
+  const ponytail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.14, 0.45, 8), hairMat);
+  ponytail.rotation.x = 0.35;
+  ponytail.position.set(0, 1.05, -0.32);
+  root.add(ponytail);
+
+  // Nơ tóc xinh
+  const bowMat = new THREE.MeshStandardMaterial({ color: isTiger ? 0x38bdf8 : 0xef4444 });
+  const bow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.08), bowMat);
+  bow.position.set(0, 1.24, -0.22);
+  root.add(bow);
+
+  // Mắt to tròn Chibi & Má hồng
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+  const blushMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+  const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.02), eyeMat);
+  leftEye.position.set(-0.13, 1.06, 0.23);
+  root.add(leftEye);
+
+  const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.02), eyeMat);
+  rightEye.position.set(0.13, 1.06, 0.23);
+  root.add(rightEye);
+
+  const leftBlush = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), blushMat);
+  leftBlush.position.set(-0.16, 0.96, 0.23);
+  root.add(leftBlush);
+
+  const rightBlush = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), blushMat);
+  rightBlush.position.set(0.16, 0.96, 0.23);
+  root.add(rightBlush);
+
+  // Khay bia inox cầm trên tay
+  const trayMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
+  const tray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 16), trayMat);
+  tray.position.set(0, 0.72, 0.32);
+  root.add(tray);
+
+  // 3 lon bia trên khay
+  const canMat = new THREE.MeshStandardMaterial({
+    color: isTiger ? 0x2563eb : 0x16a34a,
+    metalness: 0.7,
+    roughness: 0.3
+  });
+  for (let c = 0; c < 3; c++) {
+    const angle = (c * Math.PI * 2) / 3;
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 10), canMat);
+    can.position.set(Math.cos(angle) * 0.14, 0.08, Math.sin(angle) * 0.14);
+    tray.add(can);
+  }
+
+  // Hai tay thanh mảnh
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), skinMat);
+  leftArm.rotation.x = -Math.PI / 4;
+  leftArm.position.set(-0.25, 0.65, 0.15);
+  root.add(leftArm);
+
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), skinMat);
+  rightArm.rotation.x = -Math.PI / 4;
+  rightArm.position.set(0.25, 0.65, 0.15);
+  root.add(rightArm);
+
+  root.position.set(x, 0.3, z);
+  root.rotation.y = ry;
+  scene.add(root);
+
+  // Tạo thẻ tên 3D trên đầu PG
+  const pgTag = document.createElement('div');
+  pgTag.className = 'tag-3d';
+  pgTag.innerHTML = `
+    <div class="tag-bubble" id="bubble_${id}" style="display: none;"></div>
+    <div class="tag-name" style="background: ${isTiger ? '#1e40af' : '#15803d'}; border-color: #fde047; color: #fff; font-weight: 800;">💃 ${name}</div>
+  `;
+  hudOverlay.appendChild(pgTag);
+
+  pgGirls.push({
+    id,
+    name,
+    brand,
+    mesh: root,
+    tray,
+    tagElem: pgTag,
+    tagBubble: pgTag.querySelector('.tag-bubble'),
+    x, z
+  });
+}
+
+function buildPGBiaGirls() {
+  // 1. Em Thảo My (PG Tiger) - Đứng cạnh bàn 1
+  createPGBiaCharacter('pg_tiger', 'Thảo My (PG Tiger)', 'tiger', 3.4, 2.0, -Math.PI / 3);
+
+  // 2. Em Ngọc Trinh (PG Heineken) - Đứng cạnh lối vào quán gần xe nước mía
+  createPGBiaCharacter('pg_ken', 'Ngọc Trinh (PG Heineken)', 'heineken', -3.6, 3.2, Math.PI / 4);
+}
+buildPGBiaGirls();
+
+// ========================================================
 // 6. SÔNG SÀI GÒN & DU THUYỀN (SAIGON RIVER & CRUISE BOAT)
 // ========================================================
 let riverWater = null;
@@ -1755,6 +1969,17 @@ window.addEventListener('keydown', (e) => {
     handlePeeAction();
   }
 
+  if (e.key === 'o' || e.key === 'O') {
+    handleVomitAction();
+  }
+
+  if (e.key === 'f' || e.key === 'F') {
+    const nearPG = checkNearbyPG();
+    if (nearPG) {
+      handleTalkPG(nearPG.brand);
+    }
+  }
+
   if (e.code === 'Space') {
     e.preventDefault();
     cheerBtn.click();
@@ -1907,6 +2132,141 @@ function handlePeeAction() {
 }
 
 // ========================================================
+// 7.6. Tính Năng Ói Mửa / Cho Chó Ăn Chè / Huệ Ơi Huệ
+// ========================================================
+let vomitParticles = [];
+let vomitPuddles = [];
+
+function spawnVomitStream(startX, startY, startZ, rotY) {
+  const dirX = Math.sin(rotY);
+  const dirZ = Math.cos(rotY);
+  const colors = [0x84cc16, 0x65a30d, 0xeab308, 0xd97706, 0xea580c];
+
+  for (let i = 0; i < 40; i++) {
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const pMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 4, 4),
+      new THREE.MeshBasicMaterial({ color })
+    );
+    pMesh.position.set(startX + dirX * 0.3, startY + 0.85, startZ + dirZ * 0.3);
+    scene.add(pMesh);
+
+    vomitParticles.push({
+      mesh: pMesh,
+      x: startX + dirX * 0.3,
+      y: startY + 0.85,
+      z: startZ + dirZ * 0.3,
+      vx: dirX * (1.8 + Math.random() * 1.4) + (Math.random() - 0.5) * 0.5,
+      vy: 0.6 + Math.random() * 0.7,
+      vz: dirZ * (1.8 + Math.random() * 1.4) + (Math.random() - 0.5) * 0.5,
+      life: 55
+    });
+  }
+
+  createVomitPuddle(startX + dirX * 1.1, startZ + dirZ * 1.1);
+}
+
+function createVomitPuddle(x, z) {
+  const puddleMat = new THREE.MeshBasicMaterial({
+    color: 0x84cc16,
+    transparent: true,
+    opacity: 0.82
+  });
+  const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.32 + Math.random() * 0.15, 12), puddleMat);
+  puddle.rotation.x = -Math.PI / 2;
+  puddle.position.set(x, 0.306, z);
+  scene.add(puddle);
+  vomitPuddles.push({ mesh: puddle, time: 0 });
+}
+
+function updateVomitParticles(delta) {
+  for (let i = vomitParticles.length - 1; i >= 0; i--) {
+    const p = vomitParticles[i];
+    p.x += p.vx * delta;
+    p.y += p.vy * delta;
+    p.z += p.vz * delta;
+    p.vy -= 9.8 * delta;
+    p.life--;
+
+    if (p.y <= 0.31 || p.life <= 0) {
+      scene.remove(p.mesh);
+      vomitParticles.splice(i, 1);
+      continue;
+    }
+    p.mesh.position.set(p.x, p.y, p.z);
+  }
+
+  // Làm mờ dần các bãi nôn sau 15 giây
+  for (let j = vomitPuddles.length - 1; j >= 0; j--) {
+    const pud = vomitPuddles[j];
+    pud.time += delta;
+    if (pud.time > 12) {
+      pud.mesh.material.opacity = Math.max(0, 0.82 - (pud.time - 12) * 0.27);
+    }
+    if (pud.time > 15) {
+      scene.remove(pud.mesh);
+      vomitPuddles.splice(j, 1);
+    }
+  }
+}
+
+function handleVomitAction() {
+  playVomitSound();
+  spawnVomitStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
+
+  // Nhân vật cúi người ôm bụng nôn
+  if (localCharacter) {
+    localCharacter.torso.rotation.x = 0.55;
+    localCharacter.head.rotation.x = 0.45;
+    setTimeout(() => {
+      if (localCharacter) {
+        localCharacter.torso.rotation.x = 0;
+        localCharacter.head.rotation.x = 0;
+      }
+    }, 1500);
+  }
+
+  sendAction({ action: "vomit" });
+}
+
+// ========================================================
+// 7.7. Tương Tác Với Các Em Gái Tiếp Thị Bia (PG Bia)
+// ========================================================
+function checkNearbyPG() {
+  let nearestPG = null;
+  let minDist = 2.4;
+  for (const pg of pgGirls) {
+    const dist = Math.hypot(localPlayerState.x - pg.x, localPlayerState.z - pg.z);
+    if (dist < minDist) {
+      minDist = dist;
+      nearestPG = pg;
+    }
+  }
+  return nearestPG;
+}
+
+function showPGBubble(pgId, text) {
+  const pg = pgGirls.find(g => g.brand === pgId || g.id === pgId);
+  if (!pg || !pg.tagBubble) return;
+  pg.tagBubble.textContent = text;
+  pg.tagBubble.style.display = 'block';
+  setTimeout(() => {
+    if (pg.tagBubble) pg.tagBubble.style.display = 'none';
+  }, 4500);
+}
+
+function handleTalkPG(brand) {
+  playPourBeerSound();
+  sendAction({ action: "talk_pg", pg_id: brand });
+
+  const cuteQuotes = brand === 'tiger'
+    ? ["Uống Tiger Bạc mát rượi nha anh! 🍺", "Em châm đầy ly đá cho anh nè~ 🧊", "Một hai ba dô cạn ly nha anh trai! 🍻"]
+    : ["Ken ướp lạnh tuyệt hảo cho anh đây ạ! 🍺", "Anh đẹp trai phong độ quá, dô hết mình nha! ✨", "Uống không say không về cùng em nha anh! 💃"];
+  const quote = cuteQuotes[Math.floor(Math.random() * cuteQuotes.length)];
+  showPGBubble(brand, quote);
+}
+
+// ========================================================
 // 8. 3D Floating Name Tags & Chat Bubbles
 // ========================================================
 const playerHUDTags = new Map(); // id -> { elem, nameElem, bubbleElem }
@@ -1971,6 +2331,20 @@ function updatePlayerHUDPositions() {
       hud.elem.style.display = 'flex';
     } else {
       hud.elem.style.display = 'none';
+    }
+  });
+
+  // Update Các Em Gái Tiếp Thị Bia (PG Bia) Tags & Chat Bubbles
+  pgGirls.forEach((pg) => {
+    tempVec.set(pg.x, 1.95, pg.z);
+    tempVec.project(camera);
+    if (tempVec.z < 1) {
+      const x = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+      pg.tagElem.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
+      pg.tagElem.style.display = 'flex';
+    } else {
+      pg.tagElem.style.display = 'none';
     }
   });
 }
@@ -2159,6 +2533,38 @@ function connectWebSocket() {
         }
         break;
 
+      case 'vomit_event':
+        playVomitSound();
+        if (data.member_id === clientId) {
+          spawnVomitStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
+        } else {
+          const rp = remotePlayers.get(data.member_id);
+          if (rp) spawnVomitStream(rp.mesh.position.x, 0.3, rp.mesh.position.z, rp.mesh.rotation.y);
+        }
+        show3DShoutBubble(data.member_id, "🤮 Huệ ơi là Huệ!");
+        setTicker(data.message);
+
+        if (data.member_id === clientId && selfMember) {
+          selfMember.drunk_level = data.drunk_level;
+          selfMember.bladder_level = data.bladder_level || 0;
+          selfMember.status = data.status;
+          updateDrunkVisuals(data.drunk_level, data.status);
+          updateBladderVisuals(selfMember.bladder_level);
+        }
+        break;
+
+      case 'pg_event':
+        playPourBeerSound();
+        showPGBubble(data.pg_id, data.message);
+        setTicker(data.message);
+
+        if (data.member_id === clientId && selfMember) {
+          selfMember.drunk_level = data.drunk_level;
+          selfMember.status = data.status;
+          updateDrunkVisuals(data.drunk_level, data.status);
+        }
+        break;
+
       case 'snack_event':
         topMoiTacDisplay.textContent = data.top_moitac_name;
         playCrunchSound();
@@ -2261,6 +2667,32 @@ function sendAction(payload) {
       updateBladderVisuals(0);
     }
     setTicker("🚽 Xả lũ thành công! Cảm giác thật sảng khoái.");
+  } else if (payload.action === 'vomit') {
+    playVomitSound();
+    spawnVomitStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
+    if (selfMember) {
+      selfMember.drunk_level = Math.max(0, (selfMember.drunk_level || 0) - 40);
+      selfMember.bladder_level = Math.max(0, (selfMember.bladder_level || 0) - 40);
+      selfMember.status = selfMember.drunk_level < 30 ? "Tỉnh Táo" : (selfMember.drunk_level < 65 ? "Lâng Lâng" : "Say Mèm");
+      updateDrunkVisuals(selfMember.drunk_level, selfMember.status);
+      updateBladderVisuals(selfMember.bladder_level);
+    }
+    show3DShoutBubble(clientId, "🤮 Móc họng gọi Huệ ơi!");
+    setTicker("🤮 Bạn đã nôn thốc nôn tháo cho chó ăn chè, giảm 40% độ say!");
+  } else if (payload.action === 'talk_pg') {
+    playPourBeerSound();
+    const pgId = payload.pg_id || 'tiger';
+    if (selfMember) {
+      selfMember.drunk_level = Math.max(0, (selfMember.drunk_level || 0) - 15);
+      selfMember.status = selfMember.drunk_level < 30 ? "Tỉnh Táo" : (selfMember.drunk_level < 65 ? "Lâng Lâng" : "Say Mèm");
+      updateDrunkVisuals(selfMember.drunk_level, selfMember.status);
+    }
+    const pgQuotes = pgId === 'tiger'
+      ? ["💃 Em Thảo My (PG Tiger): Uống Tiger Bạc mát rượi nha anh! 🍺", "💃 Em Thảo My: Em châm đầy ly đá cho anh nè~ 🧊", "💃 Em Thảo My: Một hai ba dô cạn ly nha anh trai! 🍻"]
+      : ["💃 Em Ngọc Trinh (PG Heineken): Ken ướp lạnh tuyệt hảo cho anh đây ạ! 🍺", "💃 Em Ngọc Trinh: Anh đẹp trai phong độ quá, dô hết mình nha! ✨", "💃 Em Ngọc Trinh: Uống không say không về cùng em nha anh! 💃"];
+    const q = pgQuotes[Math.floor(Math.random() * pgQuotes.length)];
+    showPGBubble(pgId, q);
+    setTicker(q);
   } else if (payload.action === 'quick_shout') {
     show3DShoutBubble(clientId, payload.text);
     setTicker(`🗣️ Bạn: "${payload.text}"`);
@@ -2466,9 +2898,11 @@ function animate() {
       });
     }
 
-    // Hiển thị nút tương tác [E] ghế ngồi hoặc [P] xả lũ / đái bậy
+    // Hiển thị nút tương tác [E] ghế ngồi, [P] xả lũ / đái bậy, hoặc [F] Em Gái Tiếp Thị Bia (PG)
     const nearChair = findNearestChair();
     const nearPee = findNearestPeeSpot();
+    const nearPG = checkNearbyPG();
+
     if (nearChair) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "E";
@@ -2484,6 +2918,10 @@ function animate() {
       } else {
         interactPrompt.querySelector('.prompt-text').textContent = "Đái bậy vào gốc cây công viên";
       }
+    } else if (nearPG) {
+      interactPrompt.style.display = 'flex';
+      interactPrompt.querySelector('.prompt-key').textContent = "F";
+      interactPrompt.querySelector('.prompt-text').textContent = `Tâm sự / Nhận bia từ ${nearPG.name} 💃`;
     } else {
       interactPrompt.style.display = 'none';
     }
@@ -2491,8 +2929,18 @@ function animate() {
     interactPrompt.style.display = 'none';
   }
 
-  // Animation Hạt tia nước đái bậy
+  // Animation Hạt tia nước đái bậy & Hạt ói mửa nôn thốc nôn tháo
   updatePeeParticles(delta);
+  updateVomitParticles(delta);
+
+  // Animation Các Em Gái Tiếp Thị Bia (PG Bia thở, đung đưa duyên dáng)
+  const elapsedPG = clock.getElapsedTime();
+  pgGirls.forEach(pg => {
+    pg.mesh.position.y = 0.3 + Math.sin(elapsedPG * 2.5 + (pg.brand === 'tiger' ? 0 : 1.5)) * 0.015;
+    if (pg.tray) {
+      pg.tray.rotation.y = Math.sin(elapsedPG * 1.5) * 0.05;
+    }
+  });
 
   // Animation Sông Sài Gòn & Du Thuyền Du Lịch
   if (cruiseBoat) {
@@ -2587,6 +3035,12 @@ if (viewRiverBtn) {
 // 1 2 3 DÔÔÔ!
 cheerBtn.addEventListener('click', () => {
   getAudioContext();
+  // Nếu đã quá say xỉn (nồng độ cồn >= 85%) thì có 35% khả năng nôn ói tự phát khi cố ép dô
+  if (selfMember && selfMember.drunk_level >= 85 && Math.random() < 0.35) {
+    handleVomitAction();
+    setTicker("🤮 Uống quá chén rồi, bạn nôn thốc nôn tháo cho chó ăn chè!");
+    return;
+  }
   sendAction({ action: 'cheer' });
 });
 
@@ -2606,6 +3060,14 @@ if (peeBtn) {
   peeBtn.addEventListener('click', () => {
     getAudioContext();
     handlePeeAction();
+  });
+}
+
+// Nôn Ói / Cho Chó Ăn Chè / Huệ Ơi Huệ
+if (vomitBtn) {
+  vomitBtn.addEventListener('click', () => {
+    getAudioContext();
+    handleVomitAction();
   });
 }
 
@@ -2651,14 +3113,25 @@ if (closeShoutBtn && hudShoutsBarElem) {
   });
 }
 
-// Bấm trực tiếp vào thông báo kéo ghế ngồi trên màn hình cảm ứng
+// Bấm trực tiếp vào thông báo tương tác trên màn hình cảm ứng
 if (interactPrompt) {
-  interactPrompt.addEventListener('click', () => {
-    handleToggleSit();
-  });
+  function handlePromptAction() {
+    getAudioContext();
+    const keyElem = interactPrompt.querySelector('.prompt-key');
+    const key = keyElem ? keyElem.textContent.trim().toUpperCase() : 'E';
+    if (key === 'E') {
+      handleToggleSit();
+    } else if (key === 'P') {
+      handlePeeAction();
+    } else if (key === 'F') {
+      const nearPG = checkNearbyPG();
+      if (nearPG) handleTalkPG(nearPG.brand);
+    }
+  }
+  interactPrompt.addEventListener('click', handlePromptAction);
   interactPrompt.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    handleToggleSit();
+    handlePromptAction();
   });
 }
 

@@ -330,6 +330,68 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                         "message": msg
                     })
 
+            elif action == "vomit":
+                # Tính năng Ói mửa / Cho chó ăn chè / Móc họng gọi Huệ ơi
+                if client_id in room.members:
+                    mem = room.members[client_id]
+                    # Nôn ra giúp giảm 40% nồng độ cồn và 40% bọng đái
+                    mem["drunk_level"] = max(0, mem["drunk_level"] - 40)
+                    mem["bladder_level"] = max(0, mem.get("bladder_level", 0) - 40)
+                    if mem["drunk_level"] < 100:
+                        mem["status"] = "tinh_tao" if mem["drunk_level"] < 30 else ("lang_lang" if mem["drunk_level"] < 65 else "say_mem")
+
+                    vomit_lines = [
+                        f"🤮 {mem['name']} không chịu nổi nhiệt đã nôn thốc nôn tháo cho chó ăn chè giữa quán!",
+                        f"🤮 {mem['name']} móc họng ôm cột điện gọi tên 'Huệ ơi là Huệ...', giảm 40% độ say!",
+                        f"🤮 {mem['name']} ói một bãi to tướng ra quán! Trả lại hết dĩa bò né mực chiên!",
+                        f"🤮 {mem['name']} lảo đảo ói xối xả xuống bồn cầu, thở phào nhẹ nhõm!"
+                    ]
+
+                    await room.broadcast({
+                        "type": "vomit_event",
+                        "member_id": client_id,
+                        "member_name": mem["name"],
+                        "drunk_level": mem["drunk_level"],
+                        "bladder_level": mem["bladder_level"],
+                        "status": mem["status"],
+                        "message": random.choice(vomit_lines)
+                    })
+
+            elif action == "talk_pg":
+                # Tương tác với Em Gái Tiếp Thị Bia (PG Bia)
+                pg_id = data.get("pg_id", "tiger")
+                if client_id in room.members:
+                    mem = room.members[client_id]
+                    # Ngắm và nói chuyện với em PG giúp tỉnh bớt 15% cồn
+                    mem["drunk_level"] = max(0, mem["drunk_level"] - 15)
+                    if mem["drunk_level"] < 100:
+                        mem["status"] = "tinh_tao" if mem["drunk_level"] < 30 else ("lang_lang" if mem["drunk_level"] < 65 else "say_mem")
+
+                    if pg_id == "tiger":
+                        pg_name = "Em Thảo My (PG Tiger)"
+                        lines = [
+                            f"💃 {pg_name} diện váy xanh body cười duyên: 'Anh {mem['name']} uống Tiger Bạc mát lạnh nha, em rót đầy ly nè!'",
+                            f"💃 {pg_name} nháy mắt châm đá: 'Bàn mình uống khỏe quá, anh {mem['name']} cạn 100% với em ly này nhé~'",
+                            f"💃 {pg_name} cổ vũ: 'Một hai ba dô! Anh {mem['name']} uống hết em tặng quà móc khóa Tiger xịn sò nha!'"
+                        ]
+                    else:
+                        pg_name = "Em Ngọc Trinh (PG Heineken)"
+                        lines = [
+                            f"💃 {pg_name} chân dài kiêu sa: 'Ken bạc ướp lạnh tuyệt hảo cho anh {mem['name']} đây ạ, tỉnh cả người!'",
+                            f"💃 {pg_name} rót tràn ly bia Ken sủi bọt: 'Anh {mem['name']} đẹp trai phong độ quá, uống không say không về nha anh!'",
+                            f"💃 {pg_name} duyên dáng: 'Dô nhiệt tình lên các anh ơi, hôm nay em đồng hành tiếp bia cùng bàn mình tới sáng!'"
+                        ]
+
+                    await room.broadcast({
+                        "type": "pg_event",
+                        "pg_id": pg_id,
+                        "pg_name": pg_name,
+                        "member_id": client_id,
+                        "drunk_level": mem["drunk_level"],
+                        "status": mem["status"],
+                        "message": random.choice(lines)
+                    })
+
             elif action == "quick_shout":
                 shout = data.get("text", "Dô nào anh em!")
                 if client_id in room.members:

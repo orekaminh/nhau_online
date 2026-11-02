@@ -469,6 +469,8 @@ body.drunk-wobble-3 {
 .btn-view.is-viewing { background: #7e22ce; border-color: #d8b4fe; }
 .btn-pee { border-color: #06b6d4; }
 .btn-pee:hover { border-color: #22d3ee; color: #cffafe; }
+.btn-vomit { border-color: #84cc16; }
+.btn-vomit:hover { border-color: #a3e635; color: #bef264; box-shadow: 0 0 10px rgba(132, 204, 22, 0.5); }
 .gauge-fill.bladder-fill {
   background: linear-gradient(to right, #0284c7, #06b6d4, #f59e0b, #ef4444);
 }
@@ -942,6 +944,16 @@ body.drunk-wobble-3 {
     width: 38px;
     height: 38px;
     border-color: #f43f5e;
+  }
+
+  /* Skill 7: Ói Mửa / Cho chó ăn chè */
+  .btn-vomit {
+    bottom: 66px;
+    right: 135px;
+    width: 42px;
+    height: 42px;
+    border-color: #84cc16;
+    background: rgba(30, 41, 59, 0.95);
   }
 
   /* Nút Chat Cửa Miệng đặt giữa màn hình dưới */
