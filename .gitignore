@@ -29,5 +29,8 @@ ENV/
 # Large binaries & temporary tools
 cloudflared.exe
 *.log
+*.png
+demo_*.jpg
+static/demo_*.jpg
 .vscode/
 .idea/

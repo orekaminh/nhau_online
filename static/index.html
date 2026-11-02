@@ -2,18 +2,26 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
-  <link rel="stylesheet" href="style.css?v=20261102_04">
+  <link rel="stylesheet" href="style.css?v=20261102_06">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
   <!-- Three.js 3D Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="vendor/three.r128.min.js"></script>
 </head>
 <body class="street-vibe-3d">
   <!-- 3D Canvas Viewport -->
   <div id="canvas3d-container"></div>
+  <nav class="camera-tools" aria-label="Góc nhìn">
+    <button id="zoomOutBtn" aria-label="Thu nhỏ" title="Thu nhỏ">−</button>
+    <button id="zoomInBtn" aria-label="Phóng to" title="Phóng to">+</button>
+    <button id="resetCameraBtn" aria-label="Đặt lại góc nhìn" title="Đặt lại góc nhìn">⌖</button>
+    <button id="comfortBtn" aria-pressed="true">Êm mắt</button>
+    <button id="moreActionsBtn" class="mobile-only" aria-expanded="false" aria-controls="extraActions">Thêm</button>
+  </nav>
+  <p class="mobile-camera-hint mobile-only">Kéo cần để đi · Vuốt cảnh để nhìn · Hai ngón để zoom</p>
 
   <!-- Drunk Wobble Filter Overlay -->
   <div id="drunkFilter" class="drunk-layer"></div>
@@ -212,6 +220,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261102_04"></script>
+  <script src="app.js?v=20261102_06"></script>
 </body>
 </html>

@@ -294,70 +294,394 @@ function playPourBeerSound() {
 }
 
 // ========================================================
-// 2. Three.js 3D Scene Initialization
+// 2. Three.js 3D Scene Initialization (Cinematic PBR Edition)
 // ========================================================
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060911);
-scene.fog = new THREE.FogExp2(0x060911, 0.015);
+scene.background = new THREE.Color(0x070b14);
+scene.fog = new THREE.FogExp2(0x070b14, 0.013);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 350);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+renderer.shadowMap.enabled = !matchMedia('(pointer: coarse)').matches;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.32;
+if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 canvasContainer.appendChild(renderer.domElement);
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0x26334d, 1.4);
+// Lighting: Cinematic Saigon Nightlife
+const ambientLight = new THREE.AmbientLight(0x1e293b, 1.3);
 scene.add(ambientLight);
 
-// Warm Streetlight
-const streetLight = new THREE.DirectionalLight(0xffe29a, 1.3);
-streetLight.position.set(5, 14, 8);
+// Warm Sodium Street Light (Vàng hổ phách đường phố Sài Gòn)
+const streetLight = new THREE.DirectionalLight(0xffb366, 1.4);
+streetLight.position.set(6, 16, 9);
 streetLight.castShadow = true;
 streetLight.shadow.mapSize.width = 1024;
 streetLight.shadow.mapSize.height = 1024;
 streetLight.shadow.camera.near = 0.5;
-streetLight.shadow.camera.far = 45;
-streetLight.shadow.camera.left = -20;
-streetLight.shadow.camera.right = 20;
-streetLight.shadow.camera.top = 20;
-streetLight.shadow.camera.bottom = -20;
+streetLight.shadow.camera.far = 50;
+streetLight.shadow.camera.left = -22;
+streetLight.shadow.camera.right = 22;
+streetLight.shadow.camera.top = 22;
+streetLight.shadow.camera.bottom = -22;
 scene.add(streetLight);
 
-// Neon Sign Point Lights
-const neonLightRed = new THREE.PointLight(0xff2244, 2.2, 16);
-neonLightRed.position.set(0, 5, -5);
-scene.add(neonLightRed);
+// Neon Sign Point Lights (Tạo độ tương phản màu sắc Cyberpunk / Đêm Sài Gòn)
+const neonCyan = new THREE.PointLight(0x06b6d4, 2.5, 18);
+neonCyan.position.set(-6, 4.5, -4.5);
+scene.add(neonCyan);
 
-const neonLightYellow = new THREE.PointLight(0xffb700, 1.8, 14);
-neonLightYellow.position.set(0, 4, 0);
-scene.add(neonLightYellow);
+const neonMagenta = new THREE.PointLight(0xf43f5e, 2.8, 18);
+neonMagenta.position.set(6, 4.5, -4.5);
+scene.add(neonMagenta);
+
+const neonAmber = new THREE.PointLight(0xf59e0b, 2.2, 15);
+neonAmber.position.set(0, 3.8, 0);
+scene.add(neonAmber);
 
 // Moonlight over Saigon River
-const moonLight = new THREE.DirectionalLight(0x60a5fa, 0.8);
-moonLight.position.set(20, 30, 60);
+const moonLight = new THREE.DirectionalLight(0x38bdf8, 0.7);
+moonLight.position.set(25, 32, 65);
 scene.add(moonLight);
+
+// ========================================================
+// 2.5. Procedural PBR Texture Generators (Zero External Lag)
+// ========================================================
+
+function createAsphaltTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#141820';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const imgData = ctx.getImageData(0, 0, 512, 512);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 36;
+    data[i] = Math.min(255, Math.max(0, data[i] + noise));
+    data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
+    data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise + 2));
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Wet glossy puddle areas
+  const grad1 = ctx.createRadialGradient(180, 220, 20, 180, 220, 130);
+  grad1.addColorStop(0, 'rgba(8, 11, 16, 0.75)');
+  grad1.addColorStop(1, 'rgba(20, 24, 32, 0)');
+  ctx.fillStyle = grad1;
+  ctx.fillRect(0, 0, 512, 512);
+
+  const grad2 = ctx.createRadialGradient(370, 310, 15, 370, 310, 110);
+  grad2.addColorStop(0, 'rgba(8, 11, 16, 0.7)');
+  grad2.addColorStop(1, 'rgba(20, 24, 32, 0)');
+  ctx.fillStyle = grad2;
+  ctx.fillRect(0, 0, 512, 512);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 2);
+  return tex;
+}
+
+function createSidewalkTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const tileSize = 64;
+  for (let y = 0; y < 512; y += tileSize) {
+    for (let x = 0; x < 512; x += tileSize) {
+      const isRed = ((x / tileSize) + (y / tileSize)) % 2 === 0;
+      ctx.fillStyle = isRed ? '#883b32' : '#475569';
+      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
+
+      ctx.fillStyle = isRed ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.12)';
+      ctx.beginPath();
+      ctx.moveTo(x + tileSize / 2, y + 8);
+      ctx.lineTo(x + tileSize - 8, y + tileSize / 2);
+      ctx.lineTo(x + tileSize / 2, y + tileSize - 8);
+      ctx.lineTo(x + 8, y + tileSize / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(6, 2);
+  return tex;
+}
+
+function createInoxBrushedTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.lineWidth = 1;
+  for (let r = 5; r < 256; r += 2) {
+    const alpha = 0.05 + Math.random() * 0.12;
+    ctx.strokeStyle = Math.random() > 0.5 ? `rgba(255,255,255,${alpha})` : `rgba(100,116,139,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(256, 256, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const grad = ctx.createLinearGradient(0, 0, 512, 512);
+  grad.addColorStop(0, 'rgba(255,255,255,0.15)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+  grad.addColorStop(1, 'rgba(255,255,255,0.18)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createFaceTexture(isFemale, skinTone = '#ffdfc4', eyeColor = '#1e293b') {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = skinTone;
+  ctx.fillRect(0, 0, 256, 256);
+
+  if (isFemale) {
+    // Feminine eyes with delicate eyeliner & lashes
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(80, 115, 20, 14, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(80, 115, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(77, 111, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(80, 115, 20, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(176, 115, 20, 14, 0.05, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(176, 115, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(173, 111, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(176, 115, 20, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+
+    // Eyebrows
+    ctx.strokeStyle = '#332211';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(80, 100, 22, Math.PI * 1.25, Math.PI * 1.75);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(176, 100, 22, Math.PI * 1.25, Math.PI * 1.75);
+    ctx.stroke();
+
+    // Rosy Blush
+    const blushL = ctx.createRadialGradient(65, 140, 2, 65, 140, 26);
+    blushL.addColorStop(0, 'rgba(244, 63, 94, 0.45)');
+    blushL.addColorStop(1, 'rgba(244, 63, 94, 0)');
+    ctx.fillStyle = blushL;
+    ctx.fillRect(35, 115, 60, 50);
+
+    const blushR = ctx.createRadialGradient(191, 140, 2, 191, 140, 26);
+    blushR.addColorStop(0, 'rgba(244, 63, 94, 0.45)');
+    blushR.addColorStop(1, 'rgba(244, 63, 94, 0)');
+    ctx.fillStyle = blushR;
+    ctx.fillRect(161, 115, 60, 50);
+
+    // Lips
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.ellipse(128, 172, 18, 7, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = '#e11d48';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    // Male character: bold eyes, eyebrows, friendly pub smile
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(82, 115, 18, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(82, 115, 8.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(79, 112, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(174, 115, 18, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = eyeColor;
+    ctx.beginPath();
+    ctx.arc(174, 115, 8.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(171, 112, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bold eyebrows
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(60, 96);
+    ctx.lineTo(104, 98);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(152, 98);
+    ctx.lineTo(196, 96);
+    ctx.stroke();
+
+    // Cheek blush (drunk bợm nhậu)
+    const blushL = ctx.createRadialGradient(70, 138, 2, 70, 138, 24);
+    blushL.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+    blushL.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = blushL;
+    ctx.fillRect(45, 115, 50, 45);
+
+    const blushR = ctx.createRadialGradient(186, 138, 2, 186, 138, 24);
+    blushR.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+    blushR.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = blushR;
+    ctx.fillRect(161, 115, 50, 45);
+
+    // Confident grin
+    ctx.strokeStyle = '#7f1d1d';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(128, 160, 22, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createBeerCanTexture(brand) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  if (brand === 'tiger') {
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.moveTo(0, 70);
+    ctx.lineTo(256, 140);
+    ctx.lineTo(256, 190);
+    ctx.lineTo(0, 120);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = 'bold 36px "Impact", sans-serif';
+    ctx.fillStyle = '#f59e0b';
+    ctx.textAlign = 'center';
+    ctx.fillText('TIGER', 128, 120);
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('CRYSTAL', 128, 150);
+  } else {
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(0, 100, 256, 55);
+
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('★', 128, 92);
+
+    ctx.font = 'bold 26px "Arial Black", sans-serif';
+    ctx.fillStyle = '#15803d';
+    ctx.fillText('Heineken', 128, 138);
+  }
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  for (let i = 0; i < 40; i++) {
+    const dx = Math.random() * 256;
+    const dy = Math.random() * 256;
+    ctx.beginPath();
+    ctx.arc(dx, dy, 1.8 + Math.random() * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
 
 // ========================================================
 // 3. Procedural 3D Environment (Quán Nhậu Vỉa Hè & Bờ Sông Sài Gòn)
 // ========================================================
 
-// 1. Mặt đường nhựa (Street Asphalt with Crosswalk)
-const streetGeo = new THREE.PlaneGeometry(60, 10);
-const streetMat = new THREE.MeshStandardMaterial({ color: 0x161a22, roughness: 0.85 });
+// 1. Mặt đường nhựa ướt sũng phản chiếu neon (Wet Asphalt Pavement)
+const streetGeo = new THREE.PlaneGeometry(70, 12);
+const streetTex = createAsphaltTexture();
+const streetMat = new THREE.MeshStandardMaterial({
+  map: streetTex,
+  color: 0x222733,
+  roughness: 0.22,
+  metalness: 0.28
+});
 const street = new THREE.Mesh(streetGeo, streetMat);
 street.rotation.x = -Math.PI / 2;
 street.position.set(0, 0, 7.5);
 street.receiveShadow = true;
 scene.add(street);
 
-// Road White Stripes (Vạch kẻ tim đường)
-for (let x = -24; x <= 24; x += 6) {
+// Road White Stripes (Vạch kẻ tim đường phản quang)
+for (let x = -28; x <= 28; x += 6) {
   const stripe = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.6, 0.28),
-    new THREE.MeshBasicMaterial({ color: 0xfef08a })
+    new THREE.PlaneGeometry(2.8, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.35 })
   );
   stripe.rotation.x = -Math.PI / 2;
   stripe.position.set(x, 0.015, 7.5);
@@ -365,46 +689,105 @@ for (let x = -24; x <= 24; x += 6) {
 }
 
 // Zebra Crosswalk (Vạch qua đường sang công viên bờ sông)
-for (let cz = 4.2; cz <= 10.8; cz += 1.1) {
+for (let cz = 4.0; cz <= 11.0; cz += 1.1) {
   const zebra = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.4, 0.6),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
+    new THREE.PlaneGeometry(2.6, 0.65),
+    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 })
   );
   zebra.rotation.x = -Math.PI / 2;
   zebra.position.set(0, 0.018, cz);
   scene.add(zebra);
 }
 
-// 2. Vỉa hè quán nhậu (Elevated Sidewalk)
-const sidewalkGeo = new THREE.BoxGeometry(34, 0.3, 8.5);
-const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x5a6578, roughness: 0.8 });
+// 2. Vỉa hè quán nhậu lát gạch hoa đỏ xám Việt Nam (Tiled Sidewalk)
+const sidewalkGeo = new THREE.BoxGeometry(36, 0.3, 8.8);
+const sidewalkTex = createSidewalkTexture();
+const sidewalkMat = new THREE.MeshStandardMaterial({
+  map: sidewalkTex,
+  roughness: 0.68,
+  metalness: 0.08
+});
 const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
 sidewalk.position.set(0, 0.15, -0.75);
 sidewalk.receiveShadow = true;
 scene.add(sidewalk);
 
-// Curb stone (Gờ vỉa hè quán)
+// Curb stone (Gờ đá bó vỉa hè quán)
 const curb = new THREE.Mesh(
-  new THREE.BoxGeometry(34, 0.35, 0.4),
-  new THREE.MeshStandardMaterial({ color: 0x8896ab })
+  new THREE.BoxGeometry(36, 0.35, 0.45),
+  new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.7 })
 );
-curb.position.set(0, 0.175, 3.5);
+curb.position.set(0, 0.175, 3.65);
 scene.add(curb);
 
+// Xe máy dựng vỉa hè (Honda Wave chuẩn phong cách Sài Gòn)
+function createParkedMotorbike(x, z, ry, bodyColor = 0xdc2626) {
+  const bike = new THREE.Group();
+  bike.position.set(x, 0.3, z);
+  bike.rotation.y = ry;
+
+  const frameMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.35, metalness: 0.3 });
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
+  const rubberMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+
+  // 2 Bánh xe
+  const wheel1 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 8, 20), rubberMat);
+  wheel1.position.set(0, 0.3, -0.55);
+  bike.add(wheel1);
+
+  const wheel2 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 8, 20), rubberMat);
+  wheel2.position.set(0, 0.3, 0.55);
+  bike.add(wheel2);
+
+  // Thân xe & Yếm xe
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.35, 0.7), frameMat);
+  body.position.set(0, 0.46, 0);
+  bike.add(body);
+
+  // Yên xe đen
+  const seatMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 });
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.55), seatMat);
+  seat.position.set(0, 0.65, -0.08);
+  bike.add(seat);
+
+  // Ghi đông & Đèn pha trước
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.52, 8), chromeMat);
+  handle.rotation.z = Math.PI / 2;
+  handle.position.set(0, 0.8, 0.42);
+  bike.add(handle);
+
+  const headlight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.6 })
+  );
+  headlight.position.set(0, 0.72, 0.58);
+  bike.add(headlight);
+
+  // Ống bô xả mạ chrome
+  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.65, 8), chromeMat);
+  exhaust.rotation.x = Math.PI / 2 - 0.1;
+  exhaust.position.set(0.18, 0.25, -0.22);
+  bike.add(exhaust);
+
+  scene.add(bike);
+}
+createParkedMotorbike(-13.8, 3.0, Math.PI / 3, 0xdc2626); // Xe Wave đỏ
+createParkedMotorbike(14.2, 3.1, -Math.PI / 3.5, 0x2563eb); // Xe Wave xanh
+
 // 3. Tường gạch rêu phong phía sau
-const wallGeo = new THREE.BoxGeometry(34, 7.5, 0.6);
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
+const wallGeo = new THREE.BoxGeometry(36, 8.0, 0.6);
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.88 });
 const wall = new THREE.Mesh(wallGeo, wallMat);
-wall.position.set(0, 3.75, -5.2);
+wall.position.set(0, 4.0, -5.2);
 wall.receiveShadow = true;
 scene.add(wall);
 
 // Tường bên trái (Left Wall) có biển Neon Ly Bia
 const leftWall = new THREE.Mesh(
-  new THREE.BoxGeometry(0.6, 7.5, 9.5),
-  new THREE.MeshStandardMaterial({ color: 0x242d3d, roughness: 0.9 })
+  new THREE.BoxGeometry(0.6, 8.0, 9.8),
+  new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.88 })
 );
-leftWall.position.set(-16.7, 3.75, -0.75);
+leftWall.position.set(-17.7, 4.0, -0.75);
 leftWall.receiveShadow = true;
 scene.add(leftWall);
 
@@ -521,17 +904,65 @@ function createHangingWoodenSign(text, posX, posY, posZ, rotZ) {
 createHangingWoodenSign("Hết Phục Vụ!", -1.6, 4.2, -4.85, -0.07);
 createHangingWoodenSign("Chưa Ai Đâu!", 5.2, 4.3, -4.85, 0.05);
 
-// 6. Dây Đèn Tròn Nhiều Màu Giăng Quanh Quán (Hạt lựu vàng, đỏ, xanh)
-const bulbColors = [0xffd000, 0xff3344, 0x00ff88, 0x00d2ff, 0xff9900];
-for (let i = -14; i <= 14; i += 1.8) {
-  const wirePoint = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 8, 8),
-    new THREE.MeshBasicMaterial({ color: bulbColors[Math.abs(Math.round(i)) % bulbColors.length] })
-  );
-  const sagY = 5.0 - 0.35 * Math.sin((i + 14) / 28 * Math.PI);
-  wirePoint.position.set(i, sagY, -1.8);
-  scene.add(wirePoint);
+// 6. Dây Đèn Bistro Vàng Ấm Cúng & Dây Điện Chằng Chịt Sài Gòn
+function createBistroStringLights() {
+  const bulbMat = new THREE.MeshStandardMaterial({
+    color: 0xfef08a,
+    emissive: 0xfbbf24,
+    emissiveIntensity: 0.9,
+    roughness: 0.2
+  });
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x18181b });
+
+  // 3 Hàng dây đèn giăng chéo quán
+  [-2.2, 0.4, 2.6].forEach((zLine, rowIdx) => {
+    // Sợi dây đen
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-16, 5.2, zLine),
+      new THREE.Vector3(0, 4.4, zLine + 0.2),
+      new THREE.Vector3(16, 5.2, zLine)
+    ]);
+    const wireGeo = new THREE.TubeGeometry(curve, 32, 0.015, 6, false);
+    const wire = new THREE.Mesh(wireGeo, wireMat);
+    scene.add(wire);
+
+    // Bóng đèn Edison vàng ấm áp
+    for (let i = -14; i <= 14; i += 2.2) {
+      const sagY = 4.4 + 0.8 * Math.pow(i / 15, 2);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), bulbMat);
+      bulb.position.set(i, sagY - 0.12, zLine + (Math.random() - 0.5) * 0.1);
+      scene.add(bulb);
+
+      // Thêm đui đèn đen
+      const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.08, 6), wireMat);
+      socket.position.set(i, sagY - 0.04, zLine);
+      scene.add(socket);
+
+      // Cứ 3 bóng thì có 1 ánh sáng hắt nhẹ xuống bàn nhậu
+      if (Math.abs(Math.round(i)) % 4 === 0 && rowIdx === 1) {
+        const warmGlow = new THREE.PointLight(0xf59e0b, 1.1, 7.5);
+        warmGlow.position.set(i, sagY - 0.2, zLine);
+        scene.add(warmGlow);
+      }
+    }
+  });
+
+  // Dây điện chằng chịt treo cao qua đường
+  [-5, 5].forEach(xOffset => {
+    const electricWireCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-18 + xOffset, 6.8, -4.8),
+      new THREE.Vector3(-6 + xOffset, 5.8, 4.0),
+      new THREE.Vector3(10 + xOffset, 6.2, 12.0),
+      new THREE.Vector3(22 + xOffset, 7.0, 18.0)
+    ]);
+    const eWire = new THREE.Mesh(
+      new THREE.TubeGeometry(electricWireCurve, 40, 0.02, 4, false),
+      wireMat
+    );
+    scene.add(eWire);
+  });
 }
+createBistroStringLights();
 
 // 7. Két bia xếp ở góc quán
 function createBeerCrate(x, y, z, color) {
@@ -647,179 +1078,256 @@ function buildPubTable(tableId, posX, posZ) {
   const tableGroup = new THREE.Group();
   tableGroup.position.set(posX, 0.3, posZ);
 
-  // Chân bàn đen/inox
-  const leg = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
-  );
-  leg.position.y = 0.4;
-  tableGroup.add(leg);
+  // Inox folding legs (Chân gấp chữ X ống inox sáng bóng)
+  const inoxLegMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+  const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.88, 12), inoxLegMat);
+  leg1.rotation.z = 0.32;
+  leg1.position.set(-0.25, 0.42, 0);
+  tableGroup.add(leg1);
 
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.8, 0.8, 0.05, 16),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 })
-  );
-  base.position.y = 0.025;
-  tableGroup.add(base);
+  const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.88, 12), inoxLegMat);
+  leg2.rotation.z = -0.32;
+  leg2.position.set(0.25, 0.42, 0);
+  tableGroup.add(leg2);
 
-  // Mặt bàn đen bóng (Như trong hình chụp)
-  const top = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.8, 1.8, 0.06, 32),
-    new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.6, roughness: 0.2 })
-  );
+  // Mặt bàn Inox tròn bóng loáng chuẩn quán nhậu Sài Gòn (Brushed Stainless Steel Top)
+  const inoxTopTex = createInoxBrushedTexture();
+  const topMat = new THREE.MeshStandardMaterial({
+    map: inoxTopTex,
+    color: 0xf8fafc,
+    metalness: 0.92,
+    roughness: 0.18
+  });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.05, 36), topMat);
   top.position.y = 0.82;
   top.receiveShadow = true;
   tableGroup.add(top);
 
-  // MÓN ĂN TRÊN BÀN THEO TỪNG BÀN (RẤT THỊNH SOẠN)
-  if (tableId === 0) {
-    // BÀN 1 (BÊN TRÁI): GÀ NƯỚNG NGUYÊN CON VỚI ĐÙI GÀ & XƯƠNG TRẮNG TO TƯỚNG
-    const plate = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.85, 0.8, 0.04, 20),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
-    );
-    plate.position.set(0, 0.86, 0);
-    tableGroup.add(plate);
+  // Viền gờ inox bo tròn mép bàn
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.15 });
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.85, 0.035, 8, 36), rimMat);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.82;
+  tableGroup.add(rim);
 
-    // Thân gà nướng màu vàng ruộm
-    const chickenBody = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, 0.45, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 })
-    );
-    chickenBody.position.set(0, 1.08, 0);
-    tableGroup.add(chickenBody);
+  // Xô đá đỏ ướp bia có cục đá trong suốt (Red Ice Bucket with Translucent Ice Cubes)
+  const bucketMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 });
+  const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.42, 16), bucketMat);
+  bucket.position.set(0.85, 1.03, 0.35);
+  tableGroup.add(bucket);
 
-    // 2 đùi gà vàng nâu
-    const leg1 = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.18, 0.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 })
-    );
-    leg1.rotation.z = 0.7;
-    leg1.position.set(-0.35, 1.05, 0.2);
-    tableGroup.add(leg1);
-
-    const leg2 = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.18, 0.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 })
-    );
-    leg2.rotation.z = -0.7;
-    leg2.position.set(0.35, 1.05, 0.2);
-    tableGroup.add(leg2);
-
-    // Xương gà màu trắng lòi ra
-    const boneMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
-    const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 6), boneMat);
-    bone.rotation.z = 1.1;
-    bone.position.set(0.5, 1.15, -0.15);
-    tableGroup.add(bone);
-
-    // Xúc xích & nem chua trên bàn
-    const sausageMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.6 });
-    for (let i = 0; i < 3; i++) {
-      const sausage = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.08), sausageMat);
-      sausage.rotation.y = i * 0.8;
-      sausage.position.set(-0.5 + i * 0.2, 0.88, -0.4);
-      tableGroup.add(sausage);
-    }
-  } else {
-    // BÀN 2 (BÊN PHẢI): HEO QUAY NGUYÊN CON NGẬM QUẢ TÁO ĐỎ (Y HỆT HÌNH CHỤP)
-    const plate = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.0, 0.95, 0.04, 24),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
-    );
-    plate.position.set(0, 0.86, 0);
-    tableGroup.add(plate);
-
-    // Thân heo quay màu hồng cam nướng vàng
-    const pigMat = new THREE.MeshStandardMaterial({ color: 0xfb7185, roughness: 0.6 }); // Màu hồng da heo quay
-    const pigBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.5), pigMat);
-    pigBody.position.set(0.1, 1.12, 0);
-    tableGroup.add(pigBody);
-
-    // Đầu heo
-    const pigHead = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), pigMat);
-    pigHead.position.set(-0.45, 1.15, 0);
-    tableGroup.add(pigHead);
-
-    // Mõm heo
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.24), pigMat);
-    snout.position.set(-0.7, 1.08, 0);
-    tableGroup.add(snout);
-
-    // Quả táo đỏ ngậm trong miệng
-    const apple = new THREE.Mesh(
-      new THREE.SphereGeometry(0.11, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 })
-    );
-    apple.position.set(-0.82, 1.05, 0);
-    tableGroup.add(apple);
-
-    // 2 Tai heo
-    const ear1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.08), pigMat);
-    ear1.position.set(-0.42, 1.4, 0.18);
-    tableGroup.add(ear1);
-    const ear2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.08), pigMat);
-    ear2.position.set(-0.42, 1.4, -0.18);
-    tableGroup.add(ear2);
-
-    // 4 chân heo
-    for (let px of [-0.2, 0.4]) {
-      for (let pz of [-0.22, 0.22]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.25, 0.14), pigMat);
-        leg.position.set(px, 0.95, pz);
-        tableGroup.add(leg);
-      }
-    }
+  // Đá lạnh trong suốt trong xô
+  const iceMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.75,
+    roughness: 0.1,
+    metalness: 0.1
+  });
+  for (let ic = 0; ic < 6; ic++) {
+    const ice = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), iceMat);
+    ice.position.set(0.85 + (Math.random() - 0.5) * 0.22, 1.18 + Math.random() * 0.08, 0.35 + (Math.random() - 0.5) * 0.22);
+    ice.rotation.set(Math.random(), Math.random(), Math.random());
+    tableGroup.add(ice);
   }
 
-  // Xô đá & lon bia trên bàn
-  const bucket = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.28, 0.22, 0.38, 12),
-    new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 })
-  );
-  bucket.position.set(0.8, 1.02, 0.4);
-  tableGroup.add(bucket);
+  // Chai bia thủy tinh ướp lạnh cắm trong xô đá
+  const bottleGreenMat = new THREE.MeshStandardMaterial({
+    color: 0x16a34a,
+    transparent: true,
+    opacity: 0.85,
+    roughness: 0.15,
+    metalness: 0.2
+  });
+  const bottleAmberMat = new THREE.MeshStandardMaterial({
+    color: 0xb45309,
+    transparent: true,
+    opacity: 0.85,
+    roughness: 0.15,
+    metalness: 0.2
+  });
+
+  const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.38, 12), bottleGreenMat);
+  b1.rotation.z = 0.22;
+  b1.position.set(0.8, 1.3, 0.3);
+  tableGroup.add(b1);
+
+  const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.38, 12), bottleAmberMat);
+  b2.rotation.z = -0.22;
+  b2.position.set(0.9, 1.3, 0.4);
+  tableGroup.add(b2);
+
+  // MÓN ĂN QUÁN NHẬU ĐẬM CHẤT SÀI GÒN THEO TỪNG BÀN
+  if (tableId === 0) {
+    // BÀN 1: ĐĨA ỐC HƯƠNG XÀO BƠ TỎI & ĐĨA ĐẬU PHỘNG RANG TỎI ỚT
+    const plate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.88, 0.82, 0.04, 24),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+    );
+    plate.position.set(-0.1, 0.86, 0.1);
+    tableGroup.add(plate);
+
+    // Nước sốt bơ tỏi vàng ươm
+    const butterSauce = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.75, 0.75, 0.02, 20),
+      new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.2 })
+    );
+    butterSauce.position.set(-0.1, 0.88, 0.1);
+    tableGroup.add(butterSauce);
+
+    // Những con ốc hương thơm lừng
+    const snailMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+    for (let sn = 0; sn < 12; sn++) {
+      const angle = (sn * Math.PI * 2) / 12;
+      const r = 0.15 + (sn % 3) * 0.16;
+      const snail = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), snailMat);
+      snail.scale.set(1.4, 0.8, 0.9);
+      snail.position.set(-0.1 + Math.cos(angle) * r, 0.92, 0.1 + Math.sin(angle) * r);
+      snail.rotation.y = angle;
+      tableGroup.add(snail);
+    }
+
+    // Ớt sừng đỏ & lát sả xắt xéo
+    const chiliMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+    for (let ch = 0; ch < 5; ch++) {
+      const chili = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.04), chiliMat);
+      chili.position.set(-0.1 + (Math.random() - 0.5) * 0.5, 0.94, 0.1 + (Math.random() - 0.5) * 0.5);
+      chili.rotation.y = Math.random() * Math.PI;
+      tableGroup.add(chili);
+    }
+
+    // Đĩa Đậu Phộng Nem Chua
+    const plate2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.5, 0.03, 20),
+      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 })
+    );
+    plate2.position.set(-0.65, 0.86, -0.6);
+    tableGroup.add(plate2);
+
+    const peanutMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 });
+    for (let pn = 0; pn < 15; pn++) {
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), peanutMat);
+      p.scale.set(1.5, 1, 1);
+      p.position.set(-0.65 + (Math.random() - 0.5) * 0.35, 0.89, -0.6 + (Math.random() - 0.5) * 0.35);
+      tableGroup.add(p);
+    }
+  } else {
+    // BÀN 2: ĐĨA MỰC NƯỚNG MUỐI ỚT & CHÉN MUỐI TIÊU CHANH
+    const plate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.92, 0.86, 0.04, 24),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+    );
+    plate.position.set(0.1, 0.86, 0.05);
+    tableGroup.add(plate);
+
+    // Mực nướng vàng xém sa tế thơm lừng
+    const squidMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.55 });
+    const squidBody = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 0.4), squidMat);
+    squidBody.position.set(0.1, 0.9, 0.05);
+    tableGroup.add(squidBody);
+
+    // Khía vảy mực nướng
+    const charMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 });
+    for (let k = -2; k <= 2; k++) {
+      const cut = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09, 0.36), charMat);
+      cut.position.set(0.1 + k * 0.1, 0.91, 0.05);
+      tableGroup.add(cut);
+    }
+
+    // Râu mực nướng
+    for (let r = 0; r < 4; r++) {
+      const tentacle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.015, 0.28, 6), squidMat);
+      tentacle.rotation.z = Math.PI / 2.5 + (r - 1.5) * 0.15;
+      tentacle.position.set(0.5, 0.9, 0.05 + (r - 1.5) * 0.09);
+      tableGroup.add(tentacle);
+    }
+
+    // Chén muối tiêu chanh & ớt hiểm
+    const sauceBowl = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.12, 0.08, 14),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+    );
+    sauceBowl.position.set(-0.6, 0.88, -0.5);
+    tableGroup.add(sauceBowl);
+
+    const pepperMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+    const pepper = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.02, 12), pepperMat);
+    pepper.position.set(-0.6, 0.91, -0.5);
+    tableGroup.add(pepper);
+
+    // Lát chanh xanh
+    const limeMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.4 });
+    const lime = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.025, 10), limeMat);
+    lime.position.set(-0.54, 0.93, -0.46);
+    tableGroup.add(lime);
+  }
+
+  // Ly bia thủy tinh có bọt đặt trên bàn
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xfef08a,
+    transparent: true,
+    opacity: 0.85,
+    roughness: 0.1,
+    metalness: 0.15
+  });
+  const mugPositions = [
+    [-0.8, 0.84, 0.45],
+    [0.1, 0.84, -0.85],
+    [-0.7, 0.84, -0.3]
+  ];
+  mugPositions.forEach(([mx, my, mz]) => {
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.22, 12), glassMat);
+    mug.position.set(mx, my + 0.11, mz);
+    tableGroup.add(mug);
+
+    const foam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.105, 0.095, 0.05, 12),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 })
+    );
+    foam.position.set(mx, my + 0.23, mz);
+    tableGroup.add(foam);
+  });
 
   scene.add(tableGroup);
   pubTables.push({ id: tableId, x: posX, z: posZ, group: tableGroup });
 
-  // 6 Ghế nhựa xếp vòng tròn quanh bàn có lỗ vuông ở giữa (Ghế nhựa đỏ & xanh)
+  // 6 Ghế nhựa Song Long chuẩn quán nhậu Việt Nam (Ghế đỏ & xanh xếp quanh bàn)
   const totalSeats = 6;
-  const radius = 2.1;
+  const radius = 2.15;
 
   for (let s = 0; s < totalSeats; s++) {
     const angle = (s * Math.PI * 2) / totalSeats;
     const chairX = posX + Math.cos(angle) * radius;
     const chairZ = posZ + Math.sin(angle) * radius;
 
-    const chairColor = s % 2 === 0 ? 0xef4444 : 0x2563eb;
+    const chairColor = s % 2 === 0 ? 0xdc2626 : 0x2563eb;
     const chairGroup = new THREE.Group();
     chairGroup.position.set(chairX, 0.3, chairZ);
     chairGroup.lookAt(posX, 0.3, posZ);
 
-    // Mặt ghế nhựa có lỗ rỗng
-    const seatTop = new THREE.Mesh(
-      new THREE.BoxGeometry(0.65, 0.06, 0.65),
-      new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.5 })
-    );
+    const plasticMat = new THREE.MeshStandardMaterial({
+      color: chairColor,
+      roughness: 0.45,
+      metalness: 0.05
+    });
+
+    // Mặt ghế nhựa bo góc có khe thoát nước
+    const seatTop = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.06, 0.68), plasticMat);
     seatTop.position.y = 0.48;
     chairGroup.add(seatTop);
 
-    // Lỗ vuông đen ở giữa ghế
+    // Lỗ rỗng tròn đặc trưng ở giữa ghế nhựa Song Long
     const hole = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.07, 0.18),
+      new THREE.CylinderGeometry(0.1, 0.1, 0.07, 16),
       new THREE.MeshBasicMaterial({ color: 0x0f172a })
     );
     hole.position.y = 0.485;
     chairGroup.add(hole);
 
-    // 4 chân ghế nhựa
-    for (let lx of [-0.24, 0.24]) {
-      for (let lz of [-0.24, 0.24]) {
-        const chairLeg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.035, 0.035, 0.48, 8),
-          new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.5 })
-        );
+    // 4 chân ghế nhựa vát nghiêng chịu lực
+    for (let lx of [-0.25, 0.25]) {
+      for (let lz of [-0.25, 0.25]) {
+        const chairLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.48, 8), plasticMat);
         chairLeg.position.set(lx, 0.24, lz);
         chairGroup.add(chairLeg);
       }
@@ -1301,111 +1809,117 @@ const pgGirls = []; // { id, name, brand, mesh, tray, tagElem, tagBubble, x, z }
 function createPGBiaCharacter(id, name, brand, x, z, ry) {
   const root = new THREE.Group();
   const isTiger = brand === 'tiger';
+
   const dressColor = isTiger ? 0x1d4ed8 : 0x15803d;
-  const trimColor = isTiger ? 0xe2e8f0 : 0xffffff;
+  const sashColor = isTiger ? 0xf1f5f9 : 0xffffff;
 
-  const dressMat = new THREE.MeshStandardMaterial({ color: dressColor, roughness: 0.4 });
-  const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, roughness: 0.3 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdfc4, roughness: 0.7 });
+  const skinTone = '#ffe4d0';
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.5 });
+  const dressMat = new THREE.MeshStandardMaterial({
+    color: dressColor,
+    roughness: 0.35,
+    metalness: 0.15
+  });
 
-  // Váy body ngắn
-  const dress = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.65, 12), dressMat);
-  dress.position.y = 0.55;
-  root.add(dress);
+  // Body: Feminine curves with fitted branded dress (Váy bodycon ôm sát)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.21, 0.68, 16), dressMat);
+  torso.position.y = 0.62;
+  torso.castShadow = true;
+  root.add(torso);
 
-  // Dải ruy băng thương hiệu
-  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.285, 0.12, 12), trimMat);
-  sash.position.y = 0.65;
+  // Branded diagonal sash (Dải ruy băng thương hiệu vắt chéo)
+  const sashMat = new THREE.MeshStandardMaterial({ color: sashColor, metalness: 0.3, roughness: 0.3 });
+  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.215, 0.14, 16), sashMat);
+  sash.position.set(0, 0.72, 0);
+  sash.rotation.z = -0.22;
   root.add(sash);
 
-  // Đôi chân thon thả & Bốt cao cổ
-  const bootMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
-  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 8), skinMat);
-  leftLeg.position.set(-0.1, 0.25, 0);
-  root.add(leftLeg);
+  // Smooth neck (Cổ cao thanh mảnh)
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.16, 12), skinMat);
+  neck.position.y = 1.0;
+  root.add(neck);
 
-  const leftBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8), bootMat);
-  leftBoot.position.set(-0.1, 0.12, 0.02);
-  root.add(leftBoot);
-
-  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.5, 8), skinMat);
-  rightLeg.position.set(0.1, 0.25, 0);
-  root.add(rightLeg);
-
-  const rightBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8), bootMat);
-  rightBoot.position.set(0.1, 0.12, 0.02);
-  root.add(rightBoot);
-
-  // Đầu Chibi xinh xắn
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.45), skinMat);
-  head.position.y = 1.05;
+  // Beautiful feminine head with realistic face texture (Khuôn mặt xinh xắn)
+  const faceTex = createFaceTexture(true, skinTone, isTiger ? '#2563eb' : '#15803d');
+  const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.5 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 20), headMat);
+  head.scale.set(0.9, 1.1, 0.95);
+  head.position.y = 1.25;
+  head.castShadow = true;
   root.add(head);
 
-  // Mái tóc dài & đuôi ngựa
-  const hairColor = isTiger ? 0x451a03 : 0x18181b;
+  // Styled Hair (Thảo My: Ponytail cá tính; Ngọc Trinh: Tóc uốn sóng dài)
+  const hairColor = isTiger ? 0x271914 : 0x18181b;
   const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
-  const hairTop = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.25, 0.48), hairMat);
-  hairTop.position.set(0, 1.2, -0.02);
-  root.add(hairTop);
 
-  const ponytail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.14, 0.45, 8), hairMat);
-  ponytail.rotation.x = 0.35;
-  ponytail.position.set(0, 1.05, -0.32);
-  root.add(ponytail);
+  const hairVolume = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), hairMat);
+  hairVolume.scale.set(0.95, 0.9, 1.05);
+  hairVolume.position.set(0, 1.34, -0.04);
+  root.add(hairVolume);
 
-  // Nơ tóc xinh
-  const bowMat = new THREE.MeshStandardMaterial({ color: isTiger ? 0x38bdf8 : 0xef4444 });
-  const bow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.08), bowMat);
-  bow.position.set(0, 1.24, -0.22);
-  root.add(bow);
+  if (isTiger) {
+    const ponytail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 0.55, 10), hairMat);
+    ponytail.rotation.x = 0.42;
+    ponytail.position.set(0, 1.15, -0.32);
+    root.add(ponytail);
 
-  // Mắt to tròn Chibi & Má hồng
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-  const blushMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
-  const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.02), eyeMat);
-  leftEye.position.set(-0.13, 1.06, 0.23);
-  root.add(leftEye);
+    const bow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.4, roughness: 0.3 })
+    );
+    bow.position.set(0, 1.38, -0.26);
+    root.add(bow);
+  } else {
+    const hairFlow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.6, 10), hairMat);
+    hairFlow.position.set(0, 0.95, -0.16);
+    hairFlow.rotation.x = 0.12;
+    root.add(hairFlow);
+  }
 
-  const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.02), eyeMat);
-  rightEye.position.set(0.13, 1.06, 0.23);
-  root.add(rightEye);
+  // Slim legs & Stylish Boots (Đôi chân thon thả & Bốt cao cổ)
+  const bootMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35, metalness: 0.15 });
 
-  const leftBlush = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), blushMat);
-  leftBlush.position.set(-0.16, 0.96, 0.23);
-  root.add(leftBlush);
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.52, 10), skinMat);
+  leftLeg.position.set(-0.1, 0.26, 0);
+  root.add(leftLeg);
 
-  const rightBlush = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), blushMat);
-  rightBlush.position.set(0.16, 0.96, 0.23);
-  root.add(rightBlush);
+  const leftBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.32, 10), bootMat);
+  leftBoot.position.set(-0.1, 0.16, 0.02);
+  root.add(leftBoot);
 
-  // Khay bia inox cầm trên tay
-  const trayMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 });
-  const tray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 16), trayMat);
-  tray.position.set(0, 0.72, 0.32);
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.055, 0.52, 10), skinMat);
+  rightLeg.position.set(0.1, 0.26, 0);
+  root.add(rightLeg);
+
+  const rightBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.32, 10), bootMat);
+  rightBoot.position.set(0.1, 0.16, 0.02);
+  root.add(rightBoot);
+
+  // Inox Beer Tray (Khay bia inox sáng bóng)
+  const trayMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.92, roughness: 0.18 });
+  const tray = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.025, 24), trayMat);
+  tray.position.set(0, 0.76, 0.36);
   root.add(tray);
 
-  // 3 lon bia trên khay
-  const canMat = new THREE.MeshStandardMaterial({
-    color: isTiger ? 0x2563eb : 0x16a34a,
-    metalness: 0.7,
-    roughness: 0.3
-  });
+  // 3 Cans of cold beer with realistic brand label texture
+  const canTex = createBeerCanTexture(brand);
+  const canMat = new THREE.MeshStandardMaterial({ map: canTex, metalness: 0.75, roughness: 0.25 });
   for (let c = 0; c < 3; c++) {
     const angle = (c * Math.PI * 2) / 3;
-    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 10), canMat);
-    can.position.set(Math.cos(angle) * 0.14, 0.08, Math.sin(angle) * 0.14);
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.18, 14), canMat);
+    can.position.set(Math.cos(angle) * 0.16, 0.1, Math.sin(angle) * 0.16);
     tray.add(can);
   }
 
-  // Hai tay thanh mảnh
-  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), skinMat);
-  leftArm.rotation.x = -Math.PI / 4;
-  leftArm.position.set(-0.25, 0.65, 0.15);
+  // Arms holding the tray
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.36, 10), skinMat);
+  leftArm.rotation.x = -Math.PI / 3.5;
+  leftArm.position.set(-0.24, 0.72, 0.18);
   root.add(leftArm);
 
-  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), skinMat);
-  rightArm.rotation.x = -Math.PI / 4;
-  rightArm.position.set(0.25, 0.65, 0.15);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.36, 10), skinMat);
+  rightArm.rotation.x = -Math.PI / 3.5;
+  rightArm.position.set(0.24, 0.72, 0.18);
   root.add(rightArm);
 
   root.position.set(x, 0.3, z);
@@ -1417,7 +1931,7 @@ function createPGBiaCharacter(id, name, brand, x, z, ry) {
   pgTag.className = 'tag-3d';
   pgTag.innerHTML = `
     <div class="tag-bubble" id="bubble_${id}" style="display: none;"></div>
-    <div class="tag-name" style="background: ${isTiger ? '#1e40af' : '#15803d'}; border-color: #fde047; color: #fff; font-weight: 800;">💃 ${name}</div>
+    <div class="tag-name" style="background: ${isTiger ? '#1e40af' : '#15803d'}; border-color: #fde047; color: #fff; font-weight: 800; box-shadow: 0 0 12px ${isTiger ? 'rgba(30,64,175,0.7)' : 'rgba(21,128,61,0.7)'};">💃 ${name}</div>
   `;
   hudOverlay.appendChild(pgTag);
 
@@ -1654,95 +2168,144 @@ buildLandmark81AndSkyline();
 function createCharacter3D(colorHex) {
   const root = new THREE.Group();
 
-  // Áo thun / Polo cam (như hình chụp)
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.72, 0.42), bodyMat);
-  torso.position.y = 0.75;
+  // Torso: Stylized human torso with fashionable graphic tee or polo
+  const shirtColor = colorHex || 0xf97316;
+  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.65 });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.28, 0.72, 16), shirtMat);
+  torso.position.y = 0.78;
   torso.castShadow = true;
   root.add(torso);
 
-  // Đầu Chibi hình hộp
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.7 });
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.52, 0.52), skinMat);
-  head.position.y = 1.37;
+  // Collar / Neck trim
+  const collarMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, 16), collarMat);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.set(0, 1.12, 0);
+  root.add(collar);
+
+  // Smooth neck
+  const skinTone = '#ffdfc4';
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 });
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.18, 12), skinMat);
+  neck.position.y = 1.18;
+  root.add(neck);
+
+  // Head: Scaled smooth sphere with realistic face texture
+  const faceTex = createFaceTexture(false, skinTone);
+  const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.55 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), headMat);
+  head.scale.set(0.92, 1.1, 0.98);
+  head.position.y = 1.48;
   head.castShadow = true;
   root.add(head);
 
-  // MÁ HỒNG SAY RƯỢU [>_<] (Đặc điểm nhận dạng cực bựa trong hình chụp)
-  const blushMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
-  const leftBlush = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), blushMat);
-  leftBlush.position.set(-0.16, 1.3, 0.27);
-  root.add(leftBlush);
+  // Styled 3D Hair (Modern textured fade with layered volume)
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.85 });
+  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), hairMat);
+  hairTop.scale.set(0.96, 0.6, 1.05);
+  hairTop.position.set(0, 1.66, -0.04);
+  root.add(hairTop);
 
-  const rightBlush = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), blushMat);
-  rightBlush.position.set(0.16, 1.3, 0.27);
-  root.add(rightBlush);
-
-  // Mũ lưỡi trai đen có vành phẳng phía trước
-  const hatMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
-  const hat = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.16, 0.58), hatMat);
-  hat.position.y = 1.63;
-  root.add(hat);
-
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.06, 0.32), hatMat);
-  visor.position.set(0, 1.58, 0.38);
+  // Backward Cap / Snapback
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.75 });
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.16, 16), capMat);
+  cap.position.set(0, 1.66, 0);
+  root.add(cap);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.28), capMat);
+  visor.position.set(0, 1.62, -0.34);
+  visor.rotation.x = -0.15;
   root.add(visor);
 
-  // Mắt nhắm tít cười híp mắt vì say rượu
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-  const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), eyeMat);
-  leftEye.position.set(-0.15, 1.4, 0.27);
-  root.add(leftEye);
+  // Shoulders & Arms
+  const leftArmGroup = new THREE.Group();
+  leftArmGroup.position.set(-0.36, 1.02, 0);
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 10), skinMat);
+  leftArm.position.y = -0.22;
+  leftArmGroup.add(leftArm);
+  root.add(leftArmGroup);
 
-  const rightEye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.02), eyeMat);
-  rightEye.position.set(0.15, 1.4, 0.27);
-  root.add(rightEye);
+  const rightArmGroup = new THREE.Group();
+  rightArmGroup.position.set(0.36, 1.02, 0);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 10), skinMat);
+  rightArm.position.y = -0.22;
+  rightArmGroup.add(rightArm);
+  root.add(rightArmGroup);
 
-  // Ly bia cầm trên tay phải có bọt trắng trào ra và rơi giọt vàng xuống đất
+  // Realistic Beer Mug (Ly bia thủy tinh quai dày sủi bọt)
   const beerMug = new THREE.Group();
-  beerMug.position.set(0.44, 0.8, 0.28);
-  const mugGlass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.1, 0.26, 10),
-    new THREE.MeshStandardMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.9 })
-  );
-  beerMug.add(mugGlass);
+  beerMug.position.set(0.36, 0.85, 0.32);
 
-  const beerFoam = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.13, 0.12, 0.08, 10),
-    new THREE.MeshStandardMaterial({ color: 0xffffff })
-  );
-  beerFoam.position.y = 0.14;
-  beerMug.add(beerFoam);
+  // Thick glass mug body
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xfef08a,
+    transparent: true,
+    opacity: 0.82,
+    roughness: 0.1,
+    metalness: 0.15
+  });
+  const mugBody = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.28, 14), glassMat);
+  beerMug.add(mugBody);
 
-  // Giọt bia vàng chảy tràn (droplets)
-  const drop = new THREE.Mesh(
-    new THREE.SphereGeometry(0.035, 6, 6),
-    new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+  // Golden beer liquid inside
+  const beerLiquid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.085, 0.22, 12),
+    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2 })
   );
-  drop.position.set(0.1, -0.05, 0);
-  beerMug.add(drop);
+  beerLiquid.position.y = -0.02;
+  beerMug.add(beerLiquid);
+
+  // Frothy white beer head
+  const foamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.11, 0.09, 14), foamMat);
+  foam.position.y = 0.12;
+  beerMug.add(foam);
+
+  // Mug handle
+  const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, roughness: 0.1 });
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.025, 8, 12), handleMat);
+  handle.position.set(0.12, 0, 0);
+  handle.rotation.y = Math.PI / 2;
+  beerMug.add(handle);
 
   root.add(beerMug);
 
-  // Quần jeans xanh đậm
-  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.22), pantsMat);
-  leftLeg.position.set(-0.17, 0.225, 0);
-  leftLeg.castShadow = true;
-  root.add(leftLeg);
+  // Denim Jeans (Quần jean xanh wash)
+  const denimMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.85 });
+  const leftLegGroup = new THREE.Group();
+  leftLegGroup.position.set(-0.16, 0.48, 0);
 
-  const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.22), pantsMat);
-  rightLeg.position.set(0.17, 0.225, 0);
-  rightLeg.castShadow = true;
-  root.add(rightLeg);
+  const leftLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.48, 12), denimMat);
+  leftLegPants.position.y = -0.2;
+  leftLegPants.castShadow = true;
+  leftLegGroup.add(leftLegPants);
+
+  // Sneaker (Giày sneaker hiện đại đế trắng)
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.11, 0.28), shoeMat);
+  leftShoe.position.set(0, -0.42, 0.06);
+  leftLegGroup.add(leftShoe);
+  root.add(leftLegGroup);
+
+  const rightLegGroup = new THREE.Group();
+  rightLegGroup.position.set(0.16, 0.48, 0);
+
+  const rightLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.48, 12), denimMat);
+  rightLegPants.position.y = -0.2;
+  rightLegPants.castShadow = true;
+  rightLegGroup.add(rightLegPants);
+
+  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.11, 0.28), shoeMat);
+  rightShoe.position.set(0, -0.42, 0.06);
+  rightLegGroup.add(rightShoe);
+  root.add(rightLegGroup);
 
   return {
     mesh: root,
     torso,
     head,
     beerMug,
-    leftLeg,
-    rightLeg
+    leftLeg: leftLegGroup,
+    rightLeg: rightLegGroup
   };
 }
 
@@ -1766,188 +2329,156 @@ const localPlayerState = {
 // ========================================================
 const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
-// Orbital Camera State (Xoay 360 độ quanh nhân vật)
-let cameraYaw = 0;         // Xoay ngang (radians)
-let cameraPitch = 0.38;    // Góc ngẩng nhìn xuống (radians)
-let cameraDistance = 6.8;  // Khoảng cách camera tới nhân vật
-let isDraggingCamera = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-
-// Chuột kéo xoay camera
-canvasContainer.addEventListener('mousedown', (e) => {
-  isDraggingCamera = true;
-  lastMouseX = e.clientX;
-  lastMouseY = e.clientY;
-});
-
-window.addEventListener('mousemove', (e) => {
-  if (!isDraggingCamera) return;
-  const deltaX = e.clientX - lastMouseX;
-  const deltaY = e.clientY - lastMouseY;
-  lastMouseX = e.clientX;
-  lastMouseY = e.clientY;
-
-  cameraYaw -= deltaX * 0.0055;
-  cameraPitch += deltaY * 0.0045;
-
-  // Giới hạn góc ngẩng để không lộn nhào hoặc nhìn xuyên lòng đất
-  cameraPitch = Math.max(0.08, Math.min(Math.PI / 2.25, cameraPitch));
-});
-
-window.addEventListener('mouseup', () => {
-  isDraggingCamera = false;
-});
-
-// Cuộn chuột phóng to / thu nhỏ
-window.addEventListener('wheel', (e) => {
-  cameraDistance = Math.max(3.2, Math.min(13.5, cameraDistance + e.deltaY * 0.006));
-}, { passive: true });
-
-// ========================================================
-// Touch Drag để xoay camera trên điện thoại / tablet
-// ========================================================
-let lastTouchX = 0;
-let lastTouchY = 0;
-let isTouchDragging = false;
-let cameraTouchId = null;
-
-canvasContainer.addEventListener('touchstart', (e) => {
-  for (let i = 0; i < e.touches.length; i++) {
-    const touch = e.touches[i];
-    // Không xoay camera nếu chạm vào khu vực Joystick bên trái (45% chiều rộng và 60% chiều cao phía dưới)
-    if (touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.38) continue;
-    // Không xoay camera nếu chạm vào các nút điều khiển kỹ năng
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (target && (target.closest('.hud-actions-group') || target.closest('.hud-top') || target.closest('.hud-shouts-bar') || target.closest('.mob-shout-toggle') || target.closest('.modal-card') || target.closest('.interact-prompt'))) continue;
-
-    if (!isTouchDragging) {
-      isTouchDragging = true;
-      cameraTouchId = touch.identifier;
-      lastTouchX = touch.clientX;
-      lastTouchY = touch.clientY;
-      break;
-    }
-  }
-}, { passive: true });
-
-window.addEventListener('touchmove', (e) => {
-  if (!isTouchDragging) return;
-  for (let i = 0; i < e.touches.length; i++) {
-    const touch = e.touches[i];
-    if (touch.identifier === cameraTouchId) {
-      const deltaX = touch.clientX - lastTouchX;
-      const deltaY = touch.clientY - lastTouchY;
-      lastTouchX = touch.clientX;
-      lastTouchY = touch.clientY;
-
-      cameraYaw -= deltaX * 0.0065;
-      cameraPitch += deltaY * 0.005;
-      cameraPitch = Math.max(0.08, Math.min(Math.PI / 2.25, cameraPitch));
-      break;
-    }
-  }
-}, { passive: true });
-
-window.addEventListener('touchend', (e) => {
-  if (!isTouchDragging) return;
-  for (let i = 0; i < e.changedTouches.length; i++) {
-    if (e.changedTouches[i].identifier === cameraTouchId) {
-      isTouchDragging = false;
-      cameraTouchId = null;
-      break;
-    }
-  }
-});
-
-// ========================================================
-// Virtual Analog Joystick (Phong cách Liên Quân Mobile 360°)
-// ========================================================
+// Keep camera gestures separate from HUD and joystick pointers.
+const mobileControls = matchMedia('(pointer: coarse), (max-width: 768px)').matches;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let comfortMode = mobileControls || reducedMotion.matches;
+try {
+  const saved = localStorage.getItem('pub_comfort');
+  if (saved !== null && !reducedMotion.matches) comfortMode = saved === 'true';
+} catch (_) { /* Storage may be unavailable in private browsing. */ }
+let cameraYaw = 0;
+let cameraPitch = 0.48;
+let cameraDistance = mobileControls ? 8.2 : 6.8;
+const cameraPointers = new Map();
+const cameraLookTarget = new THREE.Vector3();
+let cameraTargetReady = false;
+let pinchDistance = 0;
 let joystickState = { active: false, touchId: null, x: 0, y: 0 };
+const joystickZone = document.getElementById('joystickZone');
+const joystickBase = document.getElementById('joystickBase');
+const joystickKnob = document.getElementById('joystickKnob');
 
-function setupVirtualJoystick() {
-  const joystickZone = document.getElementById('joystickZone');
-  const joystickBase = document.getElementById('joystickBase');
-  const joystickKnob = document.getElementById('joystickKnob');
-  if (!joystickZone || !joystickBase || !joystickKnob) return;
-
-  const maxRadius = 45; // Bán kính kéo tối đa của núm
-
-  function getBaseCenter() {
-    const rect = joystickBase.getBoundingClientRect();
-    return {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    };
-  }
-
-  function handleTouchStart(e) {
-    if (joystickState.active) return;
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      // Nhận diện chạm ở nửa dưới bên trái màn hình
-      if (touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.38) {
-        joystickState.active = true;
-        joystickState.touchId = touch.identifier;
-        joystickBase.classList.add('is-active');
-
-        updateKnobPosition(touch.clientX, touch.clientY);
-        break;
-      }
-    }
-  }
-
-  function handleTouchMove(e) {
-    if (!joystickState.active) return;
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      if (touch.identifier === joystickState.touchId) {
-        updateKnobPosition(touch.clientX, touch.clientY);
-        break;
-      }
-    }
-  }
-
-  function updateKnobPosition(touchX, touchY) {
-    const center = getBaseCenter();
-    const dx = touchX - center.x;
-    const dy = touchY - center.y;
-    const dist = Math.hypot(dx, dy);
-
-    const clampedDist = Math.min(dist, maxRadius);
-    const angle = Math.atan2(dy, dx);
-
-    const knobX = Math.cos(angle) * clampedDist;
-    const knobY = Math.sin(angle) * clampedDist;
-
-    joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
-
-    // Vector chuẩn hóa (-1 đến 1)
-    joystickState.x = knobX / maxRadius;
-    joystickState.y = -knobY / maxRadius; // Màn hình hướng Y xuống, hướng tới là âm Y
-  }
-
-  function handleTouchEnd(e) {
-    if (!joystickState.active) return;
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === joystickState.touchId) {
-        joystickState.active = false;
-        joystickState.touchId = null;
-        joystickState.x = 0;
-        joystickState.y = 0;
-        joystickBase.classList.remove('is-active');
-        joystickKnob.style.transform = 'translate(0px, 0px)';
-        break;
-      }
-    }
-  }
-
-  window.addEventListener('touchstart', handleTouchStart, { passive: true });
-  window.addEventListener('touchmove', handleTouchMove, { passive: true });
-  window.addEventListener('touchend', handleTouchEnd, { passive: true });
-  window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+function leaveScenicView() {
+  if (isScenicView) toggleScenicView();
 }
-setupVirtualJoystick();
+function zoomCamera(distance) {
+  leaveScenicView();
+  cameraDistance = Math.max(3.8, Math.min(13.5, distance));
+}
+function pointerSpan() {
+  const [a, b] = [...cameraPointers.values()];
+  return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+}
+canvasContainer.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (cameraPointers.size >= 2) return;
+  canvasContainer.setPointerCapture(e.pointerId);
+  cameraPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pinchDistance = pointerSpan();
+});
+canvasContainer.addEventListener('pointermove', (e) => {
+  const previous = cameraPointers.get(e.pointerId);
+  if (!previous) return;
+  const dx = e.clientX - previous.x;
+  const dy = e.clientY - previous.y;
+  cameraPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (cameraPointers.size === 2) {
+    const span = pointerSpan();
+    if (pinchDistance > 0 && span > 0) zoomCamera(cameraDistance * pinchDistance / span);
+    pinchDistance = span;
+    return;
+  }
+  // A pinch never rotates the camera; the remaining finger starts at its latest position.
+  if (!dx && !dy) return;
+  leaveScenicView();
+  cameraYaw -= dx * (e.pointerType === 'mouse' ? 0.0035 : 0.003);
+  cameraPitch = Math.max(0.18, Math.min(1.05, cameraPitch + dy * 0.0025));
+});
+function endCameraPointer(e) {
+  cameraPointers.delete(e.pointerId);
+  pinchDistance = pointerSpan();
+}
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  canvasContainer.addEventListener(event, endCameraPointer);
+}
+canvasContainer.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) return; // Preserve browser accessibility zoom.
+  e.preventDefault();
+  const amount = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+  zoomCamera(cameraDistance + Math.max(-180, Math.min(180, amount)) * 0.006);
+}, { passive: false });
+
+function resetJoystick() {
+  joystickState = { active: false, touchId: null, x: 0, y: 0 };
+  joystickBase.classList.remove('is-active');
+  joystickKnob.style.transform = 'translate(0px, 0px)';
+}
+function moveJoystick(e) {
+  const rect = joystickBase.getBoundingClientRect();
+  const dx = e.clientX - rect.left - rect.width / 2;
+  const dy = e.clientY - rect.top - rect.height / 2;
+  const length = Math.hypot(dx, dy);
+  const radius = rect.width * 0.35;
+  const strength = Math.min(1, Math.max(0, (length / radius - 0.14) / 0.86));
+  joystickState.x = length ? dx / length * strength : 0;
+  joystickState.y = length ? -dy / length * strength : 0;
+  const knobScale = length ? Math.min(length, radius) / length : 0;
+  joystickKnob.style.transform = `translate(${dx * knobScale}px, ${dy * knobScale}px)`;
+}
+joystickZone.addEventListener('pointerdown', (e) => {
+  if (joystickState.active || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  joystickZone.setPointerCapture(e.pointerId);
+  joystickState.active = true;
+  joystickState.touchId = e.pointerId;
+  joystickBase.classList.add('is-active');
+  moveJoystick(e);
+});
+joystickZone.addEventListener('pointermove', (e) => {
+  if (joystickState.active && e.pointerId === joystickState.touchId) moveJoystick(e);
+});
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  joystickZone.addEventListener(event, (e) => {
+    if (e.pointerId === joystickState.touchId) resetJoystick();
+  });
+}
+function clearControls() {
+  cameraPointers.clear();
+  pinchDistance = 0;
+  resetJoystick();
+  Object.keys(keys).forEach(key => keys[key] = false);
+}
+window.addEventListener('blur', clearControls);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearControls(); });
+window.addEventListener('resize', clearControls);
+
+const comfortBtn = document.getElementById('comfortBtn');
+function updateComfort() {
+  document.body.classList.toggle('comfort-mode', comfortMode);
+  comfortBtn.setAttribute('aria-pressed', String(comfortMode));
+  comfortBtn.textContent = comfortMode ? 'Êm mắt: Bật' : 'Êm mắt: Tắt';
+}
+comfortBtn.addEventListener('click', () => {
+  comfortMode = !comfortMode;
+  try { localStorage.setItem('pub_comfort', String(comfortMode)); } catch (_) {}
+  updateComfort();
+});
+reducedMotion.addEventListener('change', (e) => {
+  if (e.matches) { comfortMode = true; updateComfort(); }
+});
+updateComfort();
+document.getElementById('zoomInBtn').addEventListener('click', () => zoomCamera(cameraDistance - 0.8));
+document.getElementById('zoomOutBtn').addEventListener('click', () => zoomCamera(cameraDistance + 0.8));
+document.getElementById('resetCameraBtn').addEventListener('click', () => {
+  leaveScenicView();
+  cameraYaw = 0;
+  cameraPitch = 0.48;
+  cameraDistance = mobileControls ? 8.2 : 6.8;
+});
+// Secondary actions remain available in a compact mobile drawer.
+const extraActions = document.createElement('div');
+extraActions.id = 'extraActions';
+extraActions.className = 'extra-actions';
+const actionsGroup = document.querySelector('.hud-actions-group');
+actionsGroup.appendChild(extraActions);
+for (const button of [eatSnackBtn, peeBtn, vomitBtn, viewRiverBtn, soberBtn, billBtn]) extraActions.appendChild(button);
+const moreActionsBtn = document.getElementById('moreActionsBtn');
+moreActionsBtn.addEventListener('click', () => {
+  const open = moreActionsBtn.getAttribute('aria-expanded') !== 'true';
+  moreActionsBtn.setAttribute('aria-expanded', String(open));
+  actionsGroup.classList.toggle('actions-expanded', open);
+});
+
 
 window.addEventListener('keydown', (e) => {
   if (nameModal.style.display === 'flex') return;
@@ -2815,7 +3346,7 @@ let networkTimer = 0;
 
 function animate() {
   requestAnimationFrame(animate);
-  const delta = clock.getDelta();
+  const delta = Math.min(clock.getDelta(), 0.05);
 
   // Local Character Movement & Physics (Theo hướng nhìn của Camera)
   if (localCharacter && !localPlayerState.is_sitting && (!selfMember || selfMember.status !== 'guc_nga')) {
@@ -2849,7 +3380,7 @@ function animate() {
     }
 
     // Drunk Drift / Loạng choạng xiêu vẹo khi say xỉn
-    if (selfMember && selfMember.drunk_level > 35) {
+    if (!comfortMode && selfMember && selfMember.drunk_level > 35) {
       const drunkFactor = (selfMember.drunk_level - 35) / 65;
       moveX += Math.sin(clock.getElapsedTime() * 3) * 0.45 * drunkFactor;
       moveZ += Math.cos(clock.getElapsedTime() * 2) * 0.3 * drunkFactor;
@@ -2965,8 +3496,10 @@ function animate() {
   if (isScenicView) {
     // Góc nhìn điện ảnh hướng thẳng ra Landmark 81 và dòng sông lấp lánh
     const scenicCamPos = new THREE.Vector3(localPlayerState.x * 0.5, 6.2, 19.5);
-    camera.position.lerp(scenicCamPos, 0.08);
-    camera.lookAt(8, 20, 95);
+    camera.position.lerp(scenicCamPos, 1 - Math.exp(-7 * delta));
+    if (!cameraTargetReady) { cameraLookTarget.set(8, 20, 95); cameraTargetReady = true; }
+    cameraLookTarget.lerp(new THREE.Vector3(8, 20, 95), 1 - Math.exp(-9 * delta));
+    camera.lookAt(cameraLookTarget);
   } else {
     // Camera Xoay 360° Orbit bám theo nhân vật
     const lookTargetX = localPlayerState.x;
@@ -2975,7 +3508,7 @@ function animate() {
 
     let drunkYawOffset = 0;
     let drunkPitchOffset = 0;
-    if (selfMember && selfMember.drunk_level > 40) {
+    if (!comfortMode && selfMember && selfMember.drunk_level > 40) {
       const drunkFactor = (selfMember.drunk_level - 40) / 60;
       drunkYawOffset = Math.sin(clock.getElapsedTime() * 1.6) * 0.12 * drunkFactor;
       drunkPitchOffset = Math.cos(clock.getElapsedTime() * 1.9) * 0.08 * drunkFactor;
@@ -2989,8 +3522,14 @@ function animate() {
     const targetCamY = lookTargetY + cameraDistance * Math.sin(curPitch);
     const targetCamZ = lookTargetZ + horizontalDist * Math.cos(curYaw);
 
-    camera.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), 0.15);
-    camera.lookAt(lookTargetX, lookTargetY, lookTargetZ);
+    if (!cameraTargetReady) {
+      camera.position.set(targetCamX, targetCamY, targetCamZ);
+      cameraLookTarget.set(lookTargetX, lookTargetY, lookTargetZ);
+      cameraTargetReady = true;
+    }
+    camera.position.lerp(new THREE.Vector3(targetCamX, targetCamY, targetCamZ), 1 - Math.exp(-12 * delta));
+    cameraLookTarget.lerp(new THREE.Vector3(lookTargetX, lookTargetY, lookTargetZ), 1 - Math.exp(-12 * delta));
+    camera.lookAt(cameraLookTarget);
   }
 
   // Interpolate Remote Players
