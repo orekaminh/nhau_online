@@ -8,8 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
-  <!-- Three.js 3D Library -->
-  <script src="vendor/three.r128.min.js"></script>
+  <!-- Three.js 3D Library (CDN with Local Fallback) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="vendor/three.r128.min.js"><\/script>');
+    }
+  </script>
 </head>
 <body class="street-vibe-3d">
   <!-- 3D Canvas Viewport -->

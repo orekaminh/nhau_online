@@ -2003,10 +2003,11 @@ function buildSaigonRiver() {
   cruiseBoat.add(windowGlow);
 
   // Dãy đèn LED tiệc tùng trên nóc tàu
+  const boatBulbColors = [0xffd000, 0xff3344, 0x00ff88, 0x00d2ff, 0xff9900];
   for (let bi = -2; bi <= 2; bi += 0.8) {
     const bLight = new THREE.Mesh(
       new THREE.SphereGeometry(0.09, 6, 6),
-      new THREE.MeshBasicMaterial({ color: bulbColors[Math.abs(Math.round(bi * 3)) % bulbColors.length] })
+      new THREE.MeshBasicMaterial({ color: boatBulbColors[Math.abs(Math.round(bi * 3)) % boatBulbColors.length] })
     );
     bLight.position.set(bi, 1.75, 0);
     cruiseBoat.add(bLight);

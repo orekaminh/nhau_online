@@ -13,7 +13,9 @@ app = FastAPI(title="Phòng Nhậu Ảo 3D - Quán Nhậu 1 2 3 DÔ")
 # Mount static folder
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(os.path.join(STATIC_DIR, "vendor"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/vendor", StaticFiles(directory=os.path.join(STATIC_DIR, "vendor")), name="vendor")
 
 FUNNY_NICKNAMES = [
     "Thần Cồn Quận 1",
@@ -123,6 +125,13 @@ async def get_style():
 @app.get("/app.js")
 async def get_script():
     return FileResponse(os.path.join(STATIC_DIR, "app.js"))
+
+@app.get("/vendor/{path:path}")
+async def get_vendor_file(path: str):
+    file_path = os.path.join(STATIC_DIR, "vendor", path)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return Response(status_code=404)
 
 @app.websocket("/ws/{room_id}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str):
