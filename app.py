@@ -156,6 +156,20 @@ async def get_vendor_file(path: str):
         return FileResponse(file_path)
     return Response(status_code=404)
 
+@app.get("/environment/{path:path}")
+async def get_environment_file(path: str):
+    file_path = os.path.join(STATIC_DIR, "environment", path)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return Response(status_code=404)
+
+@app.get("/textures/{path:path}")
+async def get_textures_file(path: str):
+    file_path = os.path.join(STATIC_DIR, "textures", path)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return Response(status_code=404)
+
 @app.websocket("/ws/{room_id}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str):
     await websocket.accept()

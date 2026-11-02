@@ -319,6 +319,42 @@ renderer.toneMappingExposure = 1.32;
 if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 canvasContainer.appendChild(renderer.domElement);
 
+// ========================================================
+// 2.1. Realistic Post-Processing: UnrealBloomPass
+// ========================================================
+let composer = null;
+if (typeof THREE.EffectComposer !== 'undefined' && typeof THREE.UnrealBloomPass !== 'undefined') {
+  const renderPass = new THREE.RenderPass(scene, camera);
+  const bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.62, // bloom strength: ánh neon tỏa êm dịu, ấm áp
+    0.38, // bloom radius
+    0.82  // bloom threshold
+  );
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(renderPass);
+  composer.addPass(bloomPass);
+}
+
+// ========================================================
+// 2.2. Image-Based Lighting (IBL) via Saigon Night HDRI
+// ========================================================
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+if (typeof THREE.RGBELoader !== 'undefined') {
+  new THREE.RGBELoader()
+    .load('environment/night_city_1k.hdr', function (texture) {
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+      scene.environment = envMap;
+      texture.dispose();
+      pmremGenerator.dispose();
+      console.log('🌃 [PBR] Saigon Night HDRI Environment loaded!');
+    }, undefined, function (err) {
+      console.warn('[PBR] HDR environment load notice:', err);
+    });
+}
+
 // Lighting: Cinematic Saigon Nightlife
 const ambientLight = new THREE.AmbientLight(0x1e293b, 1.3);
 scene.add(ambientLight);
@@ -670,14 +706,33 @@ function createBeerCanTexture(brand) {
 // 3. Procedural 3D Environment (Quán Nhậu Vỉa Hè & Bờ Sông Sài Gòn)
 // ========================================================
 
-// 1. Mặt đường nhựa ướt sũng phản chiếu neon (Wet Asphalt Pavement)
+const pbrLoader = new THREE.TextureLoader();
+
+// 1. Mặt đường nhựa PBR (Realistic Wet Asphalt Pavement Sài Gòn Đêm)
+const asphaltDiff = pbrLoader.load('textures/asphalt/diff_1k.jpg');
+const asphaltNor = pbrLoader.load('textures/asphalt/nor_gl_1k.jpg');
+const asphaltRough = pbrLoader.load('textures/asphalt/rough_1k.jpg');
+const asphaltAO = pbrLoader.load('textures/asphalt/ao_1k.jpg');
+
+[asphaltDiff, asphaltNor, asphaltRough, asphaltAO].forEach(tex => {
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(12, 3);
+});
+
 const streetGeo = new THREE.PlaneGeometry(70, 12);
-const streetTex = createAsphaltTexture();
+streetGeo.setAttribute('uv2', streetGeo.attributes.uv);
+
 const streetMat = new THREE.MeshStandardMaterial({
-  map: streetTex,
-  color: 0x222733,
-  roughness: 0.22,
-  metalness: 0.28
+  map: asphaltDiff,
+  normalMap: asphaltNor,
+  normalScale: new THREE.Vector2(0.85, 0.85),
+  roughnessMap: asphaltRough,
+  aoMap: asphaltAO,
+  aoMapIntensity: 1.0,
+  color: 0x475569,
+  roughness: 0.28,
+  metalness: 0.15
 });
 const street = new THREE.Mesh(streetGeo, streetMat);
 street.rotation.x = -Math.PI / 2;
@@ -707,13 +762,31 @@ for (let cz = 4.0; cz <= 11.0; cz += 1.1) {
   scene.add(zebra);
 }
 
-// 2. Vỉa hè quán nhậu lát gạch hoa đỏ xám Việt Nam (Tiled Sidewalk)
+// 2. Vỉa hè quán nhậu lát gạch bông PBR (Checkered Pavement Tiles Sài Gòn)
+const sidewalkDiff = pbrLoader.load('textures/sidewalk/diff_1k.jpg');
+const sidewalkNor = pbrLoader.load('textures/sidewalk/nor_gl_1k.jpg');
+const sidewalkRough = pbrLoader.load('textures/sidewalk/rough_1k.jpg');
+const sidewalkAO = pbrLoader.load('textures/sidewalk/ao_1k.jpg');
+
+[sidewalkDiff, sidewalkNor, sidewalkRough, sidewalkAO].forEach(tex => {
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(16, 4);
+});
+
 const sidewalkGeo = new THREE.BoxGeometry(36, 0.3, 8.8);
-const sidewalkTex = createSidewalkTexture();
+sidewalkGeo.setAttribute('uv2', sidewalkGeo.attributes.uv);
+
 const sidewalkMat = new THREE.MeshStandardMaterial({
-  map: sidewalkTex,
-  roughness: 0.68,
-  metalness: 0.08
+  map: sidewalkDiff,
+  normalMap: sidewalkNor,
+  normalScale: new THREE.Vector2(0.9, 0.9),
+  roughnessMap: sidewalkRough,
+  aoMap: sidewalkAO,
+  aoMapIntensity: 1.1,
+  color: 0xd1d5db,
+  roughness: 0.45,
+  metalness: 0.05
 });
 const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
 sidewalk.position.set(0, 0.15, -0.75);
@@ -833,7 +906,13 @@ function createNeonBeerSign() {
   const tex = new THREE.CanvasTexture(canvas);
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(3.5, 3.5),
-    new THREE.MeshBasicMaterial({ map: tex })
+    new THREE.MeshStandardMaterial({
+      map: tex,
+      emissiveMap: tex,
+      emissive: 0xffffff,
+      emissiveIntensity: 1.4,
+      roughness: 0.15
+    })
   );
   mesh.position.set(-16.35, 3.8, 0);
   mesh.rotation.y = Math.PI / 2;
@@ -867,7 +946,13 @@ sctx.fillText('KHÔNG SAY KHÔNG VỀ - BIA HƠI & ĐỒ NƯỚNG', 512, 185);
 const signTex = new THREE.CanvasTexture(signCanvas);
 const signFront = new THREE.Mesh(
   new THREE.PlaneGeometry(10.5, 2.2),
-  new THREE.MeshBasicMaterial({ map: signTex })
+  new THREE.MeshStandardMaterial({
+    map: signTex,
+    emissiveMap: signTex,
+    emissive: 0xffffff,
+    emissiveIntensity: 1.35,
+    roughness: 0.2
+  })
 );
 signFront.position.set(0, 5.5, -4.85);
 scene.add(signFront);
@@ -1580,9 +1665,16 @@ function buildSaigonStreetScenery() {
   kctx.shadowBlur = 20;
   kctx.fillText('ÂM THANH ĐỈNH CAO - PHÒNG VIP SÀI GÒN', 512, 210);
 
+  const kSignTex = new THREE.CanvasTexture(kCanvas);
   const kSign = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 2.8),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(kCanvas) })
+    new THREE.MeshStandardMaterial({
+      map: kSignTex,
+      emissiveMap: kSignTex,
+      emissive: 0xffffff,
+      emissiveIntensity: 1.4,
+      roughness: 0.2
+    })
   );
   kSign.position.set(24, 6.8, 4.05);
   scene.add(kSign);
@@ -1627,9 +1719,16 @@ function buildSaigonStreetScenery() {
   mctx.shadowBlur = 18;
   mctx.fillText('XÔNG HƠI - BẤM HUYỆT - PHỤC HỒI SỨC KHỎE', 512, 205);
 
+  const mSignTex = new THREE.CanvasTexture(mCanvas);
   const mSign = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 2.8),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(mCanvas) })
+    new THREE.MeshStandardMaterial({
+      map: mSignTex,
+      emissiveMap: mSignTex,
+      emissive: 0xffffff,
+      emissiveIntensity: 1.4,
+      roughness: 0.2
+    })
   );
   mSign.position.set(-31, 6.8, 4.05);
   scene.add(mSign);
@@ -3774,7 +3873,11 @@ function animate() {
   // Update Projected 2D HUD Tags
   updatePlayerHUDPositions();
 
-  renderer.render(scene, camera);
+  if (composer) {
+    composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 animate();
 
@@ -3783,6 +3886,9 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) {
+    composer.setSize(window.innerWidth, window.innerHeight);
+  }
 });
 
 // ========================================================
