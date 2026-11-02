@@ -1,0 +1,54 @@
+name: CI/CD - Quan Nhau Ao 3D
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Cho phep bam nut chay bang tay tren GitHub
+
+jobs:
+  test-and-lint:
+    name: 🧪 Kiem tra Code & Cu Phap Python
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cai dat Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Kiem tra Cu phap Python & Backend
+        run: |
+          python -c "import app; print('✅ Backend FastAPI khoi tao thanh cong!')"
+
+  deploy-cloud:
+    name: 🚀 Tu dong Deploy len Server Cloud 24/7
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Kich hoat Deploy Hook (Render / Koyeb / Custom Webhook)
+        env:
+          DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DEPLOY_HOOK" ]; then
+            echo "🚀 Dang kich hoat Deploy Hook len Server Cloud..."
+            curl -s -X POST "$DEPLOY_HOOK"
+            echo "🎉 Da gui lenh deploy thanh cong len Cloud Server!"
+          else
+            echo "ℹ️ Chua cau hinh DEPLOY_HOOK trong GitHub Secrets."
+            echo "Neu ban ket noi truc tiep GitHub voi Render.com, Render da tu dong bat che do Auto-Deploy khi co commit moi roi!"
+          fi
