@@ -48,10 +48,18 @@ const viewRiverText = document.getElementById('viewRiverText');
 
 // Danh sách các điểm đái bậy / WC (Khai báo sớm để dùng ở mọi hàm)
 const peeSpots = [];
+let wcOccupant = null;
+let wcPending = false;
+let wcRequestTimer = null;
 
 let isScenicView = false;
 function toggleScenicView() {
+  if (!isScenicView && localCharacter && pubDetails.inside(localPlayerState.x, localPlayerState.z)) {
+    setTicker('🚽 Ra khỏi WC rồi ngắm cảnh nhé!');
+    return;
+  }
   isScenicView = !isScenicView;
+  hudOverlay.style.visibility = isScenicView ? 'hidden' : 'visible';
   if (viewRiverBtn) {
     if (isScenicView) {
       viewRiverBtn.classList.add('is-viewing');
@@ -783,12 +791,13 @@ wall.receiveShadow = true;
 scene.add(wall);
 
 // Tường bên trái (Left Wall) có biển Neon Ly Bia
-const leftWall = new THREE.Mesh(
-  new THREE.BoxGeometry(0.6, 8.0, 9.8),
-  new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.88 })
-);
-leftWall.position.set(-17.7, 4.0, -0.75);
-leftWall.receiveShadow = true;
+const leftWall = new THREE.Group();
+const leftWallMaterial = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.88 });
+// Real doorway: 2.4m wide at z=-2.7, with a 3m lintel.
+for (const [height, depth, y, z] of [[8, 1.75, 4, -4.775], [8, 5.65, 4, 1.325], [5, 2.4, 5.5, -2.7]]) {
+  const section = new THREE.Mesh(new THREE.BoxGeometry(0.6, height, depth), leftWallMaterial);
+  section.position.set(-17.7, y, z); section.receiveShadow = true; leftWall.add(section);
+}
 scene.add(leftWall);
 
 // Biển Neon Ly Bia phát sáng ở tường trái (Giống hình chụp)
@@ -1508,49 +1517,16 @@ buildRiversidePark();
 
 // Đăng ký các điểm đái bậy cố định
 peeSpots.push(
-  { type: "wc", name: "WC Quán Nhậu", x: -15.8, z: -3.2, radius: 2.2 },
+  { type: "wc", name: "WC Quán Nhậu", x: -20.5, z: -2.8, radius: 3.0 },
   { type: "wall", name: "Bờ Tường Hẻm (Biển Cấm Đái)", x: -15.8, z: 1.5, radius: 2.2 }
 );
 
 // ========================================================
 // 5.5. CẢNH VẬT ĐƯỜNG PHỐ SÀI GÒN (KARAOKE, MASSAGE, WC, CỘT ĐIỆN)
 // ========================================================
+const pubDetails = createPubDetails(scene);
+
 function buildSaigonStreetScenery() {
-  // 1. Cửa WC Quán Nhậu
-  const wcDoor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 2.3, 1.3),
-    new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 })
-  );
-  wcDoor.position.set(-16.35, 1.45, -3.2);
-  scene.add(wcDoor);
-
-  // Biển hiệu WC phát sáng
-  const wcCanvas = document.createElement('canvas');
-  wcCanvas.width = 256;
-  wcCanvas.height = 128;
-  const wctx = wcCanvas.getContext('2d');
-  wctx.fillStyle = '#0369a1';
-  wctx.fillRect(0, 0, 256, 128);
-  wctx.strokeStyle = '#ffffff';
-  wctx.lineWidth = 8;
-  wctx.strokeRect(6, 6, 244, 116);
-  wctx.font = 'bold 50px sans-serif';
-  wctx.fillStyle = '#ffffff';
-  wctx.textAlign = 'center';
-  wctx.fillText('WC 🚹🚺', 128, 80);
-
-  const wcSign = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.2, 0.6),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(wcCanvas) })
-  );
-  wcSign.position.set(-16.3, 2.9, -3.2);
-  wcSign.rotation.y = Math.PI / 2;
-  scene.add(wcSign);
-
-  const wcLight = new THREE.PointLight(0x38bdf8, 1.3, 8);
-  wcLight.position.set(-15.8, 2.8, -3.2);
-  scene.add(wcLight);
-
   // 2. Bờ Tường Sơn Xịt "CẤM ĐÁI BẬY - CAMERA PHẠT 500K"
   const wallCanvas = document.createElement('canvas');
   wallCanvas.width = 512;
@@ -1629,7 +1605,8 @@ function buildSaigonStreetScenery() {
     new THREE.BoxGeometry(14, 11, 10),
     new THREE.MeshStandardMaterial({ color: 0x0f1c1a, roughness: 0.6 })
   );
-  mBuilding.position.set(-24, 5.5, -1.0);
+  // Leave the side annex clear for the WC; the neighboring facade starts farther west.
+  mBuilding.position.set(-31, 5.5, -1.0);
   scene.add(mBuilding);
 
   const mCanvas = document.createElement('canvas');
@@ -1654,11 +1631,11 @@ function buildSaigonStreetScenery() {
     new THREE.PlaneGeometry(10, 2.8),
     new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(mCanvas) })
   );
-  mSign.position.set(-24, 6.8, 4.05);
+  mSign.position.set(-31, 6.8, 4.05);
   scene.add(mSign);
 
   const mLight = new THREE.PointLight(0x10b981, 1.8, 15);
-  mLight.position.set(-24, 5.0, 4.5);
+  mLight.position.set(-31, 5.0, 4.5);
   scene.add(mLight);
 
   // 5. CỘT ĐIỆN BÊ TÔNG BÚI DÂY ĐẶC SẢN SÀI GÒN
@@ -2027,6 +2004,8 @@ buildSaigonRiver();
 // ========================================================
 let landmarkSpireLight = null;
 let landmarkLEDs = [];
+let landmarkReflections = null;
+let landmarkBeaconHalo = null;
 
 function buildLandmark81AndSkyline() {
   // Cụm Skyline Thành Phố bên kia bờ sông Sài Gòn
@@ -2069,10 +2048,11 @@ function buildLandmark81AndSkyline() {
     const winMat = new THREE.MeshBasicMaterial({
       map: new THREE.CanvasTexture(winCanvas),
       transparent: true,
-      opacity: 0.85
+      opacity: 0.85, fog: false, toneMapped: false, side: THREE.DoubleSide
     });
     const winFront = new THREE.Mesh(winGeo, winMat);
-    winFront.position.set(cfg.x, cfg.h / 2, cfg.d / 2 + 0.05);
+    winFront.position.set(cfg.x, cfg.h / 2, -cfg.d / 2 - 0.05);
+    winFront.rotation.y = Math.PI;
     skylineGroup.add(winFront);
   });
 
@@ -2082,9 +2062,8 @@ function buildLandmark81AndSkyline() {
 
   // Kiến trúc bó tre giật cấp đặc trưng của Landmark 81 (Stepped Bamboo Bundle)
   const towerMat = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    metalness: 0.85,
-    roughness: 0.2
+    color: 0x1e3652, emissive: 0x0d243d, emissiveIntensity: 0.7,
+    metalness: 0.55, roughness: 0.3, fog: false
   });
 
   // Cấp 1 (Chân tháp đồ sộ)
@@ -2110,7 +2089,7 @@ function buildLandmark81AndSkyline() {
   // Đỉnh kim tự tháp / Cột ăng-ten Spire chọc trời
   const spire = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.5, 8.5, 8),
-    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 })
+    new THREE.MeshBasicMaterial({ color: 0xb9eaff, fog: false, toneMapped: false })
   );
   spire.position.y = 54.25;
   landmarkGroup.add(spire);
@@ -2118,7 +2097,7 @@ function buildLandmark81AndSkyline() {
   // Đèn tín hiệu đỉnh tháp đỏ rực xuyên màn đêm
   const beacon = new THREE.Mesh(
     new THREE.SphereGeometry(0.25, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff0044 })
+    new THREE.MeshBasicMaterial({ color: 0xff7490, fog: false, toneMapped: false })
   );
   beacon.position.y = 58.5;
   landmarkGroup.add(beacon);
@@ -2127,17 +2106,92 @@ function buildLandmark81AndSkyline() {
   landmarkSpireLight.position.set(0, 58.5, 0);
   landmarkGroup.add(landmarkSpireLight);
 
-  // Dải đèn LED mặt ngoài Landmark 81 (Đổi màu lung linh về đêm)
-  const ledColors = [0x00d2ff, 0x3b82f6, 0xa855f7, 0xf43f5e];
-  for (let lx of [-5.5, -2.8, 0, 2.8, 5.5]) {
-    const ledStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 45, 0.12),
-      new THREE.MeshBasicMaterial({ color: ledColors[Math.abs(Math.round(lx)) % ledColors.length] })
-    );
-    ledStrip.position.set(lx, 23, 4.6);
-    landmarkGroup.add(ledStrip);
-    landmarkLEDs.push(ledStrip);
+  // Visible from both banks: lit windows and LEDs follow every stepped tier.
+  // Emissive-looking basic surfaces remain readable through the distant night haze.
+  const tiers = [
+    { w: 11, h: 16, d: 9, y: 8 }, { w: 8.5, h: 14, d: 7, y: 23 },
+    { w: 6, h: 12, d: 5.2, y: 36 }, { w: 3.6, h: 8, d: 3.4, y: 46 }
+  ];
+  const ledColors = [0x4de3ff, 0x78a6ff, 0xb7a1ff, 0xffbf82];
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = 64; glowCanvas.height = 16;
+  const glowCtx = glowCanvas.getContext('2d');
+  const gradient = glowCtx.createLinearGradient(0, 0, 64, 0);
+  gradient.addColorStop(0, 'rgba(255,255,255,0)');
+  gradient.addColorStop(0.5, 'rgba(255,255,255,0.65)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  glowCtx.fillStyle = gradient; glowCtx.fillRect(0, 0, 64, 16);
+  const edgeGlow = new THREE.CanvasTexture(glowCanvas);
+  const rimMaterial = new THREE.MeshBasicMaterial({ color: 0xa5d9ff, fog: false, toneMapped: false });
+  // Seeded window pattern avoids random flashing or constantly changing office lights.
+  let windowSeed = 81;
+  const litRandom = () => { windowSeed = (windowSeed * 16807) % 2147483647; return windowSeed / 2147483647; };
+  tiers.forEach((tier, index) => {
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    const rows = Math.round(tier.h / 0.65), cols = Math.max(5, Math.round(tier.w / 0.55));
+    const cw = 256 / cols, ch = 512 / rows;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (litRandom() < 0.23) continue;
+      ctx.fillStyle = litRandom() < 0.25 ? '#ffe4a0' : litRandom() < 0.5 ? '#8cd8ff' : '#c2ecff';
+      ctx.globalAlpha = 0.5 + litRandom() * 0.45;
+      ctx.fillRect(c * cw + cw * 0.18, r * ch + ch * 0.24, cw * 0.64, ch * 0.52);
+    }
+    const windows = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas),
+      transparent: true, fog: false, toneMapped: false, depthWrite: false });
+    for (const side of [-1, 1]) {
+      const front = new THREE.Mesh(new THREE.PlaneGeometry(tier.w - 0.3, tier.h - 0.3), windows);
+      front.position.set(0, tier.y, side * (tier.d / 2 + 0.035));
+      front.rotation.y = side < 0 ? Math.PI : 0; landmarkGroup.add(front);
+      const flank = new THREE.Mesh(new THREE.PlaneGeometry(tier.d - 0.3, tier.h - 0.3), windows);
+      flank.position.set(side * (tier.w / 2 + 0.035), tier.y, 0);
+      flank.rotation.y = side * Math.PI / 2; landmarkGroup.add(flank);
+    }
+    // Four corner columns, on the actual perimeter rather than floating in front of the upper tiers.
+    for (const x of [-tier.w / 2, tier.w / 2]) for (const z of [-tier.d / 2, tier.d / 2]) {
+      const material = new THREE.MeshBasicMaterial({ color: ledColors[index], fog: false, toneMapped: false });
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.15, tier.h, 0.15), material);
+      strip.position.set(x, tier.y, z); landmarkGroup.add(strip); landmarkLEDs.push(strip);
+      const haloMaterial = new THREE.MeshBasicMaterial({ map: edgeGlow, transparent: true,
+        opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false,
+        side: THREE.DoubleSide, fog: false, toneMapped: false });
+      haloMaterial.color = material.color;
+      const halo = new THREE.Mesh(new THREE.PlaneGeometry(0.75, tier.h), haloMaterial);
+      halo.position.set(x, tier.y, z + Math.sign(z) * 0.09); landmarkGroup.add(halo);
+    }
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(tier.w + 0.15, 0.13, tier.d + 0.15), rimMaterial);
+    rim.position.y = tier.y + tier.h / 2; landmarkGroup.add(rim);
+  });
+  // A tiny soft beacon halo needs no bloom pass or additional dynamic lights.
+  const haloCanvas = document.createElement('canvas'); haloCanvas.width = haloCanvas.height = 64;
+  const hctx = haloCanvas.getContext('2d');
+  const radial = hctx.createRadialGradient(32, 32, 1, 32, 32, 32);
+  radial.addColorStop(0, 'rgba(255,255,255,1)'); radial.addColorStop(0.18, 'rgba(255,150,185,0.6)');
+  radial.addColorStop(1, 'rgba(255,100,150,0)');
+  hctx.fillStyle = radial; hctx.fillRect(0, 0, 64, 64);
+  landmarkBeaconHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(haloCanvas),
+    color: 0xffa1b8, transparent: true, blending: THREE.AdditiveBlending,
+    depthWrite: false, fog: false, toneMapped: false }));
+  landmarkBeaconHalo.position.set(0, 58.5, 0); landmarkBeaconHalo.scale.set(3.6, 3.6, 1);
+  landmarkGroup.add(landmarkBeaconHalo);
+
+  // Stylized broken reflection streaks, rendered together in a single instanced draw.
+  const reflectionMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.34,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false, toneMapped: false });
+  landmarkReflections = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), reflectionMaterial, 140);
+  landmarkReflections.name = 'Landmark 81 • vệt đèn trên sông';
+  const reflectionPose = new THREE.Object3D();
+  for (let i = 0; i < 140; i++) {
+    const z = 38 + litRandom() * 62;
+    const distanceFade = (z - 38) / 62;
+    reflectionPose.position.set(6 + (litRandom() - 0.5) * (2 + (1 - distanceFade) * 13), -0.17, z);
+    reflectionPose.rotation.set(-Math.PI / 2, 0, 0);
+    reflectionPose.scale.set(0.25 + litRandom() * 1.6, 0.06 + litRandom() * 0.2, 1);
+    reflectionPose.updateMatrix(); landmarkReflections.setMatrixAt(i, reflectionPose.matrix);
+    const color = new THREE.Color(ledColors[i % ledColors.length]).multiplyScalar(0.3 + distanceFade * 0.7);
+    landmarkReflections.setColorAt(i, color);
   }
+  scene.add(landmarkReflections);
 
   // Bảng tên tòa nhà: "LANDMARK 81"
   const l81Canvas = document.createElement('canvas');
@@ -2153,9 +2207,10 @@ function buildLandmark81AndSkyline() {
 
   const l81Sign = new THREE.Mesh(
     new THREE.PlaneGeometry(6.5, 1.6),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(l81Canvas), transparent: true })
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(l81Canvas), transparent: true, side: THREE.DoubleSide, fog: false, toneMapped: false })
   );
-  l81Sign.position.set(0, 16.5, 4.6);
+  l81Sign.position.set(0, 16.5, -4.65);
+  l81Sign.rotation.y = Math.PI;
   landmarkGroup.add(l81Sign);
 
   skylineGroup.add(landmarkGroup);
@@ -2344,6 +2399,7 @@ let cameraDistance = mobileControls ? 8.2 : 6.8;
 const cameraPointers = new Map();
 const cameraLookTarget = new THREE.Vector3();
 let cameraTargetReady = false;
+let wasInWC = false;
 let pinchDistance = 0;
 let joystickState = { active: false, touchId: null, x: 0, y: 0 };
 const joystickZone = document.getElementById('joystickZone');
@@ -2474,15 +2530,33 @@ const actionsGroup = document.querySelector('.hud-actions-group');
 actionsGroup.appendChild(extraActions);
 for (const button of [eatSnackBtn, peeBtn, vomitBtn, viewRiverBtn, soberBtn, billBtn]) extraActions.appendChild(button);
 const moreActionsBtn = document.getElementById('moreActionsBtn');
+function closeExtraActions() {
+  moreActionsBtn.setAttribute('aria-expanded', 'false');
+  moreActionsBtn.textContent = 'Thêm';
+  actionsGroup.classList.remove('actions-expanded');
+  document.body.classList.remove('actions-open');
+}
 moreActionsBtn.addEventListener('click', () => {
   const open = moreActionsBtn.getAttribute('aria-expanded') !== 'true';
-  moreActionsBtn.setAttribute('aria-expanded', String(open));
-  actionsGroup.classList.toggle('actions-expanded', open);
+  closeExtraActions();
+  if (open) {
+    moreActionsBtn.setAttribute('aria-expanded', 'true');
+    moreActionsBtn.textContent = 'Đóng';
+    actionsGroup.classList.add('actions-expanded');
+    document.body.classList.add('actions-open');
+  }
 });
-
+extraActions.setAttribute('aria-label', 'Hành động phụ, vuốt ngang để xem thêm');
+extraActions.addEventListener('click', (e) => { if (e.target.closest('button')) closeExtraActions(); });
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#extraActions, #moreActionsBtn')) closeExtraActions();
+});
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeExtraActions(); });
+window.addEventListener('resize', closeExtraActions);
 
 window.addEventListener('keydown', (e) => {
-  if (nameModal.style.display === 'flex') return;
+  if (nameModal.style.display === 'flex' || e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+  if (e.key === 'Enter') { e.preventDefault(); setChatOpen(true); return; }
 
   if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
   if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
@@ -2575,6 +2649,7 @@ let peeParticles = [];
 
 function findNearestPeeSpot() {
   for (let spot of peeSpots) {
+    if (spot.type === 'wc' && !pubDetails.inside(localPlayerState.x, localPlayerState.z)) continue;
     const dist = Math.hypot(localPlayerState.x - spot.x, localPlayerState.z - spot.z);
     if (dist < spot.radius) return spot;
   }
@@ -2650,17 +2725,96 @@ function updateBladderVisuals(level) {
   }
 }
 
+function sendPlayerPosition() {
+  sendAction({ action: 'move', x: localPlayerState.x, y: 0, z: localPlayerState.z,
+    ry: localPlayerState.ry, is_walking: false });
+}
+function moveThroughWCDoor(entering) {
+  if (!localCharacter || wcPending || localPlayerState.is_sitting || (selfMember && selfMember.drunk_level >= 100)) return;
+  if (entering && wcOccupant && wcOccupant !== clientId) {
+    setTicker('🚪 WC đang có người, chờ một chút nhé!');
+    return;
+  }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    clearControls();
+    sendPlayerPosition();
+    wcPending = true;
+    wcRequestTimer = setTimeout(() => { wcPending = false; updateWCControls(); }, 4000);
+    sendAction({ action: entering ? 'wc_enter' : 'wc_exit' });
+    updateWCControls();
+    return;
+  }
+  wcOccupant = entering ? clientId : null;
+  pubDetails.setOccupied(entering);
+  applyWCDoorTransition(entering);
+}
+function applyWCDoorTransition(entering) {
+  if (!localCharacter || localPlayerState.is_sitting || (selfMember && selfMember.drunk_level >= 100)) return;
+  clearControls();
+  leaveScenicView();
+  localPlayerState.x = entering ? -19.2 : -16.4;
+  localPlayerState.z = -2.7;
+  localPlayerState.ry = entering ? -Math.PI / 2 : Math.PI / 2;
+  localPlayerState.is_walking = false;
+  wcHygiene = 'ready';
+  localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
+  sendPlayerPosition();
+  updateWCControls();
+  setTicker(entering ? '🚽 WC sáng đèn rồi! Xả lũ xong nhớ rửa tay nhé.' : '🍻 Đã trở lại quán. Nhớ uống thêm nước lọc!');
+}
+const wcControls = document.getElementById('wcControls');
+const wcUseBtn = document.getElementById('wcUseBtn');
+const wcExitBtn = document.getElementById('wcExitBtn');
+let wcHygiene = 'ready';
+function updateWCControls() {
+  const inside = pubDetails.inside(localPlayerState.x, localPlayerState.z);
+  const nearby = pubDetails.nearEntrance(localPlayerState.x, localPlayerState.z);
+  wcControls.hidden = isScenicView || !localCharacter || localPlayerState.is_sitting || (!inside && !nearby);
+  wcExitBtn.hidden = !inside;
+  wcUseBtn.textContent = !inside ? '🚪 Vào WC [P]' : wcHygiene === 'wash' ? '🧼 Rửa tay [P]' : wcHygiene === 'clean' ? '✓ Đã rửa tay' : '🚽 Dùng WC [P]';
+  const busy = !inside && wcOccupant && wcOccupant !== clientId;
+  if (busy) wcUseBtn.textContent = '🚪 WC đang có người';
+  wcUseBtn.disabled = wcPending || busy || (inside && wcHygiene === 'clean');
+  wcExitBtn.disabled = wcPending;
+  peeBtnText.textContent = inside ? 'Dùng WC' : nearby ? 'Vào WC' : 'Xả lũ';
+  if (inside || nearby || isScenicView) interactPrompt.style.display = 'none';
+}
+wcUseBtn.addEventListener('click', handlePeeAction);
+wcExitBtn.addEventListener('click', () => moveThroughWCDoor(false));
 function handlePeeAction() {
+  if (!localCharacter || (selfMember && selfMember.drunk_level >= 100)) return;
+  const inside = pubDetails.inside(localPlayerState.x, localPlayerState.z);
+  if (!inside && !localPlayerState.is_sitting && pubDetails.nearEntrance(localPlayerState.x, localPlayerState.z)) {
+    moveThroughWCDoor(true);
+    return;
+  }
   const spot = findNearestPeeSpot();
-  const spotType = spot ? spot.type : (localPlayerState.z > 12 ? "tree" : "wall");
-
+  const spotType = inside ? 'wc' : spot ? spot.type : (localPlayerState.z > 12 ? 'tree' : 'wall');
+  if (inside) {
+    if (wcHygiene === 'clean') return;
+    if (wcHygiene === 'wash') {
+      clearControls();
+      localPlayerState.x = -19.25; localPlayerState.z = -3.15; localPlayerState.ry = Math.PI;
+      localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
+      sendPlayerPosition();
+      wcHygiene = 'clean';
+      updateWCControls();
+      show3DShoutBubble(clientId, '🧼 Tay sạch rồi, ra quán thôi!');
+      setTicker('🧼 Đã rửa tay tại lavabo. Bấm Ra quán để về bàn nhậu.');
+      return;
+    }
+    // Stand in front of the bowl; no outdoor particle stream inside the WC.
+    clearControls();
+    localPlayerState.x = -21.55; localPlayerState.z = -2.65; localPlayerState.ry = Math.PI;
+    localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
+    sendPlayerPosition();
+    wcHygiene = 'wash';
+    updateWCControls();
+  } else {
+    spawnPeeStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
+  }
   playPeeSound();
-  spawnPeeStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
-
-  sendAction({
-    action: "pee",
-    spot_type: spotType
-  });
+  sendAction({ action: 'pee', spot_type: spotType });
 }
 
 // ========================================================
@@ -2824,19 +2978,30 @@ function getOrCreatePlayerHUD(id, name, isSelf) {
   return playerHUDTags.get(id);
 }
 
-function show3DShoutBubble(id, text) {
+function show3DShoutBubble(id, text, duration = 3500) {
   const hud = playerHUDTags.get(id);
   if (!hud) return;
   hud.bubbleElem.textContent = text;
   hud.bubbleElem.style.display = 'block';
+  hud.bubbleElem.style.animation = 'none';
+  void hud.bubbleElem.offsetWidth;
+  hud.bubbleWidth = hud.bubbleElem.offsetWidth;
+  hud.bubbleElem.style.animation = '';
+  hud.bubbleElem.style.animationDuration = `${duration}ms`;
 
   if (hud.bubbleTimer) clearTimeout(hud.bubbleTimer);
   hud.bubbleTimer = setTimeout(() => {
     hud.bubbleElem.style.display = 'none';
-  }, 3500);
+  }, duration);
 }
 
 const tempVec = new THREE.Vector3();
+function fitChatBubble(hud, headX) {
+  const half = (hud.bubbleWidth || 0) / 2;
+  const shift = Math.max(8 + half - headX, Math.min(innerWidth - 8 - half - headX, 0));
+  hud.bubbleElem.style.left = `${shift}px`;
+  hud.bubbleElem.style.setProperty('--bubble-arrow-x', `${Math.max(10, Math.min(half * 2 - 10, half - shift))}px`);
+}
 function updatePlayerHUDPositions() {
   // Update Local Player Tag
   if (localCharacter) {
@@ -2848,6 +3013,7 @@ function updatePlayerHUDPositions() {
       const hud = getOrCreatePlayerHUD(clientId, selfMember ? selfMember.name : "Tôi", true);
       hud.elem.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
       hud.elem.style.display = 'flex';
+      fitChatBubble(hud, x);
     }
   }
 
@@ -2856,11 +3022,14 @@ function updatePlayerHUDPositions() {
     tempVec.set(rp.mesh.position.x, rp.mesh.position.y + 2.1, rp.mesh.position.z);
     tempVec.project(camera);
     const hud = getOrCreatePlayerHUD(id, rp.data.name, false);
-    if (tempVec.z < 1) {
+    const privateWC = pubDetails.inside(rp.targetPos.x, rp.targetPos.z) && !pubDetails.inside(localPlayerState.x, localPlayerState.z);
+    rp.mesh.visible = !privateWC;
+    if (tempVec.z < 1 && !privateWC) {
       const x = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
       hud.elem.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
       hud.elem.style.display = 'flex';
+      fitChatBubble(hud, x);
     } else {
       hud.elem.style.display = 'none';
     }
@@ -2952,6 +3121,7 @@ function connectWebSocket() {
     console.log('Đã kết nối Thế Giới 3D Quán Nhậu!');
     if (offlineFallbackTimer) clearTimeout(offlineFallbackTimer);
     isOfflineMode = false;
+    updateChatConnection();
   };
 
   ws.onmessage = (event) => {
@@ -2959,8 +3129,38 @@ function connectWebSocket() {
     const data = JSON.parse(event.data);
 
     switch (data.type) {
+      case 'wc_state':
+        wcOccupant = data.occupant_id;
+        pubDetails.setOccupied(Boolean(wcOccupant));
+        updateWCControls();
+        break;
+      case 'wc_result':
+        clearTimeout(wcRequestTimer); wcPending = false;
+        wcOccupant = data.entered ? clientId : null;
+        pubDetails.setOccupied(data.entered);
+        applyWCDoorTransition(data.entered);
+        break;
+      case 'wc_notice':
+        clearTimeout(wcRequestTimer); wcPending = false;
+        updateWCControls(); setTicker(data.message);
+        break;
+      case 'position_correction':
+        clearControls();
+        localPlayerState.x = data.x; localPlayerState.z = data.z;
+        localCharacter.mesh.position.set(data.x, 0.3, data.z);
+        setTicker(data.message);
+        break;
+      case 'chat_event':
+        receiveChat(data);
+        break;
+      case 'chat_error':
+        finishChatSend();
+        chatStatus.textContent = data.message;
+        break;
       case 'init':
         const world = data.world_state;
+        wcOccupant = world.wc_occupant || null;
+        pubDetails.setOccupied(Boolean(wcOccupant));
         totalCheersDisplay.textContent = world.total_cheers;
 
         // Tìm thông tin của mình
@@ -3146,6 +3346,7 @@ function connectWebSocket() {
   };
 
   ws.onclose = () => {
+    updateChatConnection();
     if (!isOfflineMode) {
       setTimeout(connectWebSocket, 3000);
     }
@@ -3270,6 +3471,7 @@ function removeRemotePlayer(id) {
 }
 
 function animateCheerMug(id) {
+  pubDetails.react('cheer', clock.elapsedTime);
   let mug = null;
   if (id === clientId && localCharacter) {
     mug = localCharacter.beerMug;
@@ -3393,8 +3595,10 @@ function animate() {
       moveZ /= len;
 
       const currentSpeed = localPlayerState.speed * Math.max(0.4, inputMag);
-      localPlayerState.x += moveX * currentSpeed * delta;
-      localPlayerState.z += moveZ * currentSpeed * delta;
+      const next = pubDetails.move(localPlayerState.x, localPlayerState.z,
+        moveX * currentSpeed * delta, moveZ * currentSpeed * delta, Boolean(wcOccupant && wcOccupant !== clientId));
+      localPlayerState.x = next.x;
+      localPlayerState.z = next.z;
 
       // Giới hạn trong khuôn viên: từ quán vỉa hè, qua đường, đến tận bờ sông Sài Gòn
       localPlayerState.x = Math.max(-23, Math.min(23, localPlayerState.x));
@@ -3461,6 +3665,9 @@ function animate() {
     interactPrompt.style.display = 'none';
   }
 
+  updateWCControls();
+  pubDetails.update(clock.elapsedTime);
+
   // Animation Hạt tia nước đái bậy & Hạt ói mửa nôn thốc nôn tháo
   updatePeeParticles(delta);
   updateVomitParticles(delta);
@@ -3483,29 +3690,40 @@ function animate() {
 
   // Animation Đèn LED Landmark 81 & Ngọn Hải Đăng Đỉnh Tháp
   if (landmarkSpireLight) {
-    landmarkSpireLight.intensity = 1.8 + Math.sin(clock.getElapsedTime() * 4) * 0.8;
+    landmarkSpireLight.intensity = 1.8 + Math.sin(clock.elapsedTime * 0.7) * 0.25;
   }
   if (landmarkLEDs.length > 0) {
-    const hue = (clock.getElapsedTime() * 0.08) % 1;
+    const hue = (clock.elapsedTime * (comfortMode ? 0.004 : 0.012) + 0.5) % 1;
     landmarkLEDs.forEach((strip, sIdx) => {
-      const sHue = (hue + sIdx * 0.15) % 1;
-      strip.material.color.setHSL(sHue, 1.0, 0.55);
+      const sHue = (hue + Math.floor(sIdx / 4) * 0.11) % 1;
+      strip.material.color.setHSL(sHue, 0.65, 0.7);
     });
   }
 
+  if (landmarkReflections) landmarkReflections.material.opacity = 0.3 + Math.sin(clock.elapsedTime * 0.65) * 0.035;
+  if (landmarkBeaconHalo) landmarkBeaconHalo.material.opacity = 0.8 + Math.sin(clock.elapsedTime * 0.7) * 0.1;
+
   // Camera Management: Chế độ Cinematic Ngắm Landmark 81 VS Góc nhìn 360°
-  if (isScenicView) {
+  const inWC = pubDetails.inside(localPlayerState.x, localPlayerState.z);
+  if (inWC && isScenicView) toggleScenicView();
+  if (inWC !== wasInWC) {
+    cameraTargetReady = false;
+    if (!inWC) wcHygiene = 'ready';
+    wasInWC = inWC;
+  }
+  if (isScenicView && !inWC) {
     // Góc nhìn điện ảnh hướng thẳng ra Landmark 81 và dòng sông lấp lánh
     const scenicCamPos = new THREE.Vector3(localPlayerState.x * 0.5, 6.2, 19.5);
+    const scenicLookY = camera.aspect < 0.8 ? 24 : 22;
     camera.position.lerp(scenicCamPos, 1 - Math.exp(-7 * delta));
-    if (!cameraTargetReady) { cameraLookTarget.set(8, 20, 95); cameraTargetReady = true; }
-    cameraLookTarget.lerp(new THREE.Vector3(8, 20, 95), 1 - Math.exp(-9 * delta));
+    if (!cameraTargetReady) { cameraLookTarget.set(8, scenicLookY, 95); cameraTargetReady = true; }
+    cameraLookTarget.lerp(new THREE.Vector3(8, scenicLookY, 95), 1 - Math.exp(-9 * delta));
     camera.lookAt(cameraLookTarget);
   } else {
     // Camera Xoay 360° Orbit bám theo nhân vật
-    const lookTargetX = localPlayerState.x;
-    const lookTargetY = 1.35;
-    const lookTargetZ = localPlayerState.z;
+    const lookTargetX = inWC ? -20.2 : localPlayerState.x;
+    const lookTargetY = inWC ? 0.9 : 1.35;
+    const lookTargetZ = inWC ? -2.3 : localPlayerState.z;
 
     let drunkYawOffset = 0;
     let drunkPitchOffset = 0;
@@ -3515,12 +3733,14 @@ function animate() {
       drunkPitchOffset = Math.cos(clock.getElapsedTime() * 1.9) * 0.08 * drunkFactor;
     }
 
-    const curYaw = cameraYaw + drunkYawOffset;
-    const curPitch = cameraPitch + drunkPitchOffset;
+    const curYaw = inWC ? Math.sin(cameraYaw) * 0.35 : cameraYaw + drunkYawOffset;
+    const curPitch = inWC ? Math.max(0.85, cameraPitch) : cameraPitch + drunkPitchOffset;
+    const viewDistance = inWC ? Math.max(7, Math.min(13.5, cameraDistance * 1.35)) : cameraDistance;
 
-    const horizontalDist = cameraDistance * Math.cos(curPitch);
-    const targetCamX = lookTargetX + horizontalDist * Math.sin(curYaw);
-    const targetCamY = lookTargetY + cameraDistance * Math.sin(curPitch);
+    const horizontalDist = viewDistance * Math.cos(curPitch);
+    let targetCamX = lookTargetX + horizontalDist * Math.sin(curYaw);
+    if (inWC) targetCamX = Math.max(-22.3, Math.min(-18.4, targetCamX));
+    const targetCamY = lookTargetY + viewDistance * Math.sin(curPitch);
     const targetCamZ = lookTargetZ + horizontalDist * Math.cos(curYaw);
 
     if (!cameraTargetReady) {
@@ -3591,6 +3811,7 @@ sitStandBtn.addEventListener('click', () => {
 
 // Gắp Mồi
 eatSnackBtn.addEventListener('click', () => {
+  pubDetails.react('snack', clock.elapsedTime);
   getAudioContext();
   sendAction({ action: 'eat_snack' });
 });
@@ -3635,7 +3856,7 @@ document.querySelectorAll('.shout-chip').forEach(chip => {
     getAudioContext();
     const text = e.target.getAttribute('data-shout');
     sendAction({ action: 'quick_shout', text });
-    if (hudShoutsBarElem) hudShoutsBarElem.classList.remove('is-open');
+    setChatOpen(false);
   });
 });
 
@@ -3644,14 +3865,76 @@ const shoutToggleBtn = document.getElementById('shoutToggleBtn');
 const closeShoutBtn = document.getElementById('closeShoutBtn');
 if (shoutToggleBtn && hudShoutsBarElem) {
   shoutToggleBtn.addEventListener('click', () => {
-    hudShoutsBarElem.classList.toggle('is-open');
+    setChatOpen(!hudShoutsBarElem.classList.contains('is-open'));
   });
 }
 if (closeShoutBtn && hudShoutsBarElem) {
   closeShoutBtn.addEventListener('click', () => {
-    hudShoutsBarElem.classList.remove('is-open');
+    setChatOpen(false);
   });
 }
+
+// Free text uses the existing multiplayer WebSocket and safe text nodes.
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+const chatStatus = document.getElementById('chatStatus');
+const chatSendBtn = document.getElementById('chatSendBtn');
+let pendingChatText = null;
+let chatSendTimer = null;
+function setChatOpen(open) {
+  hudShoutsBarElem.classList.toggle('is-open', open);
+  document.body.classList.toggle('chat-open', open);
+  shoutToggleBtn.setAttribute('aria-expanded', String(open));
+  if (open) {
+    clearControls(); closeExtraActions();
+    chatInput.focus(); updateChatConnection();
+  } else {
+    chatInput.blur();
+  }
+}
+function updateChatConnection() {
+  const online = ws && ws.readyState === WebSocket.OPEN;
+  chatSendBtn.disabled = !online || pendingChatText !== null;
+  chatStatus.textContent = online ? 'Cùng bàn cùng chuyện • tối đa 160 ký tự' : 'Chưa kết nối phòng chơi. Tin nhắn chưa được gửi.';
+}
+function finishChatSend() {
+  clearTimeout(chatSendTimer);
+  pendingChatText = null;
+  chatSendBtn.disabled = !(ws && ws.readyState === WebSocket.OPEN);
+}
+function receiveChat(data) {
+  getOrCreatePlayerHUD(data.member_id, data.member_name, data.member_id === clientId);
+  show3DShoutBubble(data.member_id, data.text, Math.min(10000, 5000 + data.text.length * 40));
+  chatStatus.textContent = `${data.member_name}: ${data.text}`;
+  if (data.member_id === clientId && pendingChatText !== null) {
+    if (chatInput.value.trim() === pendingChatText) chatInput.value = '';
+    finishChatSend();
+  }
+}
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text || pendingChatText !== null) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) { updateChatConnection(); return; }
+  pendingChatText = text;
+  chatSendBtn.disabled = true;
+  chatStatus.textContent = 'Đang gửi…';
+  chatSendTimer = setTimeout(() => { finishChatSend(); chatStatus.textContent = 'Chưa nhận được xác nhận. Bạn có thể gửi lại.'; }, 5000);
+  sendAction({ action: 'chat', text });
+});
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); setChatOpen(false); }
+});
+function placeChatAboveKeyboard() {
+  const viewport = window.visualViewport;
+  const offset = viewport ? Math.max(0, innerHeight - viewport.height - viewport.offsetTop) : 0;
+  document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`);
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', placeChatAboveKeyboard);
+  visualViewport.addEventListener('scroll', placeChatAboveKeyboard);
+}
+updateChatConnection();
 
 // Bấm trực tiếp vào thông báo tương tác trên màn hình cảm ứng
 if (interactPrompt) {

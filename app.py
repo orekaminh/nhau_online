@@ -3,6 +3,7 @@ import json
 import random
 import os
 import time
+import math
 from typing import Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
@@ -50,6 +51,8 @@ class Pub3DRoom:
         self.members: Dict[str, dict] = {}
         self.snack_plates: Dict[int, int] = {0: 100, 1: 100} # 2 bàn nhậu, mỗi bàn 1 đĩa mồi
         self.total_cheers: int = 0
+        self.wc_occupant = None
+        self.chat_times = {}
 
     def add_member(self, client_id: str, ws: WebSocket, nickname: str = None) -> dict:
         self.clients[client_id] = ws
@@ -80,24 +83,39 @@ class Pub3DRoom:
         self.members[client_id] = member
         return member
 
+    @staticmethod
+    def inside_wc(x, z):
+        return -22.65 < x < -18.05 and -4.55 < z < -0.05
+
+    def wc_state(self):
+        return {"type": "wc_state", "occupant_id": self.wc_occupant}
+
     def remove_member(self, client_id: str):
+        released = self.wc_occupant == client_id
+        if released:
+            self.wc_occupant = None
+        self.chat_times.pop(client_id, None)
         if client_id in self.clients:
             del self.clients[client_id]
         if client_id in self.members:
             del self.members[client_id]
+        return released
 
     async def broadcast(self, message: dict, exclude_client: str = None):
         text = json.dumps(message)
         dead_clients = []
-        for cid, ws in self.clients.items():
+        for cid, ws in list(self.clients.items()):
             if cid == exclude_client:
                 continue
             try:
                 await ws.send_text(text)
             except Exception:
                 dead_clients.append(cid)
+        released = False
         for cid in dead_clients:
-            self.remove_member(cid)
+            released = self.remove_member(cid) or released
+        if released:
+            await self.broadcast(self.wc_state())
 
     def get_state(self):
         return {
@@ -105,6 +123,7 @@ class Pub3DRoom:
             "members": list(self.members.values()),
             "snack_plates": self.snack_plates,
             "total_cheers": self.total_cheers,
+            "wc_occupant": self.wc_occupant,
         }
 
 rooms: Dict[str, Pub3DRoom] = {}
@@ -121,6 +140,10 @@ async def get_index():
 @app.get("/style.css")
 async def get_style():
     return FileResponse(os.path.join(STATIC_DIR, "style.css"))
+
+@app.get("/world-details.js")
+async def world_details_js():
+    return FileResponse(os.path.join(STATIC_DIR, "world-details.js"))
 
 @app.get("/app.js")
 async def get_script():
@@ -159,17 +182,73 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
             data = json.loads(raw_data)
             action = data.get("action")
 
+            if action == "chat":
+                raw = data.get("text", "")
+                if not isinstance(raw, str):
+                    continue
+                text = " ".join("".join(c for c in raw if c.isprintable()).split())[:160]
+                now = time.monotonic()
+                if not text:
+                    await websocket.send_json({"type": "chat_error", "message": "Nhập lời muốn nói trước nhé."})
+                elif now - room.chat_times.get(client_id, 0) < 1.0:
+                    await websocket.send_json({"type": "chat_error", "message": "Chờ một chút rồi gửi tin tiếp nhé."})
+                else:
+                    room.chat_times[client_id] = now
+                    await room.broadcast({"type": "chat_event", "member_id": client_id,
+                        "member_name": room.members[client_id]["name"], "text": text})
+                continue
+
+            if action in ("wc_enter", "wc_exit"):
+                mem = room.members[client_id]
+                entering = action == "wc_enter"
+                if entering:
+                    if room.wc_occupant not in (None, client_id):
+                        await websocket.send_json({"type": "wc_notice", "message": "🚪 WC đang có người. Đợi ở ngoài một chút nhé!"})
+                        continue
+                    if mem["is_sitting"] or mem["status"] == "guc_nga" or math.hypot(mem["x"] + 17, mem["z"] + 2.7) > 3.0:
+                        await websocket.send_json({"type": "wc_notice", "message": "Đến gần cửa WC rồi bấm Vào WC nhé."})
+                        continue
+                    room.wc_occupant = client_id
+                elif room.wc_occupant != client_id:
+                    continue
+                else:
+                    room.wc_occupant = None
+                mem.update(x=-19.2 if entering else -16.4, z=-2.7, ry=-math.pi/2 if entering else math.pi/2, is_walking=False)
+                await websocket.send_json({"type": "wc_result", "entered": entering, "x": mem["x"], "z": mem["z"], "ry": mem["ry"]})
+                await room.broadcast(room.wc_state())
+                await room.broadcast({"type": "player_moved", "id": client_id, "x": mem["x"], "y": 0,
+                    "z": mem["z"], "ry": mem["ry"], "is_walking": False}, exclude_client=client_id)
+                continue
+
             if action == "move":
                 # Đồng bộ vị trí 3D di chuyển
                 if client_id in room.members:
                     mem = room.members[client_id]
                     if not mem["is_sitting"] and mem["status"] != "guc_nga":
-                        mem["x"] = float(data.get("x", mem["x"]))
+                        nx, nz = float(data.get("x", mem["x"])), float(data.get("z", mem["z"]))
+                        if not math.isfinite(nx) or not math.isfinite(nz):
+                            continue
+                        inside = room.inside_wc(nx, nz)
+                        if inside and (room.wc_occupant not in (None, client_id) or
+                            (room.wc_occupant is None and math.hypot(mem["x"] + 17, mem["z"] + 2.7) > 3.0)):
+                            await websocket.send_json({"type": "position_correction", "x": mem["x"], "z": mem["z"],
+                                "message": "🚪 WC đang có người hoặc bạn chưa đến cửa. Đợi bên ngoài nhé."})
+                            continue
+                        changed_wc = False
+                        if inside and room.wc_occupant is None:
+                            room.wc_occupant = client_id
+                            changed_wc = True
+                        elif not inside and room.wc_occupant == client_id:
+                            room.wc_occupant = None
+                            changed_wc = True
+                        mem["x"] = nx
                         mem["y"] = float(data.get("y", 0))
                         mem["z"] = float(data.get("z", mem["z"]))
                         mem["ry"] = float(data.get("ry", mem["ry"]))
                         mem["is_walking"] = bool(data.get("is_walking", False))
 
+                        if changed_wc:
+                            await room.broadcast(room.wc_state())
                         # Broadcast vị trí cho những người chơi khác
                         await room.broadcast({
                             "type": "player_moved",
@@ -310,6 +389,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
             elif action == "pee":
                 # Tính năng xả lũ / đái bậy / đi WC
                 spot_type = data.get("spot_type", "tree") # wc | tree | wall
+                if spot_type == "wc" and (room.wc_occupant != client_id or not room.inside_wc(room.members[client_id]["x"], room.members[client_id]["z"])):
+                    await websocket.send_json({"type": "wc_notice", "message": "Vào WC và chốt cửa trước khi sử dụng nhé."})
+                    continue
                 if client_id in room.members:
                     mem = room.members[client_id]
                     mem["bladder_level"] = 0
@@ -444,7 +526,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
 
     except WebSocketDisconnect:
         left_mem = room.members.get(client_id)
-        room.remove_member(client_id)
+        released = room.remove_member(client_id)
+        if released:
+            await room.broadcast(room.wc_state())
         if left_mem:
             await room.broadcast({
                 "type": "member_left",
@@ -452,7 +536,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                 "message": f"👋 {left_mem['name']} đã đứng dậy rời quán về ngủ!"
             })
     except Exception:
-        room.remove_member(client_id)
+        if room.remove_member(client_id):
+            await room.broadcast(room.wc_state())
 
 if __name__ == "__main__":
     import uvicorn

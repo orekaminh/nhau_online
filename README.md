@@ -53,3 +53,10 @@ Bạn có thể mở quán nhậu cho bạn bè ở bất kỳ đâu (kể cả 
 ## 🚀 Trải Nghiệm Local:
 Bật server bằng `start.bat` (hoặc `python app.py`) rồi vào:
 👉 **`http://localhost:8000`** (bấm `Ctrl + F5` trên trình duyệt để thưởng thức phố đêm Sài Gòn nhé!)
+
+## Mobile, WC và trò chuyện
+
+- **Thêm:** hành động phụ nằm trên hàng cuộn ngang, tự đóng sau khi chọn.
+- **WC:** đến cửa hông trái quán → Vào WC → Dùng WC → Rửa tay → Ra quán. Có thể đi bộ qua cửa. WC có chốt cho một người; ra ngoài hoặc mất kết nối sẽ tự mở. Nhân vật trong WC được ẩn với người đứng ngoài.
+- **Chat:** bấm **Trò chuyện** trên mobile hoặc **Enter** trên máy tính, nhập tối đa 160 ký tự rồi gửi. Tin hiện trên đầu nhân vật trong cùng phòng; **Esc** đóng ô chat. Chat nhiều người cần kết nối server WebSocket.
+- **Chó mèo:** đi dạo ở mép khu bàn nhậu, có bát nước và phản ứng vui khi cụng ly/gắp mồi.

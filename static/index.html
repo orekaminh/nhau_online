@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
-  <link rel="stylesheet" href="style.css?v=20261102_06">
+  <link rel="stylesheet" href="style.css?v=20261102_09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,700;0,900;1,700&family=Bungee&display=swap" rel="stylesheet">
@@ -26,6 +26,10 @@
     <button id="comfortBtn" aria-pressed="true">Êm mắt</button>
     <button id="moreActionsBtn" class="mobile-only" aria-expanded="false" aria-controls="extraActions">Thêm</button>
   </nav>
+  <div id="wcControls" class="wc-controls" hidden>
+    <button id="wcUseBtn">🚪 Vào WC [P]</button>
+    <button id="wcExitBtn" hidden>↗ Ra quán</button>
+  </div>
   <p class="mobile-camera-hint mobile-only">Kéo cần để đi · Vuốt cảnh để nhìn · Hai ngón để zoom</p>
 
   <!-- Drunk Wobble Filter Overlay -->
@@ -174,20 +178,26 @@
     </div>
 
     <!-- Mobile Shout Toggle Button (Only on Mobile) -->
-    <button id="shoutToggleBtn" class="mob-shout-toggle mobile-only" title="Mở danh sách câu cửa miệng">💬 Cửa Miệng</button>
+    <button id="shoutToggleBtn" class="mob-shout-toggle" title="Trò chuyện với người trong phòng" aria-expanded="false" aria-controls="hudShoutsBar">💬 Trò chuyện</button>
 
     <!-- Soundboard Quick Shouts (Desktop bar / Mobile Pop-out Drawer) -->
     <div id="hudShoutsBar" class="hud-shouts-bar">
-      <div class="shout-header-mobile mobile-only">
-        <span>🗣️ CÂU NÓI CỬA MIỆNG</span>
-        <button id="closeShoutBtn" class="close-shout-btn">✕</button>
+      <div class="shout-header-mobile">
+        <span>💬 TRÒ CHUYỆN TRONG QUÁN</span>
+        <button id="closeShoutBtn" class="close-shout-btn" aria-label="Đóng trò chuyện">✕</button>
       </div>
-      <span class="shout-title desktop-only">🗣️ Cửa miệng:</span>
+      <div id="chatStatus" class="chat-status" role="status" aria-live="polite"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" aria-label="Tin nhắn cho cả phòng" maxlength="160" autocomplete="off" placeholder="Nói gì với anh em…" enterkeyhint="send">
+        <button id="chatSendBtn" type="submit">Gửi</button>
+      </form>
+      <details class="quick-chat"><summary>Câu nói nhanh</summary>
       <button class="shout-chip" data-shout="Không say không về!">"Không say không về!"</button>
       <button class="shout-chip" data-shout="Chú không nể anh à?">"Chú không nể anh!"</button>
       <button class="shout-chip" data-shout="Nhấp môi đấy à? Trăm phần trăm!">"Nhấp môi đấy à?"</button>
       <button class="shout-chip" data-shout="Tao còn tỉnh lắm, rót tiếp!">"Tao còn tỉnh lắm!"</button>
       <button class="shout-chip" data-shout="Mồi tặc nào gắp hết dĩa rồi?">"Kêu thêm dĩa mồi!"</button>
+      </details>
     </div>
   </footer>
 
@@ -225,6 +235,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261102_06"></script>
+  <script src="world-details.js?v=20261102_09"></script>
+  <script src="app.js?v=20261102_09"></script>
 </body>
 </html>
