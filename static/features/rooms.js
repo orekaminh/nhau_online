@@ -78,7 +78,23 @@
     F.openPanel('rooms', { title: 'Phòng chơi', icon: '🚪', render: (body) => render(body, notice) });
   };
 
+  // ---- Nhật ký chat: tin nhắn của mọi người trong quán hiện thành danh sách ở góc trái, tự mờ dần ----
+  let feed = null;
+  function pushFeed(name, text, isSelf) {
+    if (!feed) return;
+    const line = h('div', { class: 'fx-chat-line' + (isSelf ? ' is-self' : '') },
+      h('b', { text: name + ': ' }), h('span', { text }));
+    feed.append(line);
+    while (feed.children.length > 7) feed.firstChild.remove();
+    setTimeout(() => line.classList.add('is-old'), 14000);
+    setTimeout(() => line.remove(), 20000);
+  }
+  F.on('chat_event', (d) => { pushFeed(d.member_name, d.text, d.member_id === F.selfId); });
+  F.on('shout_event', (d) => { pushFeed(d.member_name, d.text, d.member_id === F.selfId); });
+
   F.onStart(() => {
+    feed = h('div', { id: 'fx-chatlog', 'aria-live': 'polite', 'aria-label': 'Tin nhắn trong quán' });
+    document.body.append(feed);
     F.addMenuItem({ id: 'rooms', icon: '🚪', label: 'Phòng chơi', hint: () => 'Mã: ' + F.roomId.toUpperCase(), order: 35, onClick: () => F.openRooms() });
   });
 })();

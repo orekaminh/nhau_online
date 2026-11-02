@@ -38,7 +38,7 @@ os.makedirs(os.path.join(STATIC_DIR, "vendor"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/vendor", StaticFiles(directory=os.path.join(STATIC_DIR, "vendor")), name="vendor")
 
-LONG_CACHE_PREFIXES = ("/vendor/", "/environment/", "/textures/", "/static/vendor/", "/static/textures/",
+LONG_CACHE_PREFIXES = ("/vendor/", "/environment/", "/textures/", "/sounds/", "/static/vendor/", "/static/textures/",
                        "/static/environment/")
 
 
@@ -318,6 +318,11 @@ def _safe_static(folder: str, path: str):
 @app.get("/features/{path:path}")
 async def get_features_file(path: str):
     return _safe_static("features", path)
+
+
+@app.get("/sounds/{path:path}")
+async def get_sound_file(path: str):
+    return _safe_static("sounds", path)
 
 
 @app.get("/music/{path:path}")

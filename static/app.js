@@ -256,35 +256,93 @@ function playVomitSound() {
   if (!soundEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
-  const now = ctx.currentTime;
+  const t0 = ctx.currentTime + 0.02;
+  const out = ctx.createGain();
+  out.gain.value = 0.9;
+  out.connect(ctx.destination);
 
-  const osc1 = ctx.createOscillator();
-  const gain1 = ctx.createGain();
-  osc1.type = 'sawtooth';
-  osc1.frequency.setValueAtTime(160, now);
-  osc1.frequency.exponentialRampToValueAtTime(55, now + 0.35);
-  gain1.gain.setValueAtTime(0.35, now);
-  gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
-  osc1.connect(gain1);
-  gain1.connect(ctx.destination);
-  osc1.start(now);
-  osc1.stop(now + 0.4);
+  // Tiếng ọe/hộc từ cổ họng: sóng răng cưa trầm qua các formant của miệng, rung thô như dây thanh bị nghẹn.
+  const retch = (at, len, f0, f1, level) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(f0, at);
+    osc.frequency.exponentialRampToValueAtTime(f1, at + len);
+    const rough = ctx.createGain();          // rung ~28Hz tạo tiếng "gừ gừ" thô ráp
+    const lfo = ctx.createOscillator();
+    const lfoDepth = ctx.createGain();
+    lfo.frequency.value = 28;
+    lfoDepth.gain.value = 0.45;
+    rough.gain.value = 0.55;
+    lfo.connect(lfoDepth); lfoDepth.connect(rough.gain);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(level, at + 0.05);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    osc.connect(rough);
+    for (const [freq, q, gainValue] of [[480, 4, 1], [1050, 5, 0.7], [2300, 6, 0.3]]) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+      const g = ctx.createGain(); g.gain.value = gainValue;
+      rough.connect(bp); bp.connect(g); g.connect(env);
+    }
+    env.connect(out);
+    osc.start(at); lfo.start(at); osc.stop(at + len + 0.05); lfo.stop(at + len + 0.05);
+  };
+  retch(t0, 0.34, 70, 110, 0.9);        // "hộc"
+  retch(t0 + 0.5, 0.4, 62, 125, 1.0);   // "hộc... ọe"
+  retch(t0 + 1.05, 0.55, 150, 95, 0.8); // "ọoeee"
 
-  setTimeout(() => {
-    if (!soundEnabled) return;
-    const ctxNow = ctx.currentTime;
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(220, ctxNow);
-    osc2.frequency.linearRampToValueAtTime(45, ctxNow + 0.65);
-    gain2.gain.setValueAtTime(0.4, ctxNow);
-    gain2.gain.exponentialRampToValueAtTime(0.01, ctxNow + 0.7);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(ctxNow);
-    osc2.stop(ctxNow + 0.7);
-  }, 350);
+  // Dòng nôn tuôn ra: nhiễu lọc thấp, độ vang lên xuống từng đợt phun, âm sắc ướt sệt.
+  const dur = 1.7, splashAt = t0 + 1.2;
+  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let lp = 0;
+  for (let i = 0; i < data.length; i++) { lp += (Math.random() * 2 - 1 - lp) * 0.18; data[i] = lp * 2.2; }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass'; band.Q.value = 1.1;
+  band.frequency.setValueAtTime(900, splashAt);
+  band.frequency.exponentialRampToValueAtTime(260, splashAt + dur);
+  const gush = ctx.createGain();
+  gush.gain.setValueAtTime(0.0001, splashAt);
+  let pos = 0.04;
+  gush.gain.exponentialRampToValueAtTime(0.9, splashAt + pos);
+  for (let k = 0; k < 7; k++) {            // các đợt phun ngắt quãng
+    pos += 0.1 + Math.random() * 0.12;
+    gush.gain.linearRampToValueAtTime(0.35 + Math.random() * 0.55, splashAt + Math.min(pos, dur - 0.3));
+  }
+  gush.gain.exponentialRampToValueAtTime(0.0001, splashAt + dur);
+  noise.connect(band); band.connect(gush); gush.connect(out);
+  noise.start(splashAt); noise.stop(splashAt + dur);
+
+  // Bọt lục bục và những giọt nhỏ xuống sàn.
+  for (let i = 0; i < 16; i++) {
+    const at = splashAt + 0.1 + Math.random() * (dur - 0.2);
+    const bubble = ctx.createOscillator();
+    const g = ctx.createGain();
+    const base = 220 + Math.random() * 520;
+    bubble.type = 'sine';
+    bubble.frequency.setValueAtTime(base, at);
+    bubble.frequency.exponentialRampToValueAtTime(base * 1.8, at + 0.05);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.28, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+    bubble.connect(g); g.connect(out);
+    bubble.start(at); bubble.stop(at + 0.09);
+  }
+  for (let i = 0; i < 3; i++) {            // nhổ nốt vài giọt cuối
+    const at = splashAt + dur + 0.05 + i * (0.12 + Math.random() * 0.1);
+    const drip = ctx.createOscillator();
+    const g = ctx.createGain();
+    drip.type = 'sine';
+    drip.frequency.setValueAtTime(900, at);
+    drip.frequency.exponentialRampToValueAtTime(350, at + 0.08);
+    g.gain.setValueAtTime(0.25, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
+    drip.connect(g); g.connect(out);
+    drip.start(at); drip.stop(at + 0.12);
+  }
 }
 
 // Âm thanh Em PG rót bia sủi bọt mát lạnh
@@ -2859,42 +2917,49 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) clear
 window.addEventListener('resize', clearControls);
 
 const comfortBtn = document.getElementById('comfortBtn');
-// "Một, hai, ba, dô!" bằng giọng đọc tiếng Việt của trình duyệt (Web Speech). Máy không có giọng Việt thì bỏ qua.
-let viVoice = null;
+// "Một, hai, ba, dô!" bằng file giọng tiếng Việt thật (sounds/cheer_123do.mp3), phát qua Web Audio.
+// Càng xỉn càng chậm, trầm và chập chờn như giọng người say.
+let cheerBuffer = null;
+let cheerLoading = false;
+let cheerSource = null;
 let lastSpeak = 0;
-function pickVietnameseVoice() {
-  if (!('speechSynthesis' in window)) return null;
-  const voices = speechSynthesis.getVoices();
-  return voices.find(v => /^vi/i.test(v.lang)) || null;
-}
-if ('speechSynthesis' in window) {
-  viVoice = pickVietnameseVoice();
-  speechSynthesis.addEventListener('voiceschanged', () => { viVoice = pickVietnameseVoice(); });
+function loadCheerVoice() {
+  if (cheerBuffer || cheerLoading) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  cheerLoading = true;
+  fetch('sounds/cheer_123do.mp3').then(r => r.arrayBuffer())
+    .then(buf => new Promise((ok, fail) => ctx.decodeAudioData(buf, ok, fail)))
+    .then(decoded => { cheerBuffer = decoded; })
+    .catch(err => { console.warn('Không tải được giọng 1 2 3 dô', err); })
+    .finally(() => { cheerLoading = false; });
 }
 function speakCheer(isSelf, drunk = 0) {
-  if (!soundEnabled || !viVoice) return;
+  if (!soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (!cheerBuffer) { loadCheerVoice(); return; }
   const now = performance.now();
-  if (now - lastSpeak < (isSelf ? 900 : 2500)) return; // người khác cụng dồn dập thì không đọc chồng chéo
+  if (now - lastSpeak < (isSelf ? 500 : 2600)) return; // người khác cụng dồn dập thì không đọc chồng chéo
   lastSpeak = now;
-  // Càng xỉn càng lè nhè: nói chậm, trầm, kéo dài chữ, cao độ chập chờn từng tiếng và nấc cụt.
-  const words = drunk >= 65 ? ['Mộtttt', 'haiii', 'bạaa', 'dôôô', 'hức']
-    : drunk >= 30 ? ['Một', 'haiii', 'ba', 'dôôô']
-    : ['Một', 'hai', 'ba', 'dô'];
-  const wobble = drunk >= 65 ? 0.28 : drunk >= 30 ? 0.12 : 0;
-  const baseRate = drunk >= 65 ? 0.55 : drunk >= 30 ? 0.85 : 1.1;
-  const basePitch = drunk >= 65 ? 0.6 : drunk >= 30 ? 0.85 : 1;
-  try {
-    if (isSelf) speechSynthesis.cancel();
-    words.forEach((word, i) => {
-      const u = new SpeechSynthesisUtterance(word + (i === words.length - 1 ? '!' : ','));
-      u.voice = viVoice;
-      u.lang = viVoice.lang;
-      u.rate = Math.max(0.3, baseRate * (1 + (Math.random() - 0.5) * wobble * 1.2));
-      u.pitch = Math.max(0.1, (isSelf ? basePitch : basePitch * 0.85) * (1 + (Math.random() - 0.5) * wobble * 2));
-      u.volume = isSelf ? 1 : 0.5;
-      speechSynthesis.speak(u);
-    });
-  } catch (_) { /* trình duyệt không cho đọc: bỏ qua */ }
+  const src = ctx.createBufferSource();
+  src.buffer = cheerBuffer;
+  const level = drunk >= 65 ? 1 : drunk >= 30 ? 0.5 : 0;
+  src.playbackRate.value = 1 - level * (drunk >= 65 ? 0.4 : 0.15);   // chậm và trầm hơn khi say
+  if (level > 0) {                                                   // cao độ chao đảo
+    const lfo = ctx.createOscillator();
+    const depth = ctx.createGain();
+    lfo.frequency.value = 5.5;
+    depth.gain.value = 0.09 * level;
+    lfo.connect(depth); depth.connect(src.playbackRate);
+    lfo.start(); lfo.stop(ctx.currentTime + cheerBuffer.duration / src.playbackRate.value + 0.2);
+  }
+  const gain = ctx.createGain();
+  gain.gain.value = isSelf ? 1 : 0.45;
+  src.connect(gain); gain.connect(ctx.destination);
+  if (isSelf && cheerSource) { try { cheerSource.stop(); } catch (_) {} }
+  cheerSource = src;
+  src.start();
 }
 
 function updateComfort() {
@@ -4447,3 +4512,4 @@ if (window.Features) Features.start();
 connectWebSocket();
 // Chi tiết phụ chạy sau khung hình đầu tiên để vào quán nhanh nhất có thể.
 PubLoader.afterFirstFrame(() => { loadHDREnvironment(); loadPBRDetailMaps(); });
+document.addEventListener('pointerdown', loadCheerVoice, { once: true });

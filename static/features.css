@@ -212,3 +212,12 @@ html.lite * { text-shadow: none !important; }
 
 /* Thanh công cụ góc phải (đã thêm nút Menu) nằm đè lên thẻ phím tắt cũ: đẩy thẻ xuống dưới. */
 .control-hints-card { top: 164px; }
+
+/* ---------- Nhật ký chat ---------- */
+#fx-chatlog { position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: 24px; z-index: 60; width: min(320px, 40vw); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.fx-chat-line { padding: 4px 10px; border-radius: 10px; background: #0b1220cc; color: #f1f5f9; font: .8rem/1.35 'Be Vietnam Pro', system-ui, sans-serif; word-break: break-word; transition: opacity 1.5s; animation: fxToastIn .25s ease-out; }
+.fx-chat-line b { color: #fbbf24; }
+.fx-chat-line.is-self b { color: #34d399; }
+.fx-chat-line.is-old { opacity: .35; }
+body.fx-photo #fx-chatlog, body.fx-panel-open #fx-chatlog { display: none; }
+@media (pointer: coarse), (max-width: 768px) { #fx-chatlog { bottom: 250px; width: 58vw; } .fx-chat-line { font-size: .72rem; padding: 3px 8px; } }
