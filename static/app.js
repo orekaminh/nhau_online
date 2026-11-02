@@ -315,26 +315,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, matchMedia('(pointer: c
 renderer.shadowMap.enabled = !matchMedia('(pointer: coarse)').matches;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.32;
+renderer.toneMappingExposure = 0.90;
 if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 canvasContainer.appendChild(renderer.domElement);
 
 // ========================================================
 // 2.1. Realistic Post-Processing: UnrealBloomPass
 // ========================================================
+// Tắt hoàn toàn hiệu ứng lóa sáng (Bloom) để hình ảnh sắc nét, rõ ràng, êm dịu cho mắt
 let composer = null;
-if (typeof THREE.EffectComposer !== 'undefined' && typeof THREE.UnrealBloomPass !== 'undefined') {
-  const renderPass = new THREE.RenderPass(scene, camera);
-  const bloomPass = new THREE.UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.62, // bloom strength: ánh neon tỏa êm dịu, ấm áp
-    0.38, // bloom radius
-    0.82  // bloom threshold
-  );
-  composer = new THREE.EffectComposer(renderer);
-  composer.addPass(renderPass);
-  composer.addPass(bloomPass);
-}
 
 // ========================================================
 // 2.2. Image-Based Lighting (IBL) via Saigon Night HDRI
@@ -355,12 +344,12 @@ if (typeof THREE.RGBELoader !== 'undefined') {
     });
 }
 
-// Lighting: Cinematic Saigon Nightlife
-const ambientLight = new THREE.AmbientLight(0x1e293b, 1.3);
+// Lighting: Dịu mắt, ấm áp đêm phố Sài Gòn (Không bị chói lóa)
+const ambientLight = new THREE.AmbientLight(0x334155, 0.45);
 scene.add(ambientLight);
 
-// Warm Sodium Street Light (Vàng hổ phách đường phố Sài Gòn)
-const streetLight = new THREE.DirectionalLight(0xffb366, 1.4);
+// Đèn đường vàng ấm dịu nhẹ
+const streetLight = new THREE.DirectionalLight(0xffb366, 0.75);
 streetLight.position.set(6, 16, 9);
 streetLight.castShadow = true;
 streetLight.shadow.mapSize.width = 1024;
@@ -373,21 +362,21 @@ streetLight.shadow.camera.top = 22;
 streetLight.shadow.camera.bottom = -22;
 scene.add(streetLight);
 
-// Neon Sign Point Lights (Tạo độ tương phản màu sắc Cyberpunk / Đêm Sài Gòn)
-const neonCyan = new THREE.PointLight(0x06b6d4, 2.5, 18);
+// Đèn neon dịu dàng, tạo màu sắc ấm cúng
+const neonCyan = new THREE.PointLight(0x06b6d4, 0.9, 14);
 neonCyan.position.set(-6, 4.5, -4.5);
 scene.add(neonCyan);
 
-const neonMagenta = new THREE.PointLight(0xf43f5e, 2.8, 18);
+const neonMagenta = new THREE.PointLight(0xf43f5e, 0.95, 14);
 neonMagenta.position.set(6, 4.5, -4.5);
 scene.add(neonMagenta);
 
-const neonAmber = new THREE.PointLight(0xf59e0b, 2.2, 15);
+const neonAmber = new THREE.PointLight(0xf59e0b, 0.8, 12);
 neonAmber.position.set(0, 3.8, 0);
 scene.add(neonAmber);
 
-// Moonlight over Saigon River
-const moonLight = new THREE.DirectionalLight(0x38bdf8, 0.7);
+// Ánh trăng sông Sài Gòn êm đềm
+const moonLight = new THREE.DirectionalLight(0x38bdf8, 0.4);
 moonLight.position.set(25, 32, 65);
 scene.add(moonLight);
 
@@ -729,10 +718,10 @@ const streetMat = new THREE.MeshStandardMaterial({
   normalScale: new THREE.Vector2(0.85, 0.85),
   roughnessMap: asphaltRough,
   aoMap: asphaltAO,
-  aoMapIntensity: 1.0,
-  color: 0x475569,
-  roughness: 0.28,
-  metalness: 0.15
+  aoMapIntensity: 1.2,
+  color: 0x1e2430,
+  roughness: 0.55,
+  metalness: 0.05
 });
 const street = new THREE.Mesh(streetGeo, streetMat);
 street.rotation.x = -Math.PI / 2;
@@ -783,10 +772,10 @@ const sidewalkMat = new THREE.MeshStandardMaterial({
   normalScale: new THREE.Vector2(0.9, 0.9),
   roughnessMap: sidewalkRough,
   aoMap: sidewalkAO,
-  aoMapIntensity: 1.1,
-  color: 0xd1d5db,
-  roughness: 0.45,
-  metalness: 0.05
+  aoMapIntensity: 1.2,
+  color: 0x8898aa,
+  roughness: 0.65,
+  metalness: 0.04
 });
 const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
 sidewalk.position.set(0, 0.15, -0.75);
@@ -801,59 +790,202 @@ const curb = new THREE.Mesh(
 curb.position.set(0, 0.175, 3.65);
 scene.add(curb);
 
-// Xe máy dựng vỉa hè (Honda Wave chuẩn phong cách Sài Gòn)
-function createParkedMotorbike(x, z, ry, bodyColor = 0xdc2626) {
+// ========================================================
+// 3.1. XE MÁY SÀI GÒN TẢ THỰC (WAVE ALPHA & DREAM THÁI CHI TIẾT CAO)
+// ========================================================
+function buildSaigonMotorbike(x, z, ry, bodyColor = 0xdc2626, modelName = "Wave Alpha", plateNumber = "59-S2 888.88") {
+  const root = new THREE.Group();
+  root.position.set(x, 0.3, z);
+  root.rotation.y = ry;
+
+  // Nghiêng chân chống tự nhiên (8.5 độ)
   const bike = new THREE.Group();
-  bike.position.set(x, 0.3, z);
-  bike.rotation.y = ry;
+  bike.rotation.z = -0.14;
+  root.add(bike);
 
-  const frameMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.35, metalness: 0.3 });
-  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
-  const rubberMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.28, metalness: 0.45 });
+  const blackPlastic = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.7 });
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.95, roughness: 0.12 });
+  const darkMetal = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.25 });
+  const rubberMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.92 });
+  const leatherMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.85 });
 
-  // 2 Bánh xe
-  const wheel1 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 8, 20), rubberMat);
-  wheel1.position.set(0, 0.3, -0.55);
-  bike.add(wheel1);
+  // 1. Bánh xe căm nhôm mạ chrome & đĩa phanh
+  function createWheel(isFront) {
+    const wGroup = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.045, 12, 28), rubberMat);
+    wGroup.add(tire);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.016, 8, 28), chromeMat);
+    wGroup.add(rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.08, 12), chromeMat);
+    hub.rotation.x = Math.PI / 2;
+    wGroup.add(hub);
+    for (let sp = 0; sp < 8; sp++) {
+      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.44, 4), chromeMat);
+      spoke.rotation.z = (sp * Math.PI) / 4;
+      wGroup.add(spoke);
+    }
+    if (isFront) {
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.008, 16), chromeMat);
+      disc.rotation.x = Math.PI / 2;
+      disc.position.z = 0.04;
+      wGroup.add(disc);
+    }
+    return wGroup;
+  }
 
-  const wheel2 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 8, 20), rubberMat);
-  wheel2.position.set(0, 0.3, 0.55);
-  bike.add(wheel2);
+  const frontWheel = createWheel(true);
+  frontWheel.position.set(0, 0.3, 0.62);
+  bike.add(frontWheel);
 
-  // Thân xe & Yếm xe
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.35, 0.7), frameMat);
-  body.position.set(0, 0.46, 0);
-  bike.add(body);
+  const rearWheel = createWheel(false);
+  rearWheel.position.set(0, 0.3, -0.62);
+  bike.add(rearWheel);
 
-  // Yên xe đen
-  const seatMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 });
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.55), seatMat);
-  seat.position.set(0, 0.65, -0.08);
+  // 2. Phuộc trước ống lồng mạ chrome
+  for (let fx of [-0.07, 0.07]) {
+    const forkLower = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.32, 8), darkMetal);
+    forkLower.position.set(fx, 0.42, 0.6);
+    forkLower.rotation.x = -0.22;
+    bike.add(forkLower);
+
+    const forkUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.32, 8), chromeMat);
+    forkUpper.position.set(fx, 0.68, 0.54);
+    forkUpper.rotation.x = -0.22;
+    bike.add(forkUpper);
+  }
+
+  // Chắn bùn trước
+  const fender = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.09, 14, 1, false, 0, Math.PI), frameMat);
+  fender.rotation.x = Math.PI / 2 + 0.3;
+  fender.position.set(0, 0.45, 0.58);
+  fender.scale.set(0.4, 0.4, 0.4);
+  bike.add(fender);
+
+  // 3. Thân xe, Lốc máy & Yếm xe khí động học
+  const engine = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.32), darkMetal);
+  engine.position.set(0, 0.35, -0.05);
+  bike.add(engine);
+
+  const kickStarter = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.18, 6), chromeMat);
+  kickStarter.rotation.z = Math.PI / 3;
+  kickStarter.position.set(0.14, 0.32, -0.15);
+  bike.add(kickStarter);
+
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.42, 0.48), frameMat);
+  apron.position.set(0, 0.62, 0.25);
+  apron.rotation.x = -0.32;
+  bike.add(apron);
+
+  const rearFairing = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.28, 0.55), frameMat);
+  rearFairing.position.set(0, 0.6, -0.32);
+  rearFairing.rotation.x = 0.12;
+  bike.add(rearFairing);
+
+  // 4. Yên xe đôi & Tay dắt sau mạ chrome
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.09, 0.68), leatherMat);
+  seat.position.set(0, 0.76, -0.18);
+  seat.rotation.x = 0.05;
   bike.add(seat);
 
-  // Ghi đông & Đèn pha trước
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.52, 8), chromeMat);
-  handle.rotation.z = Math.PI / 2;
-  handle.position.set(0, 0.8, 0.42);
-  bike.add(handle);
+  const grabBar = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.014, 6, 14, Math.PI), chromeMat);
+  grabBar.position.set(0, 0.81, -0.56);
+  bike.add(grabBar);
+
+  // 5. Ghi đông, đèn pha Halogen, xi-nhan & 2 gương chiếu hậu
+  const headCowl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.18), frameMat);
+  headCowl.position.set(0, 0.88, 0.46);
+  bike.add(headCowl);
 
   const headlight = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfef08a, emissiveIntensity: 0.6 })
+    new THREE.BoxGeometry(0.16, 0.09, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfef08a, emissiveIntensity: 0.5, roughness: 0.1 })
   );
-  headlight.position.set(0, 0.72, 0.58);
+  headlight.position.set(0, 0.88, 0.55);
   bike.add(headlight);
 
-  // Ống bô xả mạ chrome
-  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.65, 8), chromeMat);
-  exhaust.rotation.x = Math.PI / 2 - 0.1;
-  exhaust.position.set(0.18, 0.25, -0.22);
-  bike.add(exhaust);
+  for (let sx of [-0.15, 0.15]) {
+    const blinker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.04, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xf97316, emissiveIntensity: 0.8 })
+    );
+    blinker.position.set(sx, 0.88, 0.54);
+    bike.add(blinker);
+  }
 
-  scene.add(bike);
+  for (let mx of [-0.22, 0.22]) {
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.22, 6), chromeMat);
+    stem.position.set(mx, 1.02, 0.42);
+    stem.rotation.z = mx > 0 ? -0.25 : 0.25;
+    bike.add(stem);
+
+    const mirror = new THREE.Mesh(
+      new THREE.CircleGeometry(0.055, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.98, roughness: 0.05 })
+    );
+    mirror.position.set(mx > 0 ? mx + 0.05 : mx - 0.05, 1.13, 0.41);
+    mirror.rotation.y = mx > 0 ? -0.3 : 0.3;
+    bike.add(mirror);
+  }
+
+  // 6. Ống bô xả có ốp pô inox chống nóng
+  const exhaustPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.042, 0.72, 10), darkMetal);
+  exhaustPipe.rotation.x = Math.PI / 2 - 0.12;
+  exhaustPipe.position.set(0.17, 0.28, -0.28);
+  bike.add(exhaustPipe);
+
+  const heatShield = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.42, 8, 1, true, 0, Math.PI), chromeMat);
+  heatShield.rotation.x = Math.PI / 2 - 0.12;
+  heatShield.rotation.y = Math.PI / 2;
+  heatShield.position.set(0.19, 0.29, -0.32);
+  bike.add(heatShield);
+
+  // 7. Biển số xe Sài Gòn
+  const plateCanvas = document.createElement('canvas');
+  plateCanvas.width = 256; plateCanvas.height = 128;
+  const plctx = plateCanvas.getContext('2d');
+  plctx.fillStyle = '#f8fafc';
+  plctx.fillRect(0, 0, 256, 128);
+  plctx.strokeStyle = '#0f172a';
+  plctx.lineWidth = 6;
+  plctx.strokeRect(4, 4, 248, 120);
+  plctx.fillStyle = '#0f172a';
+  plctx.font = 'bold 36px sans-serif';
+  plctx.textAlign = 'center';
+  const parts = plateNumber.split(' ');
+  plctx.fillText(parts[0] || '59-S2', 128, 48);
+  plctx.font = 'bold 44px sans-serif';
+  plctx.fillText(parts[1] || '888.88', 128, 100);
+
+  const plateTex = new THREE.CanvasTexture(plateCanvas);
+  const plateMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.24, 0.12),
+    new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.35 })
+  );
+  plateMesh.position.set(0, 0.42, -0.68);
+  plateMesh.rotation.y = Math.PI;
+  bike.add(plateMesh);
+
+  // Đèn hậu đỏ
+  const tailLight = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.06, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0xdc2626, emissive: 0xdc2626, emissiveIntensity: 0.75 })
+  );
+  tailLight.position.set(0, 0.54, -0.66);
+  bike.add(tailLight);
+
+  // 8. Chân chống nghiêng
+  const kickstand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.38, 6), darkMetal);
+  kickstand.position.set(-0.16, 0.16, -0.05);
+  kickstand.rotation.z = 0.48;
+  kickstand.rotation.y = 0.2;
+  root.add(kickstand);
+
+  scene.add(root);
+  return root;
 }
-createParkedMotorbike(-13.8, 3.0, Math.PI / 3, 0xdc2626); // Xe Wave đỏ
-createParkedMotorbike(14.2, 3.1, -Math.PI / 3.5, 0x2563eb); // Xe Wave xanh
+buildSaigonMotorbike(-13.8, 3.0, Math.PI / 3, 0xdc2626, "Wave Alpha", "59-S2 999.99");
+buildSaigonMotorbike(14.2, 3.1, -Math.PI / 3.5, 0x2563eb, "Wave RSX", "59-K1 888.88");
 
 // 3. Tường gạch rêu phong phía sau
 const wallGeo = new THREE.BoxGeometry(36, 8.0, 0.6);
@@ -910,7 +1042,7 @@ function createNeonBeerSign() {
       map: tex,
       emissiveMap: tex,
       emissive: 0xffffff,
-      emissiveIntensity: 1.4,
+      emissiveIntensity: 0.45,
       roughness: 0.15
     })
   );
@@ -950,7 +1082,7 @@ const signFront = new THREE.Mesh(
     map: signTex,
     emissiveMap: signTex,
     emissive: 0xffffff,
-    emissiveIntensity: 1.35,
+    emissiveIntensity: 0.45,
     roughness: 0.2
   })
 );
@@ -1003,7 +1135,7 @@ function createBistroStringLights() {
   const bulbMat = new THREE.MeshStandardMaterial({
     color: 0xfef08a,
     emissive: 0xfbbf24,
-    emissiveIntensity: 0.9,
+    emissiveIntensity: 0.35,
     roughness: 0.2
   });
   const wireMat = new THREE.MeshBasicMaterial({ color: 0x18181b });
@@ -1034,7 +1166,7 @@ function createBistroStringLights() {
 
       // Cứ 3 bóng thì có 1 ánh sáng hắt nhẹ xuống bàn nhậu
       if (Math.abs(Math.round(i)) % 4 === 0 && rowIdx === 1) {
-        const warmGlow = new THREE.PointLight(0xf59e0b, 1.1, 7.5);
+        const warmGlow = new THREE.PointLight(0xf59e0b, 0.45, 5.5);
         warmGlow.position.set(i, sagY - 0.2, zLine);
         scene.add(warmGlow);
       }
@@ -1058,20 +1190,73 @@ function createBistroStringLights() {
 }
 createBistroStringLights();
 
-// 7. Két bia xếp ở góc quán
-function createBeerCrate(x, y, z, color) {
-  const crate = new THREE.Mesh(
-    new THREE.BoxGeometry(1.0, 0.7, 0.8),
-    new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 })
+// 7. Két bia nhựa mở nắp xếp tầng với chai bia thật (Saigon Special & Tiger)
+function createBeerCrate(x, y, z, colorHex, brand = "SAIGON") {
+  const crateGroup = new THREE.Group();
+  crateGroup.position.set(x, y, z);
+
+  const crateMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.38, metalness: 0.08 });
+  const bottleGreen = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.88 });
+  const goldCap = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 });
+
+  // Đáy két
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.08, 0.72), crateMat);
+  crateGroup.add(base);
+
+  // 4 vách thành két dập gân
+  const wallFront = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.48, 0.06), crateMat);
+  wallFront.position.set(0, 0.24, 0.33);
+  crateGroup.add(wallFront);
+
+  const wallBack = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.48, 0.06), crateMat);
+  wallBack.position.set(0, 0.24, -0.33);
+  crateGroup.add(wallBack);
+
+  const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.48, 0.66), crateMat);
+  wallLeft.position.set(-0.45, 0.24, 0);
+  crateGroup.add(wallLeft);
+
+  const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.48, 0.66), crateMat);
+  wallRight.position.set(0.45, 0.24, 0);
+  crateGroup.add(wallRight);
+
+  // Nhãn thương hiệu in ngang thành két
+  const lCanvas = document.createElement('canvas');
+  lCanvas.width = 256; lCanvas.height = 64;
+  const lctx = lCanvas.getContext('2d');
+  lctx.fillStyle = '#ffffff';
+  lctx.font = 'bold 30px sans-serif';
+  lctx.textAlign = 'center';
+  lctx.fillText(brand, 128, 44);
+
+  const logoMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.72, 0.18),
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(lCanvas), transparent: true })
   );
-  crate.position.set(x, y, z);
-  crate.castShadow = true;
-  crate.receiveShadow = true;
-  scene.add(crate);
+  logoMesh.position.set(0, 0.24, 0.365);
+  crateGroup.add(logoMesh);
+
+  // 12 Cổ chai bia thủy tinh nhô lên có nắp keng vàng
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 4; c++) {
+      const bx = -0.32 + c * 0.21;
+      const bz = -0.2 + r * 0.2;
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.034, 0.24, 8), bottleGreen);
+      neck.position.set(bx, 0.38, bz);
+      crateGroup.add(neck);
+
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.022, 8), goldCap);
+      cap.position.set(bx, 0.50, bz);
+      crateGroup.add(cap);
+    }
+  }
+
+  scene.add(crateGroup);
+  return crateGroup;
 }
-createBeerCrate(-14.5, 0.65, -3.8, 0xe11d48);
-createBeerCrate(-14.5, 1.35, -3.8, 0xe11d48);
-createBeerCrate(-13.4, 0.65, -3.8, 0xf59e0b);
+createBeerCrate(-14.5, 0.35, -3.8, 0xb91c1c, "BIA SAIGON");
+createBeerCrate(-14.5, 0.95, -3.8, 0xb91c1c, "BIA SAIGON");
+createBeerCrate(-13.4, 0.35, -3.8, 0x1d4ed8, "TIGER BEER");
 
 // 8. Rác Vỉa Hè Chi Tiết (Lon bia lăn lóc, Tàn thuốc, Vé số, Chiếc tất - Y hệt hình)
 function spawnSidewalkLitter() {
@@ -1385,7 +1570,7 @@ function buildPubTable(tableId, posX, posZ) {
   scene.add(tableGroup);
   pubTables.push({ id: tableId, x: posX, z: posZ, group: tableGroup });
 
-  // 6 Ghế nhựa Song Long chuẩn quán nhậu Việt Nam (Ghế đỏ & xanh xếp quanh bàn)
+  // 6 Ghế nhựa Duy Tân vỉa hè chân chữ A choãi góc chuẩn quán nhậu
   const totalSeats = 6;
   const radius = 2.15;
 
@@ -1399,33 +1584,48 @@ function buildPubTable(tableId, posX, posZ) {
     chairGroup.position.set(chairX, 0.3, chairZ);
     chairGroup.lookAt(posX, 0.3, posZ);
 
-    const plasticMat = new THREE.MeshStandardMaterial({
-      color: chairColor,
-      roughness: 0.45,
-      metalness: 0.05
+    const plasticMat = new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.32, metalness: 0.04 });
+    const rubberMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+
+    // Mặt ghế nhựa bo góc mềm mại
+    const seatRim = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.36, 0.05, 18), plasticMat);
+    seatRim.position.y = 0.48;
+    chairGroup.add(seatRim);
+
+    // Lòng ghế lõm nhẹ công thái học
+    const seatPan = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.30, 0.03, 18), plasticMat);
+    seatPan.position.y = 0.49;
+    chairGroup.add(seatPan);
+
+    // Lỗ xỏ tay tròn Duy Tân có gờ viền nổi
+    const holeRing = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.016, 8, 16), plasticMat);
+    holeRing.rotation.x = Math.PI / 2;
+    holeRing.position.y = 0.505;
+    chairGroup.add(holeRing);
+
+    const holeVoid = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), new THREE.MeshBasicMaterial({ color: 0x09090b }));
+    holeVoid.position.y = 0.49;
+    chairGroup.add(holeVoid);
+
+    // Vành gờ chống biến dạng dưới đáy mặt ghế
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.33, 0.08, 16, 1, true), plasticMat);
+    skirt.position.y = 0.43;
+    chairGroup.add(skirt);
+
+    // 4 Chân ghế choãi góc chữ A nghiêng 11 độ chịu lực + 4 đế cao su đen
+    const legAngles = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
+    legAngles.forEach((ang) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.024, 0.48, 8), plasticMat);
+      const rad = 0.24;
+      leg.position.set(Math.cos(ang) * rad, 0.24, Math.sin(ang) * rad);
+      leg.rotation.x = -Math.sin(ang) * 0.18;
+      leg.rotation.z = Math.cos(ang) * 0.18;
+      chairGroup.add(leg);
+
+      const footPad = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.03, 8), rubberMat);
+      footPad.position.set(Math.cos(ang) * (rad + 0.04), 0.015, Math.sin(ang) * (rad + 0.04));
+      chairGroup.add(footPad);
     });
-
-    // Mặt ghế nhựa bo góc có khe thoát nước
-    const seatTop = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.06, 0.68), plasticMat);
-    seatTop.position.y = 0.48;
-    chairGroup.add(seatTop);
-
-    // Lỗ rỗng tròn đặc trưng ở giữa ghế nhựa Song Long
-    const hole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.1, 0.07, 16),
-      new THREE.MeshBasicMaterial({ color: 0x0f172a })
-    );
-    hole.position.y = 0.485;
-    chairGroup.add(hole);
-
-    // 4 chân ghế nhựa vát nghiêng chịu lực
-    for (let lx of [-0.25, 0.25]) {
-      for (let lz of [-0.25, 0.25]) {
-        const chairLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.48, 8), plasticMat);
-        chairLeg.position.set(lx, 0.24, lz);
-        chairGroup.add(chairLeg);
-      }
-    }
 
     scene.add(chairGroup);
     chairSlots.push({
@@ -1672,7 +1872,7 @@ function buildSaigonStreetScenery() {
       map: kSignTex,
       emissiveMap: kSignTex,
       emissive: 0xffffff,
-      emissiveIntensity: 1.4,
+      emissiveIntensity: 0.45,
       roughness: 0.2
     })
   );
@@ -1726,7 +1926,7 @@ function buildSaigonStreetScenery() {
       map: mSignTex,
       emissiveMap: mSignTex,
       emissive: 0xffffff,
-      emissiveIntensity: 1.4,
+      emissiveIntensity: 0.45,
       roughness: 0.2
     })
   );
@@ -1842,8 +2042,8 @@ function buildSaigonStreetScenery() {
 
     scene.add(bike);
   }
-  createMotorbike(-10.2, 2.6, 0.35, 0x991b1b); // Honda Dream mận chín
-  createMotorbike(10.5, 2.6, -0.25, 0x1d4ed8); // Honda Wave xanh dương
+  buildSaigonMotorbike(-10.2, 2.6, 0.35, 0x7f1d1d, "Dream Thái", "51-F1 678.90"); // Honda Dream mận chín
+  buildSaigonMotorbike(10.5, 2.6, -0.25, 0x0284c7, "Future Neo", "59-P1 555.55"); // Honda Future xanh dương
 
   // 7. XE ĐẨY NƯỚC MÍA SIÊU SẠCH VỈA HÈ
   const caneCart = new THREE.Group();
