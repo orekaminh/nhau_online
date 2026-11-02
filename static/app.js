@@ -1873,18 +1873,76 @@ function updatePlayerHUDPositions() {
 }
 
 // ========================================================
-// 9. WebSocket Networking & State Sync
+// 9. WebSocket Networking & State Sync (Ho tro ca Cloudflare Pages Offline Demo)
 // ========================================================
+let isOfflineMode = false;
+let offlineFallbackTimer = null;
+
+function enableOfflineDemo() {
+  if (localCharacter) return;
+  isOfflineMode = true;
+  console.log('🌟 Kích hoạt Chế độ Tham quan (Cloudflare Pages Static Mode)');
+  selfMember = {
+    id: clientId,
+    name: "Bạn (Tham Quan)",
+    color: "#f97316",
+    x: 0,
+    z: 2.5,
+    ry: 0,
+    drunk_level: 0,
+    bladder_level: 0,
+    status: "Tỉnh Táo"
+  };
+  selfNameDisplay.textContent = selfMember.name;
+  selfColorBadge.style.backgroundColor = selfMember.color;
+  localPlayerState.x = selfMember.x;
+  localPlayerState.z = selfMember.z;
+  localPlayerState.ry = selfMember.ry;
+  localCharacter = createCharacter3D(selfMember.color);
+  scene.add(localCharacter.mesh);
+  updateDrunkVisuals(0, "Tỉnh Táo");
+  updateBladderVisuals(0);
+  setTicker("🌟 Chế độ xem trước Cloudflare Pages! Dùng W/A/S/D đi lại, chuột xoay 360°, [P] đái bậy/WC, [V] ngắm Landmark 81.");
+}
+
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/${roomId}/${clientId}`;
-  ws = new WebSocket(wsUrl);
+  const urlParams = new URLSearchParams(window.location.search);
+  const customServer = urlParams.get('server');
+  let wsUrl = '';
+  if (customServer) {
+    const clean = customServer.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const proto = customServer.startsWith('http:') ? 'ws:' : 'wss:';
+    wsUrl = `${proto}//${clean}/ws/${roomId}/${clientId}`;
+  } else {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsUrl = `${protocol}//${window.location.host}/ws/${roomId}/${clientId}`;
+  }
+
+  // Tự động kích hoạt Offline Demo nếu sau 2.5s không nhận được WebSocket (VD khi host trên Cloudflare Pages tĩnh)
+  if (!offlineFallbackTimer) {
+    offlineFallbackTimer = setTimeout(() => {
+      if (!localCharacter) {
+        enableOfflineDemo();
+      }
+    }, 2500);
+  }
+
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (err) {
+    console.warn("Lỗi kết nối WebSocket:", err);
+  }
+
+  if (!ws) return;
 
   ws.onopen = () => {
     console.log('Đã kết nối Thế Giới 3D Quán Nhậu!');
+    if (offlineFallbackTimer) clearTimeout(offlineFallbackTimer);
+    isOfflineMode = false;
   };
 
   ws.onmessage = (event) => {
+    if (offlineFallbackTimer) clearTimeout(offlineFallbackTimer);
     const data = JSON.parse(event.data);
 
     switch (data.type) {
@@ -2037,13 +2095,68 @@ function connectWebSocket() {
   };
 
   ws.onclose = () => {
-    setTimeout(connectWebSocket, 2000);
+    if (!isOfflineMode) {
+      setTimeout(connectWebSocket, 3000);
+    }
   };
 }
 
 function sendAction(payload) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(payload));
+    return;
+  }
+
+  // Xu ly Offline/Demo Mode khi host tren Cloudflare Pages chua co server
+  if (payload.action === 'cheer') {
+    totalCheersDisplay.textContent = parseInt(totalCheersDisplay.textContent || "0") + 1;
+    playClinkSound();
+    playGulpSound();
+    show3DShoutBubble(clientId, "🍻 1, 2, 3 DÔÔÔ!");
+    if (selfMember) {
+      selfMember.drunk_level = Math.min(100, (selfMember.drunk_level || 0) + 15);
+      selfMember.bladder_level = Math.min(100, (selfMember.bladder_level || 0) + 20);
+      const status = selfMember.drunk_level >= 80 ? "Sấp Mặt" : (selfMember.drunk_level >= 50 ? "Lảo Đảo" : (selfMember.drunk_level >= 20 ? "Ngà Ngà" : "Tỉnh Táo"));
+      selfMember.status = status;
+      updateDrunkVisuals(selfMember.drunk_level, status);
+      updateBladderVisuals(selfMember.bladder_level);
+    }
+    setTicker("🍻 1, 2, 3 DÔÔÔ! (Cụng ly)");
+  } else if (payload.action === 'eat_snack') {
+    playCrunchSound();
+    show3DShoutBubble(clientId, "🥢 Món bén quá!");
+    if (selfMember) {
+      selfMember.drunk_level = Math.max(0, (selfMember.drunk_level || 0) - 10);
+      updateDrunkVisuals(selfMember.drunk_level, selfMember.status);
+    }
+    setTicker("🥜 Ăn đậu phộng nem chua giòn rụm!");
+  } else if (payload.action === 'sober_up') {
+    playSoberSound();
+    if (selfMember) {
+      selfMember.drunk_level = 0;
+      selfMember.status = "Tỉnh Táo";
+      updateDrunkVisuals(0, "Tỉnh Táo");
+    }
+    setTicker("💧 Uống trà đá giải rượu, tỉnh rụi!");
+  } else if (payload.action === 'pee') {
+    playPeeSound();
+    show3DShoutBubble(clientId, payload.spot_type === 'wc' ? "🚽 Nhẹ người!" : "🌳 Róc rách róc rách...");
+    if (selfMember) {
+      selfMember.bladder_level = 0;
+      selfMember.drunk_level = Math.max(0, (selfMember.drunk_level || 0) - 10);
+      updateDrunkVisuals(selfMember.drunk_level, selfMember.status);
+      updateBladderVisuals(0);
+    }
+    setTicker("🚽 Xả lũ thành công! Cảm giác thật sảng khoái.");
+  } else if (payload.action === 'quick_shout') {
+    show3DShoutBubble(clientId, payload.text);
+    setTicker(`🗣️ Bạn: "${payload.text}"`);
+  } else if (payload.action === 'change_name') {
+    if (selfMember) selfMember.name = payload.name;
+    selfNameDisplay.textContent = payload.name;
+    const hud = playerHUDTags.get(clientId);
+    if (hud) hud.nameElem.textContent = '⭐ ' + payload.name;
+    setTicker(`🏷️ Đổi tên thành: ${payload.name}`);
   }
 }
 
