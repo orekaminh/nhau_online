@@ -251,7 +251,20 @@
     updatePill();
     if (d.limits) F.limits = d.limits;
     setTimeout(() => window.dispatchEvent(new Event('pub:ready')), 250);
+    // Lần đầu vào quán (chưa tự đặt tên): mời đặt tên nhân vật một lần cho mỗi phiên.
+    if (!d.profile.named) {
+      let asked = false;
+      try { asked = sessionStorage.getItem('pub_name_asked') === '1'; } catch (_) { /* bỏ qua */ }
+      if (!asked) setTimeout(() => {
+        try { sessionStorage.setItem('pub_name_asked', '1'); } catch (_) { /* bỏ qua */ }
+        F.askName();
+      }, 2500);
+    }
   });
+  F.askName = function () {
+    const btn = document.getElementById('editNameBtn');
+    if (btn) btn.click();
+  };
   F.on('member_joined', (d) => rememberMember(d.member));
   F.on('member_left', (d) => levels.delete(d.member_id));
   F.on('room_full', (d) => {
@@ -449,6 +462,7 @@
     buildPill();
     F.addMenuItem({ id: 'profile', icon: '👤', label: 'Hồ sơ & nhiệm vụ', order: 10, onClick: () => F.openProfile(),
       badge: () => (F.me && F.me.quests ? (F.me.quests.items.filter((q) => !q.done).length || null) : null) });
+    F.addMenuItem({ id: 'rename', icon: '✏️', label: 'Đổi tên', hint: 'Tên hiện trên đầu bạn', order: 11, onClick: () => F.askName() });
     F.addMenuItem({ id: 'wardrobe', icon: '👗', label: 'Tủ đồ', hint: 'Đổi nón, kính, áo', order: 12, onClick: () => F.openProfile() });
     F.addMenuItem({ id: 'board', icon: '🏆', label: 'Xếp hạng', order: 30, onClick: () => F.openLeaderboard() });
     F.addKey('l', () => F.openLeaderboard());

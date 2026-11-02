@@ -230,7 +230,7 @@ def grant_xp(profile, amount):
 def profile_view(profile):
     level, into, need = level_progress(profile["xp"])
     return {
-        "name": profile.get("name"), "xp": profile["xp"], "level": level, "title": title_for(level),
+        "name": profile.get("name"), "named": bool(profile.get("named")), "xp": profile["xp"], "level": level, "title": title_for(level),
         "xp_in_level": into, "xp_for_next": need, "outfit": sanitize_outfit(profile.get("outfit"), level),
         "quests": quest_view(profile), "stats": profile["stats"], "streak": profile["streak"].get("count", 0),
     }
