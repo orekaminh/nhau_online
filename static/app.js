@@ -1933,7 +1933,7 @@ function buildRiversidePark() {
 
   // 1. Thảm cỏ xanh mướt trải rộng của công viên (Expanded Lush Grass Lawn)
   const lawnGeo = new THREE.BoxGeometry(96, 0.3, 16.5);
-  const lawnMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
+  const lawnMat = Veg.lawnMaterial(24, 4);
   const lawn = new THREE.Mesh(lawnGeo, lawnMat);
   lawn.position.set(0, 0.15, 20.0);
   lawn.receiveShadow = true;
@@ -2106,57 +2106,13 @@ function buildRiversidePark() {
   soil.position.y = 0.23;
   flowerBedGroup.add(soil);
 
-  // Các vòng hoa nhiệt đới rực rỡ (Cúc vạn thọ vàng, Hoa hồng đỏ, Mẫu đơn tím)
-  const flowerColors = [0xfacc15, 0xef4444, 0xa855f7, 0xf97316, 0xf43f5e];
-  for (let ring = 0; ring < 3; ring++) {
-    const rad = 2.8 - ring * 0.9;
-    const count = 18 - ring * 5;
-    for (let fi = 0; fi < count; fi++) {
-      const fAngle = (fi / count) * Math.PI * 2;
-      const fx = Math.cos(fAngle) * rad;
-      const fz = Math.sin(fAngle) * rad;
-      const fColor = flowerColors[(fi + ring * 2) % flowerColors.length];
-      const flower = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.18 + (fi % 3) * 0.04),
-        new THREE.MeshStandardMaterial({ color: fColor, roughness: 0.6 })
-      );
-      flower.position.set(fx, 0.48 + ring * 0.08, fz);
-      flowerBedGroup.add(flower);
-
-      // Cuống lá xanh
-      const leafStem = new THREE.Mesh(
-        new THREE.SphereGeometry(0.14, 6, 6),
-        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 })
-      );
-      leafStem.position.set(fx, 0.38 + ring * 0.08, fz);
-      flowerBedGroup.add(leafStem);
-    }
-  }
-
-  // Cây sứ đại ra hoa giữa bồn hoa tròn (Frangipani Flowering Tree)
-  const fTrunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.32, 2.8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x573a24, roughness: 0.9 })
-  );
-  fTrunk.position.y = 1.6;
-  flowerBedGroup.add(fTrunk);
-
-  for (let tb = 0; tb < 4; tb++) {
-    const bAngle = (tb / 4) * Math.PI * 2;
-    const fCanopy = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.9),
-      new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.75 })
-    );
-    fCanopy.position.set(Math.cos(bAngle) * 0.7, 2.9 + (tb % 2) * 0.3, Math.sin(bAngle) * 0.7);
-    flowerBedGroup.add(fCanopy);
-
-    const fBloom = new THREE.Mesh(
-      new THREE.SphereGeometry(0.24, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffedd5 })
-    );
-    fBloom.position.set(Math.cos(bAngle) * 0.95, 3.1 + (tb % 2) * 0.3, Math.sin(bAngle) * 0.95);
-    flowerBedGroup.add(fBloom);
-  }
+  // Thảm hoa (cúc vạn thọ, hồng, mẫu đơn...) phủ kín bồn + cây sứ đại ra hoa ở giữa
+  const bedFlowers = Veg.makeFlowerPatch(3.25, [0xfacc15, 0xef4444, 0xe879f9, 0xf97316, 0xfb7185, 0xffffff], 1.1, 3);
+  bedFlowers.position.y = 0.44;
+  flowerBedGroup.add(bedFlowers);
+  const frangipani = Veg.makeTree('frangipani', 5, 1.05);
+  frangipani.position.y = 0.44;
+  flowerBedGroup.add(frangipani);
 
   scene.add(flowerBedGroup);
   pubDetails.obstacles.push({ x: 0, z: 19.5, w: 7.2, d: 7.2 });
@@ -2191,16 +2147,10 @@ function buildRiversidePark() {
       crossBeam.position.set(bx, 3.2, 0);
       pergolaGroup.add(crossBeam);
 
-      // Chùm hoa giấy rủ bóng
-      for (let fi = 0; fi < 3; fi++) {
-        const cluster = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.15),
-          fi % 2 === 0 ? flowerMat1 : flowerMat2
-        );
-        cluster.position.set(bx + (Math.random() - 0.5) * 0.3, 3.0 - Math.random() * 0.5, (fi - 1) * 0.8);
-        pergolaGroup.add(cluster);
-      }
     }
+    const bloom = Veg.makeBlossomMass(6.4, 2.6, 1.0, [0xd946ef, 0xf43f5e, 0xfb7185, 0xc026d3], Math.round(startX) + 7);
+    bloom.position.set(0, 2.55, 0);
+    pergolaGroup.add(bloom);
 
     // Đèn lồng treo giữa giàn hoa
     const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
@@ -2223,31 +2173,10 @@ function buildRiversidePark() {
     const palmGroup = new THREE.Group();
     palmGroup.position.set(px, 0.32, 27.2);
 
-    // Thân dừa uốn lượn cong cong tự nhiên về phía sông
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 5.2, 10), trunkMat);
-    trunk.position.set(0, 2.5, 0.35);
-    trunk.rotation.x = 0.14; // Hơi nghiêng ra phía sông
-    palmGroup.add(trunk);
-
-    // Trái dừa xanh múp míp
-    const coconutMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.6 });
-    for (let c = 0; c < 4; c++) {
-      const cnut = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), coconutMat);
-      cnut.position.set(Math.cos(c * 1.5) * 0.28, 4.9, 0.5 + Math.sin(c * 1.5) * 0.28);
-      palmGroup.add(cnut);
-    }
-
-    // Tán lá dừa xoè rộng 8 hướng
-    const frondMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
-    for (let f = 0; f < 8; f++) {
-      const fAngle = (f / 8) * Math.PI * 2;
-      const frond = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 2.4), frondMat);
-      frond.rotation.y = fAngle;
-      frond.rotation.x = 0.45;
-      frond.position.set(Math.cos(fAngle) * 1.1, 5.0, 0.5 + Math.sin(fAngle) * 1.1);
-      palmGroup.add(frond);
-    }
+    // Cây dừa thật hơn: thân cong có vòng đốt, tàu lá cong rủ, buồng dừa
+    const realPalm = Veg.makeTree('palm', Math.abs(px) + 3, 1.0);
+    realPalm.rotation.y = px * 0.7;
+    palmGroup.add(realPalm);
 
     scene.add(palmGroup);
     pubDetails.obstacles.push({ x: px, z: 27.2, w: 1.0, d: 1.0 });
@@ -2276,19 +2205,10 @@ function buildRiversidePark() {
     planter.position.y = 0.16;
     treeGroup.add(planter);
 
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.28, 3.8, 8),
-      new THREE.MeshStandardMaterial({ color: 0x573a24, roughness: 0.9 })
-    );
-    trunk.position.y = 1.9;
-    treeGroup.add(trunk);
-
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 });
-    for (let l = 0; l < 3; l++) {
-      const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(1.35 - l * 0.28), leafMat);
-      leaves.position.y = 3.4 + l * 0.95;
-      treeGroup.add(leaves);
-    }
+    const realTree = Veg.makeTree(i % 3 === 1 ? 'tall' : 'broadleaf', tx + 50, 0.9);
+    realTree.position.y = 0.36;
+    realTree.rotation.y = tx;
+    treeGroup.add(realTree);
 
     // Dây đèn LED quấn quanh gốc cây lung linh
     const fairyLight = new THREE.PointLight(0xfef08a, 0.7, 6);
@@ -2311,20 +2231,9 @@ function buildRiversidePark() {
   for (let bx = -40; bx <= 40; bx += 7) {
     if (Math.abs(bx) < 5) continue; // tránh bồn hoa trung tâm
     const bz = 18.0 + (Math.sin(bx * 2) * 3);
-    const shrub = new THREE.Mesh(new THREE.SphereGeometry(0.48, 8, 8), bushMat);
-    shrub.scale.set(1.2, 0.8, 1.1);
-    shrub.position.set(bx, 0.45, bz);
+    const shrub = Veg.makeShrub(0.78, bx + 100, flowerTuftColors);
+    shrub.position.set(bx, 0.3, bz);
     scene.add(shrub);
-
-    // Chùm hoa li ti trên bụi cỏ
-    for (let fl = 0; fl < 4; fl++) {
-      const ft = new THREE.Mesh(
-        new THREE.SphereGeometry(0.09, 6, 6),
-        new THREE.MeshBasicMaterial({ color: flowerTuftColors[(fl + Math.abs(bx)) % flowerTuftColors.length] })
-      );
-      ft.position.set(bx + Math.cos(fl * 1.5) * 0.35, 0.65, bz + Math.sin(fl * 1.5) * 0.35);
-      scene.add(ft);
-    }
   }
 
   // 9. VƯỜN CỜ TƯỚNG SÀI GÒN & CHÒI NGHỈ MÁT (West Zone: x: -33, z: 20)

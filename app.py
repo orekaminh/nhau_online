@@ -283,6 +283,10 @@ async def manifest_file():
 async def icon_file():
     return FileResponse(os.path.join(STATIC_DIR, "icon.svg"), media_type="image/svg+xml")
 
+@app.get("/vegetation.js")
+async def vegetation_js():
+    return FileResponse(os.path.join(STATIC_DIR, "vegetation.js"))
+
 @app.get("/bar-music.js")
 async def bar_music_js():
     return FileResponse(os.path.join(STATIC_DIR, "bar-music.js"))

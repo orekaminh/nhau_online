@@ -699,7 +699,7 @@
   const POND = { x: -104, z: 18.2, rx: 10, rz: 5.8 };
 
   function buildWestPark() {
-    const lawn = box(74, 0.3, 33.9, std(0x15803d, { roughness: 0.85 }), -85, 0.15, 11.45);
+    const lawn = box(74, 0.3, 33.9, Veg.lawnMaterial(18, 8), -85, 0.15, 11.45);
     lawn.receiveShadow = true;
     // Lối đi lát đá
     const pathMat = std(0xb8b0a1, { roughness: 0.8 });
@@ -775,19 +775,13 @@
       geo.attributes.position.needsUpdate = true;
     });
 
-    // Vòng hoa quanh đài phun
-    const fr = makeRng(5);
-    const flowerCount = lite ? 30 : 80;
-    const flowers = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 6, 5), std(0xffffff, { roughness: 0.6 }), flowerCount);
-    const fm = new THREE.Matrix4();
-    const fcols = [0xff5c8a, 0xffd23f, 0xffffff, 0xff7a45, 0xc084fc];
-    for (let i = 0; i < flowerCount; i++) {
-      const a = (i / flowerCount) * Math.PI * 2, rr = 4.75 + (i % 2) * 0.5 + fr() * 0.15;
-      fm.makeTranslation(x + Math.cos(a) * rr, 0.45, z + Math.sin(a) * rr);
-      flowers.setMatrixAt(i, fm);
-      flowers.setColorAt(i, new THREE.Color(fcols[Math.floor(fr() * fcols.length)]));
-    }
-    scene.add(flowers);
+    // Vòng hoa quanh đài phun: nền đất mùn + thảm hoa nhiều màu
+    const soilRing = new THREE.Mesh(new THREE.RingGeometry(4.4, 5.85, 48), std(0x2b1d14, { roughness: 1, side: THREE.DoubleSide }));
+    soilRing.rotation.x = -Math.PI / 2; soilRing.position.set(x, 0.36, z);
+    scene.add(soilRing);
+    const ringFlowers = Veg.makeFlowerPatch(5.8, [0xff5c8a, 0xffd23f, 0xffffff, 0xff7a45, 0xc084fc, 0xfb7185], 1.0, 21, 4.5);
+    ringFlowers.position.set(x, 0.34, z);
+    scene.add(ringFlowers);
 
     // Ghế đá quanh quảng trường
     for (let i = 0; i < 6; i++) {
@@ -899,21 +893,27 @@
       if (spots.some(s => Math.hypot(s.x - x, s.z - z) < 3.6)) continue;
       spots.push({ x, z, s: 0.72 + rng() * 0.4 });
     }
-    const n = spots.length;
-    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.2, 0.3, 3.4, 6), std(0x573a24, { roughness: 0.9 }), n);
-    const crowns = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1.7, 0), std(0xffffff, { roughness: 0.8 }), n);
-    const tops = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1.15, 0), std(0xffffff, { roughness: 0.8 }), n);
-    const m = new THREE.Matrix4(), col = new THREE.Color();
+    const kinds = ['broadleaf', 'tall', 'broadleaf', 'flame', 'tall', 'broadleaf', 'frangipani', 'palm'];
     spots.forEach((p, i) => {
-      m.makeScale(p.s, p.s, p.s).setPosition(p.x, 0.3 + 1.7 * p.s, p.z); trunks.setMatrixAt(i, m);
-      m.makeScale(p.s, p.s * 0.9, p.s).setPosition(p.x, 0.3 + 4.0 * p.s, p.z); crowns.setMatrixAt(i, m);
-      m.makeScale(p.s, p.s, p.s).setPosition(p.x + 0.2 * p.s, 0.3 + 5.5 * p.s, p.z - 0.1 * p.s); tops.setMatrixAt(i, m);
-      col.setHSL(0.30 + rng() * 0.08, 0.55, 0.20 + rng() * 0.10);
-      crowns.setColorAt(i, col); tops.setColorAt(i, col.clone().offsetHSL(0, 0, 0.05));
+      const tree = Veg.makeTree(kinds[i % kinds.length], 40 + i, p.s * 1.1);
+      tree.position.set(p.x, 0.3, p.z);
+      tree.rotation.y = i * 1.7;
+      scene.add(tree);
       obstacle(p.x, p.z, 0.9, 0.9);
       if (i % 4 === 0) peeSpots.push({ type: 'tree', name: 'Cây Xanh Công Viên', x: p.x, z: p.z, radius: 2.2 });
     });
-    scene.add(trunks, crowns, tops);
+    // Bụi cây + hoa dọc lối đi và quanh hồ
+    const shrubCols = [0xff5c8a, 0xffd23f, 0xffffff, 0xc084fc];
+    const spots2 = [];
+    for (let sx = -56; sx >= -100; sx -= 4.4) { spots2.push([sx, 5.0], [sx - 2.2, 10.1]); }
+    for (const a of [0.6, 1.5, 2.4, 3.6, 4.6, 5.6]) spots2.push([POND.x + Math.cos(a) * (POND.rx + 1.6), POND.z + Math.sin(a) * (POND.rz + 1.6)]);
+    spots2.forEach(([sx, sz], i) => {
+      if (Math.abs(sx - POND.x) < 3 && sz > 8) return;                // chừa lối ra cầu
+      if (Math.hypot(sx - PLAZA.x, sz - PLAZA.z) < PLAZA.r + 1) return;
+      const sh = Veg.makeShrub(0.75 + (i % 3) * 0.12, 200 + i, i % 2 ? shrubCols : null);
+      sh.position.set(sx, 0.3, sz);
+      scene.add(sh);
+    });
   }
 
   function buildParkGate() {
@@ -1146,6 +1146,18 @@
   // ========================================================
   // C. Nước sông kéo dài hai đầu
   // ========================================================
+  function buildGrass() {
+    const nearObstacle = (x, z) => pubDetails.obstacles.some(o => Math.abs(x - o.x) < o.w / 2 + 0.5 && Math.abs(z - o.z) < o.d / 2 + 0.5);
+    const westAvoid = (x, z) => nearObstacle(x, z)
+      || (Math.abs(z - 7.5) < 2.1 && x > -106) || (Math.abs(x - POND.x) < 2.3 && z > 6 && z < 26)
+      || Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 0.3
+      || ((x - POND.x) / (POND.rx + 0.5)) ** 2 + ((z - POND.z) / (POND.rz + 0.5)) ** 2 < 1
+      || (x > -52 && z > 5.5 && z < 9.5) || (x > -60 && z > 24);
+    scene.add(Veg.scatterGrass({ x0: -121, x1: -49, z0: -4.5, z1: 24, y: 0.3, seed: 3 }, 1300, westAvoid));
+    const eastAvoid = (x, z) => nearObstacle(x, z) || Math.hypot(x, z - 19.5) < 4.4;
+    scene.add(Veg.scatterGrass({ x0: -47, x1: 47, z0: 12.3, z1: 23.8, y: 0.3, seed: 8 }, 1100, eastAvoid));
+  }
+
   function buildRiverExtension() {
     const mat = new THREE.MeshStandardMaterial({ color: 0x0c2547, roughness: 0.15, metalness: 0.75 });
     for (const cx of [-120, 120]) {
@@ -1161,5 +1173,6 @@
   PubLoader.defer(buildRiverExtension, 'buildRiverExtension');
   PubLoader.defer(buildParkedCars, 'buildParkedCars');
   PubLoader.defer(buildCouples, 'buildCouples');
+  PubLoader.defer(buildGrass, 'buildGrass');
   Features.addTick((delta, t) => { for (const a of animators) a(delta, t); });
 })();
