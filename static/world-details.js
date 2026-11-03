@@ -189,7 +189,7 @@ function createPubDetails(scene) {
       if (!blocked(x + dx / steps, z)) x += dx / steps;
       if (!blocked(x, z + dz / steps)) z += dz / steps;
     }
-    return { x: Math.max(-22.6, Math.min(23, x)), z: Math.max(-4.5, Math.min(27.6, z)) };
+    return { x: Math.max(-42.0, Math.min(42.0, x)), z: Math.max(-4.5, Math.min(33.5, z)) };
   }
   let occupied = null;
   function setOccupied(value) {

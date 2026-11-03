@@ -741,6 +741,13 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                                 f"💃 {pg_name} nháy mắt châm đá: 'Bàn mình uống khỏe quá, anh {mem['name']} cạn 100% với em ly này nhé~'",
                                 f"💃 {pg_name} cổ vũ: 'Một hai ba dô! Anh {mem['name']} uống hết em tặng quà móc khóa Tiger xịn sò nha!'"
                             ]
+                        elif pg_id == "saigon_chill":
+                            pg_name = "Em Linh Đan (PG Bia Sài Gòn Chill)"
+                            lines = [
+                                f"💃 {pg_name} nụ cười rạng rỡ bên bờ sông: 'Lon Bia Sài Gòn Chill sảng khoái mát lạnh cho anh {mem['name']} nè!'",
+                                f"💃 {pg_name} mời mọc duyên dáng: 'Anh {mem['name']} ra cầu tàu ngắm Landmark 81 với em nha, chill hết nấc!'",
+                                f"💃 {pg_name} nâng ly: 'Vị bia của Rồng, nâng ly chúc anh {mem['name']} vạn sự như ý, bản lĩnh ngút trời!'"
+                            ]
                         else:
                             pg_name = "Em Ngọc Trinh (PG Heineken)"
                             lines = [
