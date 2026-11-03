@@ -2987,7 +2987,7 @@ function createPGBiaCharacter(id, name, brand, x, z, ry, waypoints) {
   pgTag.className = 'tag-3d';
   pgTag.innerHTML = `
     <div class="tag-bubble" id="bubble_${id}" style="display: none;"></div>
-    <div class="tag-name" style="background: ${badgeBg}; border-color: #fde047; color: #fff; font-weight: 800; box-shadow: 0 0 12px ${badgeGlow};">💃 ${name}</div>
+    <div class="tag-name tag-pg" style="background: ${badgeBg};">💃 ${name.split(" (")[0]}</div>
   `;
   hudOverlay.appendChild(pgTag);
 
@@ -3655,7 +3655,7 @@ function leaveScenicView() {
 }
 function zoomCamera(distance) {
   leaveScenicView();
-  cameraDistance = Math.max(4.0, Math.min(18.0, distance));
+  cameraDistance = Math.max(4.0, Math.min(42.0, distance));
 }
 function pointerSpan() {
   const [a, b] = [...cameraPointers.values()];
@@ -3682,7 +3682,7 @@ function setClickTarget(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
   clickRaycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
   if (!clickRaycaster.ray.intersectPlane(groundPlane, clickHit) || clickHit.distanceTo(camera.position) > 60) return;
-  clickTarget = { x: Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, clickHit.x)), z: Math.max(WORLD_BOUNDS.minZ, Math.min(WORLD_BOUNDS.maxZ - 0.7, clickHit.z)) };
+  clickTarget = { x: Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, clickHit.x)), z: Math.max(WORLD_BOUNDS.minZAt(clickHit.x), Math.min(WORLD_BOUNDS.maxZ - 0.7, clickHit.z)) };
   clickStuckTime = 0;
   clickMarker.position.set(clickTarget.x, 0.33, clickTarget.z);
   clickMarker.visible = true;
@@ -4972,7 +4972,7 @@ function animate() {
 
       // Giới hạn trong khuôn viên mở rộng: từ quán vỉa hè, công viên, đến tận Cầu Tàu Bến Bạch Đằng & 2 đầu cánh
       localPlayerState.x = Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, localPlayerState.x));
-      localPlayerState.z = Math.max(WORLD_BOUNDS.minZ, Math.min(WORLD_BOUNDS.maxZ - 0.7, localPlayerState.z));
+      localPlayerState.z = Math.max(WORLD_BOUNDS.minZAt(localPlayerState.x), Math.min(WORLD_BOUNDS.maxZ - 0.7, localPlayerState.z));
 
       // Nhân vật xoay mặt theo hướng đang di chuyển
       localPlayerState.ry = Math.atan2(moveX, moveZ);

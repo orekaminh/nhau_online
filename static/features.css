@@ -123,7 +123,7 @@ body.fx-panel-open #fx-dock { display: none; }
 @media (pointer: coarse), (max-width: 768px) { .fx-xp-track { width: 34px; } .fx-xp-num { display: none; } }
 .fx-xp-float { position: fixed; z-index: 460; pointer-events: none; font: 800 .9rem 'Be Vietnam Pro', sans-serif; color: #fde68a; text-shadow: 0 2px 6px #000; animation: fxFloat 1.7s ease-out forwards; }
 @keyframes fxFloat { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34px); } }
-.tag-title { margin-top: 2px; padding: 1px 8px; border-radius: 99px; background: #0f172acc; color: #fde68a; font-size: .62rem; font-weight: 700; white-space: nowrap; border: 1px solid #fbbf2455; }
+.tag-title { display: none !important; margin-top: 2px; padding: 1px 8px; border-radius: 99px; background: #0f172acc; color: #fde68a; font-size: .62rem; font-weight: 700; white-space: nowrap; border: 1px solid #fbbf2455; }
 
 /* ---------- Hồ sơ ---------- */
 .fx-level-card { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; }

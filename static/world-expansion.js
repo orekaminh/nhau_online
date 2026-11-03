@@ -159,8 +159,10 @@
     const palette = [0x3b2a4a, 0x2a3b4a, 0x4a2a35, 0x2a4a3f, 0x4a3f2a, 0x33284a];
     for (let i = 0; i < 5; i++) {
       const cx = 65.6 + i * 11.2;
-      buildBar(cx, -1, northNames[i], palette[i % palette.length], 11 + (i % 3) * 1.5, 100 + i * 31);
-      buildBar(cx, +1, southNames[i], palette[(i + 2) % palette.length], 12 + ((i + 1) % 3) * 1.4, 220 + i * 37);
+      // Ba quán có nội thất để vào chơi: NEON ROOMS (club), LUCKY HOUSE (lounge), BACKPACKER (bi-a)
+      const northKind = { 0: 'club', 3: 'pool' }[i], southKind = { 2: 'lounge' }[i];
+      buildBar(cx, -1, northNames[i], palette[i % palette.length], 11 + (i % 3) * 1.5, 100 + i * 31, northKind);
+      buildBar(cx, +1, southNames[i], palette[(i + 2) % palette.length], 12 + ((i + 1) % 3) * 1.4, 220 + i * 37, southKind);
     }
     // Tường cuối phố
     box(1, 9, BV.zS - BV.zN, std(0x20283a), BV.x1 + 0.5, 4.5, BV_MID);
@@ -213,7 +215,7 @@
   const BAR_STYLE = { 'NEON ROOMS': 'edm', 'HELLO BEER': 'vinahouse', 'LUCKY HOUSE': 'lounge', 'BACKPACKER': 'reggae', 'SÀI GÒN NIGHT': 'bolero' };
   let barCount = 0;
 
-  function buildBar(cx, side, info, bodyColor, height, seed) {
+  function buildBar(cx, side, info, bodyColor, height, seed, interiorKind) {
     const [name, neon, tagline] = info;
     const barId = 'bar' + barCount++;
     const out = side < 0 ? -1 : 1;                       // hướng "ra sau" của toà nhà
@@ -225,18 +227,38 @@
 
     // Thân nhà: mờ dần khi che camera (xem updateWallOcclusion trong app.js)
     const bodyMat = std(bodyColor, { roughness: 0.85 });
-    const body = box(11, height, 10, bodyMat, cx, height / 2, fz + out * 5);
-    body.receiveShadow = true;
-    obstacle(cx, fz + out * 5, 11.2, 10);
-
     const decor = [];
-    // Mặt tiền mở sáng đèn
-    const storeMat = new THREE.MeshBasicMaterial({ map: storefrontTexture(hue) });
-    const store = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 3.4), storeMat);
-    store.position.set(cx, 1.95, fz + toStreet * 0.03);
-    store.rotation.y = rot;
-    scene.add(store);
-    decor.push(storeMat);
+    let body;
+    const shell = [];   // các mảng tường: mờ cùng nhau khi che camera
+    if (!interiorKind) {
+      body = box(11, height, 10, bodyMat, cx, height / 2, fz + out * 5);
+      body.receiveShadow = true;
+      obstacle(cx, fz + out * 5, 11.2, 10);
+      // Mặt tiền mở sáng đèn
+      const storeMat = new THREE.MeshBasicMaterial({ map: storefrontTexture(hue) });
+      const store = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 3.4), storeMat);
+      store.position.set(cx, 1.95, fz + toStreet * 0.03);
+      store.rotation.y = rot;
+      scene.add(store);
+      decor.push(storeMat);
+    } else {
+      // Quán có nội thất: tầng trệt rỗng cao 4.6m, từ tầng 2 trở lên đặc
+      const H = 4.6, T = 0.4, zc = fz + out * 5;
+      body = box(11, height - H, 10, bodyMat, cx, H + (height - H) / 2, zc);     // tầng trên (đồng thời là trần)
+      shell.push(body,
+        box(11, H, T, bodyMat, cx, H / 2, fz + out * (10 - T / 2)),              // tường sau
+        box(T, H, 10, bodyMat, cx - 5.5 + T / 2, H / 2, zc),                     // tường trái
+        box(T, H, 10, bodyMat, cx + 5.5 - T / 2, H / 2, zc),                     // tường phải
+        box(2.3, H, T, bodyMat, cx - 4.35, H / 2, fz + out * (T / 2)),           // mặt tiền hai bên cửa
+        box(2.3, H, T, bodyMat, cx + 4.35, H / 2, fz + out * (T / 2)),
+        box(6.4, H - 3.6, T, bodyMat, cx, 3.6 + (H - 3.6) / 2, fz + out * (T / 2))); // lanh tô trên cửa
+      obstacle(cx, fz + out * (10 - T / 2), 11, T);
+      obstacle(cx - 5.3, zc, T, 10);
+      obstacle(cx + 5.3, zc, T, 10);
+      obstacle(cx - 4.35, fz + out * (T / 2), 2.3, T);
+      obstacle(cx + 4.35, fz + out * (T / 2), 2.3, T);
+      for (const m of shell) m.receiveShadow = true;
+    }
 
     // Biển neon lớn
     const sign = signPlane([[name, 78, 54], [tagline, 34, 102]], 8.4, 1.8, 768, 160, neon, '#0b0a18');
@@ -274,11 +296,13 @@
     }
     scene.add(wins);
     decor.push(winMat);
-    registerOccluder(body, decor);
+    const interiorDecor = interiorKind ? buildInterior(cx, fz, out, interiorKind, name, neon, hue, barId) : [];
+    if (!shell.length) registerOccluder(body, decor);
+    for (const m of shell) registerOccluder(m, m === body ? decor.concat(interiorDecor) : null);
 
     // Nhạc riêng của quán (bar-music.js) + loa thùng nhún theo beat
     const musicStyle = BAR_STYLE[name] || 'edm';
-    if (window.BarMusic) BarMusic.register({ id: barId, name, style: musicStyle, x: cx, z: fz + toStreet * 2 });
+    if (window.BarMusic) BarMusic.register({ id: barId, name, style: musicStyle, x: cx, z: interiorKind ? fz + out * 1.5 : fz + toStreet * 2 });
     for (const dx of [-4.9, 4.9]) {
       box(0.8, 1.3, 0.7, std(0x0b0b0f), cx + dx, 0.95, fz + toStreet * 0.5);
       const woofer = new THREE.Mesh(new THREE.CircleGeometry(0.26, 16), glow(0x22d3ee));
@@ -291,6 +315,7 @@
     // Bàn ghế nhựa ngoài vỉa hè (nét đặc trưng quán bia hơi)
     const stoolColors = [0xdc2626, 0x2563eb, 0xeab308];
     for (let ti = 0; ti < 3; ti++) {
+      if (interiorKind && ti === 1) continue;   // chừa lối vào quán
       const tx = cx - 3.2 + ti * 3.2, tz = fz + toStreet * 2.5;
       const tableMat = std(ti % 2 ? 0xf8fafc : 0xfde68a, { roughness: 0.5 });
       cyl(0.5, 0.5, 0.06, tableMat, tx, 0.88, tz, null, 16);
@@ -307,6 +332,173 @@
       }
       obstacle(tx, tz, 0.9, 0.9);   // chỉ chặn mặt bàn để người ngồi/đứng dậy ở ghế không bị kẹt
     }
+  }
+
+
+  // ---------- Nội thất quán bar (đi vào được) ----------
+  let seatTableCounter = 300;
+  function addSeat(tableId, seatId, x, z, faceX, faceZ, prompt) {
+    chairSlots.push({ tableId, seatId, x, z, ry: Math.atan2(faceX - x, faceZ - z), mesh: null, prompt });
+  }
+
+  // Trả về danh sách vật liệu của đồ trang trí gắn tường để mờ cùng tường khi che camera.
+  function buildInterior(cx, fz, out, kind, name, neon, hue, barId) {
+    const follow = [];
+    const P = (u, v) => [cx + u, fz + out * v];
+    const put = (w, h, d, mat, u, y, v) => { const [x, z] = P(u, v); return box(w, h, d, mat, x, y, z); };
+    const faceEntrance = out < 0 ? 0 : Math.PI;              // quay mặt ra phía cửa
+    const stool = (x, z, color, h) => {
+      cyl(0.04, 0.04, h, std(0x9ca3af), x, 0.3 + h / 2, z);
+      cyl(0.22, 0.2, 0.08, std(color, { roughness: 0.5 }), x, 0.3 + h, z, null, 14);
+    };
+
+    // Sàn + dải neon quanh tường
+    put(10.6, 0.04, 9.6, std(0x1c1426, { roughness: 0.35, metalness: 0.2 }), 0, 0.32, 5);
+    const stripMat = glow(neon);
+    follow.push(stripMat);
+    put(10.2, 0.08, 0.06, stripMat, 0, 3.5, 9.76);
+    put(0.06, 0.08, 9.6, stripMat, -5.1, 3.5, 5);
+    put(0.06, 0.08, 9.6, stripMat, 5.1, 3.5, 5);
+    for (const v of [2.5, 5, 7.5]) for (let i = 0; i < 8; i++) { const [x, z] = P(-4.4 + i * 1.25, v); addBulb(x, 4.35, z, Math.floor(i + v)); }
+
+    // Quầy bar sát tường phải + kệ rượu + ghế quầy ngồi được
+    const woodMat = std(0x3a2417, { roughness: 0.55 });
+    put(0.8, 1.1, 5.6, woodMat, 3.6, 0.85, 4.9);
+    put(0.9, 0.06, 5.7, glow(neon), 3.6, 1.42, 4.9);
+    obstacle(...P(3.6, 4.9), 0.9, 5.6);
+    const shelfMat = new THREE.MeshBasicMaterial({ map: storefrontTexture(hue) });
+    follow.push(shelfMat);
+    const shelf = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.8), shelfMat);
+    [shelf.position.x, shelf.position.z] = P(5.08, 4.9);
+    shelf.position.y = 2.2; shelf.rotation.y = -Math.PI / 2;
+    scene.add(shelf);
+    const barTable = seatTableCounter++;
+    [3.0, 4.4, 5.8, 7.2].forEach((v, k) => {
+      const [x, z] = P(2.6, v);
+      stool(x, z, k % 2 ? 0xdc2626 : 0x2563eb, 0.62);
+      addSeat(barTable, k, x, z, x + 1, z, `Ngồi quầy bar ${name}`);
+    });
+    const bartender = makePerson(0xe11d48, ...P(4.5, 4.9), -Math.PI / 2);
+    animators.push((d, t) => { bartender.mesh.position.y = 0.3 + Math.abs(Math.sin(t * 2.4)) * 0.03; bartender.mesh.rotation.y = -Math.PI / 2 + Math.sin(t * 0.8) * 0.5; });
+
+    // Sofa dọc tường trái (ngồi được; không đặt vật cản để đứng dậy không bị kẹt)
+    const sofaMat = std(new THREE.Color(neon).multiplyScalar(0.45).getHex(), { roughness: 0.8 });
+    const sofaTable = seatTableCounter++;
+    [2.4, 6.0].forEach((v, k) => {
+      put(0.9, 0.45, 1.9, sofaMat, -4.55, 0.55, v);
+      put(0.18, 0.9, 1.9, sofaMat, -5.0, 0.95, v);
+      for (const dv of [-0.45, 0.45]) {
+        const [x, z] = P(-4.5, v + dv);
+        addSeat(sofaTable, k * 2 + (dv > 0 ? 1 : 0), x, z, x + 1, z, `Ngồi sofa ở ${name}`);
+      }
+    });
+
+    // Màn hình tên quán trên tường sau
+    const screen = signPlane([[name, 86, 80], ['Mời bạn vào chơi!', 36, 150]], 5, 1.6, 768, 200, neon, '#0b0a18');
+    [screen.position.x, screen.position.z] = P(0, 9.74);
+    screen.position.y = 2.7; screen.rotation.y = faceEntrance;
+    scene.add(screen);
+    follow.push(screen.material);
+
+    if (kind === 'club') {
+      // Sàn nhảy 4x4 đổi màu theo nhạc + quả cầu disco + DJ + người nhảy
+      const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(0.95, 0.05, 0.95), new THREE.MeshBasicMaterial({ color: 0xffffff }), 16);
+      const m4 = new THREE.Matrix4(), tint = new THREE.Color();
+      for (let i = 0; i < 16; i++) {
+        const [x, z] = P(-3.0 + (i % 4) * 1.0, 2.5 + Math.floor(i / 4) * 1.0);
+        m4.makeTranslation(x, 0.36, z);
+        tiles.setMatrixAt(i, m4);
+        tiles.setColorAt(i, tint.setHSL(i / 16, 1, 0.5));
+      }
+      scene.add(tiles);
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), std(0xe5e7eb, { metalness: 1, roughness: 0.12, flatShading: true }));
+      const [bx, bz] = P(-1.5, 4.0);
+      ball.position.set(bx, 3.7, bz);
+      scene.add(ball);
+      cyl(0.01, 0.01, 0.9, std(0x9ca3af), bx, 4.2, bz);
+      animators.push((d, t) => {
+        const pulse = window.BarMusic ? BarMusic.pulse(barId, t) : 0.5;
+        for (let i = 0; i < 16; i++) tiles.setColorAt(i, tint.setHSL((t * 0.25 + i * 0.06 + (i % 4) * 0.05) % 1, 1, 0.25 + pulse * 0.35));
+        tiles.instanceColor.needsUpdate = true;
+        ball.rotation.y = t * 1.2;
+      });
+      // DJ booth
+      put(3.2, 1.1, 0.9, std(0x14121c), -1.5, 0.85, 8.5);
+      put(3.0, 0.04, 0.7, glow(0x22d3ee), -1.5, 1.42, 8.5);
+      for (const du of [-0.8, 0.8]) { const [x, z] = P(-1.5 + du, 8.5); cyl(0.3, 0.3, 0.05, std(0x0b0b0f), x, 1.46, z, null, 20); }
+      obstacle(...P(-1.5, 8.5), 3.4, 1.0);
+      const dj = makePerson(0x7c3aed, ...P(-1.5, 9.2), faceEntrance);
+      animators.push((d, t) => { dj.mesh.position.y = 0.3 + Math.abs(Math.sin(t * 4)) * 0.04; dj.mesh.rotation.z = Math.sin(t * 4) * 0.06; });
+      // Khách nhảy
+      const dancers = [];
+      const cols = [0xfb7185, 0x38bdf8, 0xfacc15, 0x34d399];
+      for (let i = 0; i < (lite ? 2 : 4); i++) {
+        dancers.push({ p: makePerson(cols[i], ...P(-2.5 + (i % 2) * 2, 3.2 + Math.floor(i / 2) * 1.8), i * 1.7), ph: i * 1.1 });
+      }
+      animators.push((d, t) => {
+        for (const { p, ph } of dancers) {
+          p.mesh.position.y = 0.3 + Math.max(0, Math.sin(t * 8 + ph)) * 0.14;
+          p.mesh.rotation.y += d * (1.2 + ph * 0.1);
+          p.mesh.rotation.z = Math.sin(t * 4 + ph) * 0.12;
+        }
+      });
+    } else if (kind === 'lounge') {
+      // Bàn thấp + ghế đệm (ngồi được) + bình shisha + đèn lồng
+      const base = seatTableCounter;
+      [[-2.2, 3.2], [-2.2, 6.9], [0.6, 5.0]].forEach(([u, v], ti) => {
+        const [x, z] = P(u, v);
+        cyl(0.55, 0.55, 0.06, std(0x3b2a1a), x, 0.74, z, null, 18);
+        cyl(0.08, 0.1, 0.4, std(0x3b2a1a), x, 0.52, z);
+        cyl(0.07, 0.1, 0.34, std(0x14b8a6, { metalness: 0.5, roughness: 0.2 }), x + 0.12, 0.94, z);
+        cyl(0.03, 0.05, 0.2, std(0xfbbf24, { metalness: 0.8 }), x + 0.12, 1.2, z);
+        obstacle(x, z, 0.9, 0.9);
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), glow(0xff9a3d));
+        lamp.position.set(x, 3.3, z);
+        scene.add(lamp);
+        for (let k = 0; k < 4; k++) {
+          const a = k * Math.PI / 2 + Math.PI / 4, sx = x + Math.cos(a) * 1.05, sz = z + Math.sin(a) * 1.05;
+          cyl(0.32, 0.34, 0.36, std([0xdc2626, 0x0ea5e9, 0xeab308, 0xa855f7][(k + ti) % 4], { roughness: 0.9 }), sx, 0.5, sz, null, 14);
+          addSeat(base + ti, k, sx, sz, x, z, `Ngồi ghế đệm shisha ở ${name}`);
+        }
+      });
+      seatTableCounter += 3;
+    } else if (kind === 'pool') {
+      // Bàn bi-a + bi + cơ + bia phi tiêu
+      put(3.0, 0.8, 1.6, std(0x5b3a1e, { roughness: 0.5 }), -1.8, 0.7, 5);
+      put(2.6, 0.04, 1.2, std(0x15803d, { roughness: 0.95 }), -1.8, 1.12, 5);
+      obstacle(...P(-1.8, 5), 3.0, 1.6);
+      const ballCols = [0xfef08a, 0x2563eb, 0xdc2626, 0x7c3aed, 0xf97316, 0x16a34a, 0x7f1d1d, 0x111827, 0xffffff];
+      ballCols.forEach((c, i) => {
+        const [x, z] = P(-1.1 + (i % 3) * 0.16 + Math.floor(i / 3) * 0.08, 4.75 + Math.floor(i / 3) * 0.2);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), std(c, { roughness: 0.2 }));
+        b.position.set(x, 1.2, z);
+        scene.add(b);
+      });
+      const cue = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.5, 6), std(0xd6b27a));
+      const [qx, qz] = P(-4.9, 8.4);
+      cue.position.set(qx, 1.05, qz); cue.rotation.z = 0.12;
+      scene.add(cue);
+      const poolTable = seatTableCounter++;
+      [[-4.2, 0], [0.7, 1]].forEach(([u, k]) => {
+        const [x, z] = P(u, 5);
+        stool(x, z, 0xdc2626, 0.6);
+        addSeat(poolTable, k, x, z, ...P(-1.8, 5), `Ngồi nghỉ bên bàn bi-a ${name}`);
+      });
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      ['#111', '#fff', '#dc2626', '#16a34a', '#dc2626'].forEach((col, i) => { g.fillStyle = col; g.beginPath(); g.arc(64, 64, 62 - i * 12, 0, Math.PI * 2); g.fill(); });
+      const dart = new THREE.Mesh(new THREE.CircleGeometry(0.36, 24), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+      [dart.position.x, dart.position.z] = P(3.0, 9.72);
+      dart.position.y = 2.0; dart.rotation.y = faceEntrance;
+      scene.add(dart);
+      follow.push(dart.material);
+      const sign = signPlane([['POOL • DARTS', 60, 60]], 2.6, 0.7, 512, 128, '#9ae6b4', '#10261a');
+      [sign.position.x, sign.position.z] = P(-4.0, 9.72);
+      sign.position.y = 2.7; sign.rotation.y = faceEntrance;
+      scene.add(sign);
+      follow.push(sign.material);
+    }
+    return follow;
   }
 
   // Show múa lửa: người biểu diễn, gậy lửa xoay, hơi lửa định kỳ, khán giả vây quanh

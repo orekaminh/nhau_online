@@ -401,24 +401,30 @@ body.drunk-wobble-3 {
   background: rgba(15, 23, 42, 0.9);
   color: #ffffff;
   font-family: 'Be Vietnam Pro', system-ui, sans-serif;
-  font-size: 0.88rem;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  padding: 3px 14px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 1px 8px;
   border-radius: 999px;
   white-space: nowrap;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  opacity: 0.88;
 }
+.tag-name.tag-pg { color: #fff; border-color: #fde04788; max-width: 110px; }
 
 .tag-3d.is-self .tag-name {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #000;
-  border: 2px solid #fef08a;
-  font-weight: 900;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.7);
+  border: 1px solid #fef08a99;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.45);
   text-shadow: none;
+  opacity: 0.95;
 }
 
 .tag-bubble {

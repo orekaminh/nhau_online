@@ -343,12 +343,7 @@
     for (const [id, hud] of playerHUDTags) {
       const info = levels.get(id) || (id === F.selfId && F.me ? { level: F.me.level, title: F.me.title } : null);
       if (!info) continue;
-      if (!hud.titleElem) {
-        hud.titleElem = h('div', { class: 'tag-title' });
-        hud.nameElem.after(hud.titleElem);
-      }
-      const text = `Lv ${info.level} · ${info.title}`;
-      if (hud.titleElem.textContent !== text) hud.titleElem.textContent = text;
+      // Không hiển thị danh hiệu dưới tên nữa (đã gỡ theo yêu cầu): màn hình thoáng hơn.
     }
   });
 
