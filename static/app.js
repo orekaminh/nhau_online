@@ -213,7 +213,7 @@ function playPeeSound() {
   const ctx = getAudioContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const bufferSize = ctx.sampleRate * 1.6;
+  const bufferSize = ctx.sampleRate * 3.3;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -221,10 +221,13 @@ function playPeeSound() {
   noise.buffer = buffer;
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(850, now);
+  filter.frequency.setValueAtTime(900, now);
+  filter.frequency.linearRampToValueAtTime(600, now + 3.2);   // dòng yếu dần
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.25, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 1.55);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.24, now + 0.15);
+  gain.gain.setValueAtTime(0.22, now + 2.2);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 3.25);
   noise.connect(filter);
   filter.connect(gain);
   gain.connect(ctx.destination);
@@ -3958,41 +3961,50 @@ function findNearestPeeSpot() {
   return null;
 }
 
-function spawnPeeStream(startX, startY, startZ, rotY) {
-  const dirX = Math.sin(rotY);
-  const dirZ = Math.cos(rotY);
-
-  for (let i = 0; i < 35; i++) {
-    const pMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 4, 4),
-      new THREE.MeshBasicMaterial({ color: 0xfacc15 })
-    );
-    pMesh.position.set(startX + dirX * 0.35, startY + 0.65, startZ + dirZ * 0.35);
-    scene.add(pMesh);
-
-    peeParticles.push({
-      x: startX + dirX * 0.35,
-      y: startY + 0.65,
-      z: startZ + dirZ * 0.35,
-      vx: dirX * (2.0 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.25,
-      vy: 0.35 + Math.random() * 0.25,
-      vz: dirZ * (2.0 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.25,
-      mesh: pMesh,
-      life: 28
-    });
-  }
+// Tia nước chảy liên tục ~3.2 giây, yếu dần về cuối; nguồn phát bám theo người đang đái (kể cả người chơi khác).
+const PEE_DURATION = 3.2;
+const peeStreams = [];
+const peeGeo = new THREE.SphereGeometry(0.035, 4, 4);
+const peeMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+function spawnPeeStream(startX, startY, startZ, rotY, follow) {
+  peeStreams.push({ x: startX, y: startY, z: startZ, ry: rotY, follow: follow || null, t: 0, acc: 0 });
 }
 
 function updatePeeParticles(delta) {
+  for (let s = peeStreams.length - 1; s >= 0; s--) {
+    const st = peeStreams[s];
+    st.t += delta;
+    if (st.follow) { const f = st.follow(); if (f) { st.x = f.x; st.z = f.z; st.ry = f.ry; } }
+    if (st.t >= PEE_DURATION) { peeStreams.splice(s, 1); continue; }
+    const strength = 1 - 0.45 * (st.t / PEE_DURATION);       // áp lực giảm dần
+    st.acc += delta * 70;                                     // ~70 hạt/giây
+    const dirX = Math.sin(st.ry), dirZ = Math.cos(st.ry);
+    while (st.acc >= 1 && peeParticles.length < 450) {
+      st.acc -= 1;
+      const pMesh = new THREE.Mesh(peeGeo, peeMat);
+      const px = st.x + dirX * 0.35, py = st.y + 0.62, pz = st.z + dirZ * 0.35;
+      pMesh.position.set(px, py, pz);
+      scene.add(pMesh);
+      const speed = (2.0 + Math.random() * 0.6) * strength;
+      peeParticles.push({
+        x: px, y: py, z: pz,
+        vx: dirX * speed + (Math.random() - 0.5) * 0.2,
+        vy: (0.5 + Math.random() * 0.2) * strength,
+        vz: dirZ * speed + (Math.random() - 0.5) * 0.2,
+        mesh: pMesh, age: 0
+      });
+    }
+    if (st.acc > 3) st.acc = 0;
+  }
   for (let i = peeParticles.length - 1; i >= 0; i--) {
     const p = peeParticles[i];
     p.x += p.vx * delta;
     p.y += p.vy * delta;
     p.z += p.vz * delta;
     p.vy -= 9.8 * delta; // Trọng lực
-    p.life--;
+    p.age += delta;
 
-    if (p.y <= 0.32 || p.life <= 0) {
+    if (p.y <= 0.32 || p.age > 1.5) {
       scene.remove(p.mesh);
       peeParticles.splice(i, 1);
       continue;
@@ -4113,7 +4125,8 @@ function handlePeeAction() {
     wcHygiene = 'wash';
     updateWCControls();
   } else {
-    spawnPeeStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry);
+    spawnPeeStream(localPlayerState.x, 0.3, localPlayerState.z, localPlayerState.ry,
+      () => ({ x: localPlayerState.x, z: localPlayerState.z, ry: localPlayerState.ry }));
   }
   playPeeSound();
   sendAction({ action: 'pee', spot_type: spotType });
@@ -4590,6 +4603,11 @@ function connectWebSocket() {
         if (data.is_fined) playSirenSound();
         else playPeeSound();
 
+        if (data.spot_type !== 'wc' && data.member_id !== clientId && remotePlayers.has(data.member_id)) {
+          const rpee = remotePlayers.get(data.member_id);
+          spawnPeeStream(rpee.mesh.position.x, 0.3, rpee.mesh.position.z, rpee.mesh.rotation.y,
+            () => ({ x: rpee.mesh.position.x, z: rpee.mesh.position.z, ry: rpee.mesh.rotation.y }));
+        }
         const pBubble = data.spot_type === 'wc' ? "🚽 Nhẹ hết cả người!" : "🌳 Róc rách róc rách...";
         show3DShoutBubble(data.member_id, pBubble);
         setTicker(data.message);
