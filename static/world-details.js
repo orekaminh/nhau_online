@@ -1,8 +1,20 @@
 // Giới hạn đi lại của người chơi: quán + công viên (Tây) + phố Bùi Viện (Đông). Dùng chung với app.js.
-window.WORLD_BOUNDS = { minX: -118, maxX: 118, minZ: -4.5, maxZ: 33.5,
+window.WORLD_BOUNDS = {
+  minX: -118, maxX: 118, minZ: -4.5, maxZ: 33.5,
   // Phía sau dãy bar Bùi Viện có nội thất quán nên cho đi sâu hơn.
-  minZAt: (x) => (x > 59 && x < 117 ? -12.2 : -4.5) };
-// Small, reusable geometry: a roofless WC for a clear mobile camera, plus pub pets.
+  minZAt: (x) => (x > 59 && x < 117 ? -12.2 : -4.5),
+  bridge: null,   // world-expansion.js gắn cầu đi bộ vào đây: { constrain(x,z), groundY(x,z) }
+  // Kẹp vị trí vào vùng đi được (có tính cả cầu đi bộ qua sông)
+  clamp(x, z) {
+    const cx = Math.max(this.minX, Math.min(this.maxX, x));
+    if (this.bridge && z > this.maxZ - 0.7) {
+      const r = this.bridge.constrain(x, z);
+      if (r) return r;
+    }
+    return { x: cx, z: Math.max(this.minZAt(cx), Math.min(this.maxZ - 0.7, z)) };
+  },
+  groundY(x, z) { return this.bridge ? this.bridge.groundY(x, z) : 0.3; },
+};
 function createPubDetails(scene) {
   const room = new THREE.Group();
   room.name = 'WC • Quán nhậu';
@@ -193,8 +205,7 @@ function createPubDetails(scene) {
       if (!blocked(x + dx / steps, z)) x += dx / steps;
       if (!blocked(x, z + dz / steps)) z += dz / steps;
     }
-    const B = window.WORLD_BOUNDS;
-    return { x: Math.max(B.minX, Math.min(B.maxX, x)), z: Math.max(B.minZAt(x), Math.min(B.maxZ, z)) };
+    return window.WORLD_BOUNDS.clamp(x, z);
   }
   let occupied = null;
   function setOccupied(value) {

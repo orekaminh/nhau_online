@@ -3555,7 +3555,7 @@ function setClickTarget(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
   clickRaycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
   if (!clickRaycaster.ray.intersectPlane(groundPlane, clickHit) || clickHit.distanceTo(camera.position) > 60) return;
-  clickTarget = { x: Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, clickHit.x)), z: Math.max(WORLD_BOUNDS.minZAt(clickHit.x), Math.min(WORLD_BOUNDS.maxZ - 0.7, clickHit.z)) };
+  clickTarget = WORLD_BOUNDS.clamp(clickHit.x, clickHit.z);
   clickStuckTime = 0;
   clickMarker.position.set(clickTarget.x, 0.33, clickTarget.z);
   clickMarker.visible = true;
@@ -4902,8 +4902,9 @@ function animate() {
       localPlayerState.z = next.z;
 
       // Giới hạn trong khuôn viên mở rộng: từ quán vỉa hè, công viên, đến tận Cầu Tàu Bến Bạch Đằng & 2 đầu cánh
-      localPlayerState.x = Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, localPlayerState.x));
-      localPlayerState.z = Math.max(WORLD_BOUNDS.minZAt(localPlayerState.x), Math.min(WORLD_BOUNDS.maxZ - 0.7, localPlayerState.z));
+      const bounded = WORLD_BOUNDS.clamp(localPlayerState.x, localPlayerState.z);
+      localPlayerState.x = bounded.x;
+      localPlayerState.z = bounded.z;
 
       // Nhân vật xoay mặt theo hướng đang di chuyển
       localPlayerState.ry = Math.atan2(moveX, moveZ);
@@ -4923,7 +4924,8 @@ function animate() {
       if (localCharacter.leftArm) localCharacter.leftArm.rotation.x *= 0.8;
     }
 
-    localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
+    localPlayerState.groundY = WORLD_BOUNDS.groundY(localPlayerState.x, localPlayerState.z);
+    localCharacter.mesh.position.set(localPlayerState.x, localPlayerState.groundY, localPlayerState.z);
     localCharacter.mesh.rotation.y = localPlayerState.ry;
     if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
 
@@ -4935,6 +4937,7 @@ function animate() {
         action: "move",
         x: localPlayerState.x,
         z: localPlayerState.z,
+        y: (localPlayerState.groundY || 0.3) - 0.3,
         ry: localPlayerState.ry,
         is_walking: localPlayerState.is_walking
       });
@@ -5035,7 +5038,7 @@ function animate() {
   } else {
     // Camera Xoay 360° Orbit bám theo nhân vật
     const lookTargetX = inWC ? -20.2 : localPlayerState.x;
-    const lookTargetY = inWC ? 0.9 : 0.92; // Góc nhìn cao vừa phải, nhìn bao quát toàn bộ sân quán
+    const lookTargetY = inWC ? 0.9 : 0.92 + ((localPlayerState.groundY || 0.3) - 0.3); // Góc nhìn cao vừa phải, nhìn bao quát toàn bộ sân quán
     const lookTargetZ = inWC ? -2.3 : localPlayerState.z;
 
     let drunkYawOffset = 0;
