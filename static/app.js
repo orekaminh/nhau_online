@@ -564,154 +564,199 @@ function createInoxBrushedTexture() {
 
 function createFaceTexture(isFemale, skinTone = '#ffdfc4', eyeColor = '#1e293b') {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = 512;
+  canvas.height = 512;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = skinTone;
-  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillRect(0, 0, 512, 512);
 
   if (isFemale) {
-    // Feminine eyes with delicate eyeliner & lashes
+    // Feminine Chibi face (Khuôn mặt PG xinh xắn, mắt to tròn long lanh, má hồng)
+    // Left eye
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(80, 115, 20, 14, -0.05, 0, Math.PI * 2);
+    ctx.ellipse(190, 235, 34, 28, -0.04, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = eyeColor;
+    ctx.fillStyle = eyeColor || '#2563eb';
     ctx.beginPath();
-    ctx.arc(80, 115, 10, 0, Math.PI * 2);
+    ctx.arc(190, 235, 20, 0, Math.PI * 2);
     ctx.fill();
 
+    // Dark pupil
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(190, 235, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Specular shine highlights
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(77, 111, 3.5, 0, Math.PI * 2);
+    ctx.arc(182, 225, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(198, 243, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
+    // Upper lash & eyeliner
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 5.5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(80, 115, 20, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.arc(190, 235, 34, Math.PI * 1.15, Math.PI * 1.85);
     ctx.stroke();
 
+    // Right eye
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(176, 115, 20, 14, 0.05, 0, Math.PI * 2);
+    ctx.ellipse(322, 235, 34, 28, 0.04, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = eyeColor;
+    ctx.fillStyle = eyeColor || '#2563eb';
     ctx.beginPath();
-    ctx.arc(176, 115, 10, 0, Math.PI * 2);
+    ctx.arc(322, 235, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(322, 235, 12, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(173, 111, 3.5, 0, Math.PI * 2);
+    ctx.arc(314, 225, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(330, 243, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 5.5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(176, 115, 20, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.arc(322, 235, 34, Math.PI * 1.15, Math.PI * 1.85);
     ctx.stroke();
 
     // Eyebrows
-    ctx.strokeStyle = '#332211';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(80, 100, 22, Math.PI * 1.25, Math.PI * 1.75);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(176, 100, 22, Math.PI * 1.25, Math.PI * 1.75);
-    ctx.stroke();
-
-    // Rosy Blush
-    const blushL = ctx.createRadialGradient(65, 140, 2, 65, 140, 26);
-    blushL.addColorStop(0, 'rgba(244, 63, 94, 0.45)');
-    blushL.addColorStop(1, 'rgba(244, 63, 94, 0)');
-    ctx.fillStyle = blushL;
-    ctx.fillRect(35, 115, 60, 50);
-
-    const blushR = ctx.createRadialGradient(191, 140, 2, 191, 140, 26);
-    blushR.addColorStop(0, 'rgba(244, 63, 94, 0.45)');
-    blushR.addColorStop(1, 'rgba(244, 63, 94, 0)');
-    ctx.fillStyle = blushR;
-    ctx.fillRect(161, 115, 60, 50);
-
-    // Lips
-    ctx.fillStyle = '#f43f5e';
-    ctx.beginPath();
-    ctx.ellipse(128, 172, 18, 7, 0, 0, Math.PI);
-    ctx.fill();
-    ctx.strokeStyle = '#e11d48';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  } else {
-    // Male character: bold eyes, eyebrows, friendly pub smile
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(82, 115, 18, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = eyeColor;
-    ctx.beginPath();
-    ctx.arc(82, 115, 8.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(79, 112, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(174, 115, 18, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = eyeColor;
-    ctx.beginPath();
-    ctx.arc(174, 115, 8.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(171, 112, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bold eyebrows
-    ctx.strokeStyle = '#1e1b4b';
+    ctx.strokeStyle = '#382215';
     ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.moveTo(60, 96);
-    ctx.lineTo(104, 98);
+    ctx.arc(190, 208, 36, Math.PI * 1.25, Math.PI * 1.75);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(322, 208, 36, Math.PI * 1.25, Math.PI * 1.75);
+    ctx.stroke();
+
+    // Rosy Blush (Má hồng phúng phính Chibi)
+    const blushL = ctx.createRadialGradient(165, 280, 4, 165, 280, 46);
+    blushL.addColorStop(0, 'rgba(244, 63, 94, 0.55)');
+    blushL.addColorStop(1, 'rgba(244, 63, 94, 0)');
+    ctx.fillStyle = blushL;
+    ctx.fillRect(115, 230, 100, 100);
+
+    const blushR = ctx.createRadialGradient(347, 280, 4, 347, 280, 46);
+    blushR.addColorStop(0, 'rgba(244, 63, 94, 0.55)');
+    blushR.addColorStop(1, 'rgba(244, 63, 94, 0)');
+    ctx.fillStyle = blushR;
+    ctx.fillRect(297, 230, 100, 100);
+
+    // Sweet feminine smile
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.arc(256, 305, 18, 0, Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = '#e11d48';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  } else {
+    // Chibi Bợm Nhậu (Phong cách Nhà Tù Online: Mắt hạt tiêu tròn to đen láy, má hồng ửng say, miệng cười thân thiện)
+    // Left eye (Mắt to tròn ngộ nghĩnh)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(196, 232, 28, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1c1917';
+    ctx.beginPath();
+    ctx.ellipse(196, 232, 19, 21, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Big anime sparkle
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(189, 223, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(203, 240, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right eye
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(316, 232, 28, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1c1917';
+    ctx.beginPath();
+    ctx.ellipse(316, 232, 19, 21, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(309, 223, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(323, 240, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Expressive arched eyebrows (Lông mày tinh nghịch)
+    ctx.strokeStyle = '#292524';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(196, 204, 32, Math.PI * 1.25, Math.PI * 1.75);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(152, 98);
-    ctx.lineTo(196, 96);
+    ctx.arc(316, 204, 32, Math.PI * 1.25, Math.PI * 1.75);
     ctx.stroke();
 
-    // Cheek blush (drunk bợm nhậu)
-    const blushL = ctx.createRadialGradient(70, 138, 2, 70, 138, 24);
-    blushL.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+    // Rosy cheeks (Má hồng bợm nhậu tròn xoe như Nhà Tù Online)
+    const blushL = ctx.createRadialGradient(162, 275, 4, 162, 275, 42);
+    blushL.addColorStop(0, 'rgba(239, 68, 68, 0.6)');
+    blushL.addColorStop(0.6, 'rgba(248, 113, 113, 0.3)');
     blushL.addColorStop(1, 'rgba(239, 68, 68, 0)');
     ctx.fillStyle = blushL;
-    ctx.fillRect(45, 115, 50, 45);
+    ctx.fillRect(115, 230, 95, 90);
 
-    const blushR = ctx.createRadialGradient(186, 138, 2, 186, 138, 24);
-    blushR.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+    const blushR = ctx.createRadialGradient(350, 275, 4, 350, 275, 42);
+    blushR.addColorStop(0, 'rgba(239, 68, 68, 0.6)');
+    blushR.addColorStop(0.6, 'rgba(248, 113, 113, 0.3)');
     blushR.addColorStop(1, 'rgba(239, 68, 68, 0)');
     ctx.fillStyle = blushR;
-    ctx.fillRect(161, 115, 50, 45);
+    ctx.fillRect(302, 230, 95, 90);
 
-    // Confident grin
-    ctx.strokeStyle = '#7f1d1d';
-    ctx.lineWidth = 3.5;
+    // Big happy grin / smile (Nụ cười tươi rói)
+    ctx.strokeStyle = '#881337';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(128, 160, 22, 0.2, Math.PI - 0.2);
+    ctx.arc(256, 280, 28, 0.2, Math.PI - 0.2);
     ctx.stroke();
+
+    // Cheek dimples
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.arc(224, 286, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(288, 286, 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  return new THREE.CanvasTexture(canvas);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
 }
 
 function createBeerCanTexture(brand) {
@@ -2205,6 +2250,7 @@ function createPGBiaCharacter(id, name, brand, x, z, ry) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 20), headMat);
   head.scale.set(0.9, 1.1, 0.95);
   head.position.y = 1.25;
+  head.rotation.y = -Math.PI / 2;
   head.castShadow = true;
   root.add(head);
 
@@ -2602,139 +2648,156 @@ function buildLandmark81AndSkyline() {
 PubLoader.defer(buildLandmark81AndSkyline, 'buildLandmark81AndSkyline');
 
 // ========================================================
-// 8. 3D Character Avatar Factory (Chibi Bợm Nhậu Má Hồng Y Hệt Hình)
+// 8. 3D Character Avatar Factory (Chibi Bợm Nhậu Má Hồng Phong Cách Nhà Tù Online)
 // ========================================================
 function createCharacter3D(colorHex) {
   const root = new THREE.Group();
 
-  // Torso: Stylized human torso with fashionable graphic tee or polo
+  // Torso: Thân hình Chibi tròn múp hạt đậu (Cute chubby bean body)
   const shirtColor = colorHex || 0xf97316;
-  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.65 });
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.28, 0.72, 16), shirtMat);
-  torso.position.y = 0.78;
+  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.55 });
+  
+  // Thân giữa bo tròn
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.40, 0.54, 24), shirtMat);
+  torso.position.y = 0.74;
   torso.castShadow = true;
   root.add(torso);
 
-  // Collar / Neck trim
-  const collarMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, 16), collarMat);
+  // Vai bo tròn mềm mại
+  const shoulderDome = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), shirtMat);
+  shoulderDome.position.y = 1.01;
+  root.add(shoulderDome);
+
+  // Bụng bợm nhậu tròn xoe
+  const bellyDome = new THREE.Mesh(new THREE.SphereGeometry(0.40, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), shirtMat);
+  bellyDome.position.y = 0.47;
+  root.add(bellyDome);
+
+  // Viền cổ áo Chibi trắng tinh
+  const collarMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.035, 8, 20), collarMat);
   collar.rotation.x = Math.PI / 2;
-  collar.position.set(0, 1.12, 0);
+  collar.position.set(0, 1.06, 0);
   root.add(collar);
 
-  // Smooth neck
+  // Đầu Chibi to tròn má phúng phính (Tỷ lệ Chibi 2.2 đầu đáng yêu y hệt Nhà Tù Online)
   const skinTone = '#ffdfc4';
-  const skinMat = new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 });
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.18, 12), skinMat);
-  neck.position.y = 1.18;
-  root.add(neck);
-
-  // Head: Scaled smooth sphere with realistic face texture
   const faceTex = createFaceTexture(false, skinTone);
-  const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.55 });
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), headMat);
-  head.scale.set(0.92, 1.1, 0.98);
-  head.position.y = 1.48;
+  const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.5 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 28, 28), headMat);
+  head.scale.set(1.10, 0.98, 1.04);
+  head.position.y = 1.46;
+  head.rotation.y = -Math.PI / 2; // Xoay 90 độ để tâm mặt (u=0.5) hướng chuẩn về phía trước (+Z)
   head.castShadow = true;
   root.add(head);
 
-  // Styled 3D Hair (Modern textured fade with layered volume)
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.85 });
-  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), hairMat);
-  hairTop.scale.set(0.96, 0.6, 1.05);
-  hairTop.position.set(0, 1.66, -0.04);
+  // Tóc 3D khối mượt mà ôm sát đỉnh đầu & gáy, để lộ trọn vẹn gương mặt Chibi
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1f1917, roughness: 0.75 });
+  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.386, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.40), hairMat);
+  hairTop.scale.set(1.08, 0.96, 0.92);
+  hairTop.position.set(0, 1.50, -0.06);
   root.add(hairTop);
 
-  // Backward Cap / Snapback
+  // Mái tóc vuốt nhẹ trên đỉnh trán
+  const hairTuft = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), hairMat);
+  hairTuft.scale.set(1.3, 0.5, 0.8);
+  hairTuft.position.set(0.06, 0.32, 0.20);
+  hairTop.add(hairTuft);
+
+  // Mũ Snapback đội ngược cá tính trên chỏm đầu (không che mắt)
   const capMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.75 });
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.16, 16), capMat);
-  cap.position.set(0, 1.66, 0);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.388, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.30), capMat);
+  cap.scale.set(1.08, 0.96, 0.96);
+  cap.position.set(0, 1.57, -0.04);
   root.add(cap);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.28), capMat);
-  visor.position.set(0, 1.62, -0.34);
+
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.035, 0.22), capMat);
+  visor.position.set(0, 1.63, -0.34);
   visor.rotation.x = -0.15;
   root.add(visor);
 
-  // Shoulders & Arms
+  // Tay Chibi múp míp (Chubby arms & hands)
   const leftArmGroup = new THREE.Group();
-  leftArmGroup.position.set(-0.36, 1.02, 0);
-  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 10), skinMat);
-  leftArm.position.y = -0.22;
+  leftArmGroup.position.set(-0.42, 0.92, 0);
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.09, 0.36, 14), shirtMat);
+  leftArm.position.y = -0.16;
   leftArmGroup.add(leftArm);
+  const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 }));
+  leftHand.position.y = -0.33;
+  leftArmGroup.add(leftHand);
   root.add(leftArmGroup);
 
   const rightArmGroup = new THREE.Group();
-  rightArmGroup.position.set(0.36, 1.02, 0);
-  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 10), skinMat);
-  rightArm.position.y = -0.22;
+  rightArmGroup.position.set(0.42, 0.92, 0);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.09, 0.36, 14), shirtMat);
+  rightArm.position.y = -0.16;
   rightArmGroup.add(rightArm);
+  const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 }));
+  rightHand.position.y = -0.33;
+  rightArmGroup.add(rightHand);
   root.add(rightArmGroup);
 
-  // Realistic Beer Mug (Ly bia thủy tinh quai dày sủi bọt)
+  // Ly bia thủy tinh quai dày sủi bọt sóng sánh (Frosty Beer Mug)
   const beerMug = new THREE.Group();
-  beerMug.position.set(0.36, 0.85, 0.32);
+  beerMug.position.set(0.42, 0.72, 0.28);
 
-  // Thick glass mug body
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0xfef08a,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.85,
     roughness: 0.1,
     metalness: 0.15
   });
-  const mugBody = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.28, 14), glassMat);
+  const mugBody = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.095, 0.26, 14), glassMat);
   beerMug.add(mugBody);
 
-  // Golden beer liquid inside
   const beerLiquid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.085, 0.22, 12),
+    new THREE.CylinderGeometry(0.092, 0.08, 0.20, 12),
     new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2 })
   );
   beerLiquid.position.y = -0.02;
   beerMug.add(beerLiquid);
 
-  // Frothy white beer head
   const foamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
-  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.11, 0.09, 14), foamMat);
-  foam.position.y = 0.12;
+  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.10, 0.08, 14), foamMat);
+  foam.position.y = 0.11;
   beerMug.add(foam);
 
-  // Mug handle
   const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, roughness: 0.1 });
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.025, 8, 12), handleMat);
-  handle.position.set(0.12, 0, 0);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.022, 8, 12), handleMat);
+  handle.position.set(0.11, 0, 0);
   handle.rotation.y = Math.PI / 2;
   beerMug.add(handle);
 
   root.add(beerMug);
 
-  // Denim Jeans (Quần jean xanh wash)
+  // Quần jean xanh denim Chibi (Chubby denim legs)
   const denimMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.85 });
   const leftLegGroup = new THREE.Group();
-  leftLegGroup.position.set(-0.16, 0.48, 0);
+  leftLegGroup.position.set(-0.18, 0.44, 0);
 
-  const leftLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.48, 12), denimMat);
-  leftLegPants.position.y = -0.2;
+  const leftLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.36, 14), denimMat);
+  leftLegPants.position.y = -0.14;
   leftLegPants.castShadow = true;
   leftLegGroup.add(leftLegPants);
 
-  // Sneaker (Giày sneaker hiện đại đế trắng)
+  // Giày sneaker Chibi bo tròn xinh xắn
   const shoeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.11, 0.28), shoeMat);
-  leftShoe.position.set(0, -0.42, 0.06);
+  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.12, 0.28), shoeMat);
+  leftShoe.position.set(0, -0.30, 0.05);
   leftLegGroup.add(leftShoe);
   root.add(leftLegGroup);
 
   const rightLegGroup = new THREE.Group();
-  rightLegGroup.position.set(0.16, 0.48, 0);
+  rightLegGroup.position.set(0.18, 0.44, 0);
 
-  const rightLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.48, 12), denimMat);
-  rightLegPants.position.y = -0.2;
+  const rightLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.36, 14), denimMat);
+  rightLegPants.position.y = -0.14;
   rightLegPants.castShadow = true;
   rightLegGroup.add(rightLegPants);
 
-  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.11, 0.28), shoeMat);
-  rightShoe.position.set(0, -0.42, 0.06);
+  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.12, 0.28), shoeMat);
+  rightShoe.position.set(0, -0.30, 0.05);
   rightLegGroup.add(rightShoe);
   root.add(rightLegGroup);
 
@@ -2779,8 +2842,8 @@ try {
   if (saved !== null && !reducedMotion.matches) comfortMode = saved === 'true';
 } catch (_) { /* Storage may be unavailable in private browsing. */ }
 let cameraYaw = 0;
-let cameraPitch = 0.48;
-let cameraDistance = mobileControls ? 8.2 : 6.8;
+let cameraPitch = 0.72; // Góc nhìn Isometric 3/4 từ trên xuống thoáng đãng như Nhà Tù Online
+let cameraDistance = mobileControls ? 10.5 : 9.8;
 const cameraPointers = new Map();
 const cameraLookTarget = new THREE.Vector3();
 let cameraTargetReady = false;
@@ -2796,7 +2859,7 @@ function leaveScenicView() {
 }
 function zoomCamera(distance) {
   leaveScenicView();
-  cameraDistance = Math.max(3.8, Math.min(13.5, distance));
+  cameraDistance = Math.max(4.0, Math.min(18.0, distance));
 }
 function pointerSpan() {
   const [a, b] = [...cameraPointers.values()];
@@ -2981,8 +3044,8 @@ document.getElementById('zoomOutBtn').addEventListener('click', () => zoomCamera
 document.getElementById('resetCameraBtn').addEventListener('click', () => {
   leaveScenicView();
   cameraYaw = 0;
-  cameraPitch = 0.48;
-  cameraDistance = mobileControls ? 8.2 : 6.8;
+  cameraPitch = 0.72;
+  cameraDistance = mobileControls ? 10.5 : 9.8;
 });
 // Secondary actions remain available in a compact mobile drawer.
 const extraActions = document.createElement('div');
@@ -4098,13 +4161,15 @@ function animate() {
       localPlayerState.is_walking = true;
       localPlayerState.walkTime += delta * 12;
 
-      // Leg Swing Animation
-      localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.6;
-      localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.6;
+      // Leg Swing & Chibi Waddle Animation (Bước đi lắc lư Chibi đáng yêu)
+      localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.55;
+      localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.55;
+      localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.5) * 0.05;
     } else {
       localPlayerState.is_walking = false;
       localCharacter.leftLeg.rotation.x = 0;
       localCharacter.rightLeg.rotation.x = 0;
+      localCharacter.mesh.rotation.z = 0;
     }
 
     localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
@@ -4211,7 +4276,7 @@ function animate() {
   } else {
     // Camera Xoay 360° Orbit bám theo nhân vật
     const lookTargetX = inWC ? -20.2 : localPlayerState.x;
-    const lookTargetY = inWC ? 0.9 : 1.35;
+    const lookTargetY = inWC ? 0.9 : 0.92; // Góc nhìn cao vừa phải, nhìn bao quát toàn bộ sân quán
     const lookTargetZ = inWC ? -2.3 : localPlayerState.z;
 
     let drunkYawOffset = 0;
@@ -4252,11 +4317,13 @@ function animate() {
 
     if (rp.is_walking) {
       rp.walkTime += delta * 12;
-      rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime) * 0.6;
-      rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime) * 0.6;
+      rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime) * 0.55;
+      rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime) * 0.55;
+      rp.mesh.rotation.z = Math.sin(rp.walkTime * 0.5) * 0.05;
     } else {
       rp.charParts.leftLeg.rotation.x = 0;
       rp.charParts.rightLeg.rotation.x = 0;
+      rp.mesh.rotation.z = 0;
     }
   });
 
@@ -4401,10 +4468,34 @@ function finishChatSend() {
   pendingChatText = null;
   chatSendBtn.disabled = !(ws && ws.readyState === WebSocket.OPEN);
 }
+function addLiveChatMessage(author, text, isSelf) {
+  const stream = document.getElementById('liveChatStream');
+  if (!stream) return;
+  const pill = document.createElement('div');
+  pill.className = 'live-chat-pill' + (isSelf ? ' is-self' : '');
+  const authorSpan = document.createElement('strong');
+  authorSpan.className = 'chat-author';
+  authorSpan.textContent = author + ': ';
+  const textSpan = document.createElement('span');
+  textSpan.className = 'chat-body';
+  textSpan.textContent = text;
+  pill.appendChild(authorSpan);
+  pill.appendChild(textSpan);
+  stream.appendChild(pill);
+  while (stream.children.length > 5) {
+    stream.removeChild(stream.firstChild);
+  }
+  setTimeout(() => {
+    pill.classList.add('is-fade');
+    setTimeout(() => { if (pill.parentNode) pill.remove(); }, 600);
+  }, 12000);
+}
+
 function receiveChat(data) {
   getOrCreatePlayerHUD(data.member_id, data.member_name, data.member_id === clientId);
   show3DShoutBubble(data.member_id, data.text, Math.min(10000, 5000 + data.text.length * 40));
   chatStatus.textContent = `${data.member_name}: ${data.text}`;
+  addLiveChatMessage(data.member_name, data.text, data.member_id === clientId);
   if (data.member_id === clientId && pendingChatText !== null) {
     if (chatInput.value.trim() === pendingChatText) chatInput.value = '';
     finishChatSend();
@@ -4505,6 +4596,59 @@ audioToggleBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   audioToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
 });
+
+// Hướng dẫn điều khiển (Help Modal)
+const helpBtn = document.getElementById('helpBtn');
+const controlHintsModal = document.getElementById('controlHintsModal');
+const closeHelpBtn = document.getElementById('closeHelpBtn');
+if (helpBtn && controlHintsModal) {
+  helpBtn.addEventListener('click', () => {
+    const isHidden = controlHintsModal.hasAttribute('hidden');
+    if (isHidden) {
+      controlHintsModal.removeAttribute('hidden');
+      helpBtn.classList.add('is-active');
+    } else {
+      controlHintsModal.setAttribute('hidden', '');
+      helpBtn.classList.remove('is-active');
+    }
+  });
+}
+if (closeHelpBtn && controlHintsModal) {
+  closeHelpBtn.addEventListener('click', () => {
+    controlHintsModal.setAttribute('hidden', '');
+    if (helpBtn) helpBtn.classList.remove('is-active');
+  });
+}
+window.addEventListener('keydown', (e) => {
+  if (['input', 'textarea'].includes((e.target.tagName || '').toLowerCase())) return;
+  if (e.key === 'h' || e.key === 'H' || e.key === '?') {
+    if (controlHintsModal) {
+      if (controlHintsModal.hasAttribute('hidden')) {
+        controlHintsModal.removeAttribute('hidden');
+        if (helpBtn) helpBtn.classList.add('is-active');
+      } else {
+        controlHintsModal.setAttribute('hidden', '');
+        if (helpBtn) helpBtn.classList.remove('is-active');
+      }
+    }
+  }
+});
+
+// Thu gọn / mở rộng Dock hành động
+const dockToggleBtn = document.getElementById('dockToggleBtn');
+const hudBottom = document.querySelector('.hud-bottom');
+if (dockToggleBtn && hudBottom) {
+  dockToggleBtn.addEventListener('click', () => {
+    const isCollapsed = hudBottom.classList.toggle('is-collapsed');
+    dockToggleBtn.textContent = isCollapsed ? '▲' : '▼';
+    dockToggleBtn.title = isCollapsed ? 'Mở rộng bảng phím' : 'Thu gọn bảng phím';
+  });
+}
+
+// Chào mừng người chơi vào quán (Live Chat banner)
+setTimeout(() => {
+  addLiveChatMessage('🍻 Quán Nhậu 3D', 'Chào mừng bạn đến quán! Dùng [W][A][S][D] đi lại, [Space] cụng ly, [E] ngồi ghế!', false);
+}, 1200);
 
 // Kết nối WebSocket ngay khi tải xong
 PubLoader.step(70, 'Đang vào quán...');
