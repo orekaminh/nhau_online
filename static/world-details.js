@@ -1,3 +1,5 @@
+// Giới hạn đi lại của người chơi: quán + công viên (Tây) + phố Bùi Viện (Đông). Dùng chung với app.js.
+window.WORLD_BOUNDS = { minX: -118, maxX: 118, minZ: -4.5, maxZ: 33.5 };
 // Small, reusable geometry: a roofless WC for a clear mobile camera, plus pub pets.
 function createPubDetails(scene) {
   const room = new THREE.Group();
@@ -189,7 +191,8 @@ function createPubDetails(scene) {
       if (!blocked(x + dx / steps, z)) x += dx / steps;
       if (!blocked(x, z + dz / steps)) z += dz / steps;
     }
-    return { x: Math.max(-42.0, Math.min(42.0, x)), z: Math.max(-4.5, Math.min(33.5, z)) };
+    const B = window.WORLD_BOUNDS;
+    return { x: Math.max(B.minX, Math.min(B.maxX, x)), z: Math.max(B.minZ, Math.min(B.maxZ, z)) };
   }
   let occupied = null;
   function setOccupied(value) {

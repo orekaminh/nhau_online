@@ -1233,6 +1233,49 @@ for (const [height, depth, y, z] of [[8, 1.75, 4, -4.775], [8, 5.65, 4, 1.325], 
 }
 scene.add(leftWall);
 
+// Fade walls/buildings out when they sit between the camera and the player (e.g. back to the wall, camera orbited outside).
+const occluderWalls = [wall, ...leftWall.children];
+const occluderFades = new Map();
+const occluderRay = new THREE.Raycaster();
+const occluderDir = new THREE.Vector3();
+const occluderOrigin = new THREE.Vector3();
+const occluderFollowers = new Map(); // material -> decor materials that fade together with it
+const occluderBoxes = []; // buildings: also fade when the camera hovers above/inside their footprint
+function registerOccluder(mesh, followers) {
+  occluderWalls.push(mesh);
+  occluderBoxes.push({ box: new THREE.Box3().setFromObject(mesh), mat: mesh.material });
+  if (!occluderFades.has(mesh.material)) occluderFades.set(mesh.material, 1);
+  if (followers) occluderFollowers.set(mesh.material, followers);
+}
+occluderFades.set(wallMat, 1);
+occluderFades.set(leftWallMaterial, 1);
+function updateWallOcclusion(delta) {
+  occluderOrigin.set(localPlayerState.x, 1.2, localPlayerState.z);
+  occluderDir.copy(camera.position).sub(occluderOrigin);
+  const dist = occluderDir.length();
+  occluderRay.set(occluderOrigin, occluderDir.normalize());
+  occluderRay.far = dist;
+  const blocked = new Set();
+  if (!isScenicView) for (const hit of occluderRay.intersectObjects(occluderWalls, false)) blocked.add(hit.object.material);
+  if (!isScenicView) {
+    const cp = camera.position;
+    for (const { box, mat } of occluderBoxes) {
+      if (cp.x > box.min.x - 0.5 && cp.x < box.max.x + 0.5 && cp.z > box.min.z - 0.5 && cp.z < box.max.z + 0.5) blocked.add(mat);
+    }
+  }
+  const k = 1 - Math.exp(-10 * delta);
+  occluderFades.forEach((fade, m) => {
+    fade += ((blocked.has(m) ? 0.12 : 1) - fade) * k;
+    occluderFades.set(m, fade);
+    const solid = fade > 0.98;
+    for (const mm of [m, ...(occluderFollowers.get(m) || [])]) {
+      mm.transparent = !solid;
+      mm.opacity = solid ? 1 : fade;
+      mm.depthWrite = solid;
+    }
+  });
+}
+
 // Biển Neon Ly Bia phát sáng ở tường trái (Giống hình chụp)
 function createNeonBeerSign() {
   const canvas = document.createElement('canvas');
@@ -3639,7 +3682,7 @@ function setClickTarget(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
   clickRaycaster.setFromCamera(new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1), camera);
   if (!clickRaycaster.ray.intersectPlane(groundPlane, clickHit) || clickHit.distanceTo(camera.position) > 60) return;
-  clickTarget = { x: Math.max(-41.5, Math.min(41.5, clickHit.x)), z: Math.max(-4.5, Math.min(32.8, clickHit.z)) };
+  clickTarget = { x: Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, clickHit.x)), z: Math.max(WORLD_BOUNDS.minZ, Math.min(WORLD_BOUNDS.maxZ - 0.7, clickHit.z)) };
   clickStuckTime = 0;
   clickMarker.position.set(clickTarget.x, 0.33, clickTarget.z);
   clickMarker.visible = true;
@@ -3808,6 +3851,8 @@ const actionsGroup = document.querySelector('.hud-actions-group');
 actionsGroup.appendChild(extraActions);
 for (const button of [eatSnackBtn, peeBtn, vomitBtn, viewRiverBtn, soberBtn, billBtn]) extraActions.appendChild(button);
 const moreActionsBtn = document.getElementById('moreActionsBtn');
+// Keep the toggle next to the cheer button so the hidden skills are easy to find.
+actionsGroup.appendChild(moreActionsBtn);
 function closeExtraActions() {
   moreActionsBtn.setAttribute('aria-expanded', 'false');
   moreActionsBtn.textContent = 'Thêm';
@@ -4926,8 +4971,8 @@ function animate() {
       localPlayerState.z = next.z;
 
       // Giới hạn trong khuôn viên mở rộng: từ quán vỉa hè, công viên, đến tận Cầu Tàu Bến Bạch Đằng & 2 đầu cánh
-      localPlayerState.x = Math.max(-41.5, Math.min(41.5, localPlayerState.x));
-      localPlayerState.z = Math.max(-4.5, Math.min(32.8, localPlayerState.z));
+      localPlayerState.x = Math.max(WORLD_BOUNDS.minX, Math.min(WORLD_BOUNDS.maxX, localPlayerState.x));
+      localPlayerState.z = Math.max(WORLD_BOUNDS.minZ, Math.min(WORLD_BOUNDS.maxZ - 0.7, localPlayerState.z));
 
       // Nhân vật xoay mặt theo hướng đang di chuyển
       localPlayerState.ry = Math.atan2(moveX, moveZ);
@@ -4970,7 +5015,7 @@ function animate() {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "E";
       const isBench = nearChair.tableId >= 10;
-      interactPrompt.querySelector('.prompt-text').textContent = isBench ? "Ngồi ghế đá ngắm sông Sài Gòn" : "Kéo ghế ngồi vào bàn nhậu";
+      interactPrompt.querySelector('.prompt-text').textContent = nearChair.prompt || (isBench ? "Ngồi ghế đá ngắm sông Sài Gòn" : "Kéo ghế ngồi vào bàn nhậu");
     } else if (nearPee) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "P";
@@ -5086,6 +5131,7 @@ function animate() {
     cameraLookTarget.lerp(new THREE.Vector3(lookTargetX, lookTargetY, lookTargetZ), 1 - Math.exp(-12 * delta));
     camera.lookAt(cameraLookTarget);
   }
+  updateWallOcclusion(delta);
 
   // Interpolate Remote Players
   remotePlayers.forEach((rp) => {

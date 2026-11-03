@@ -275,6 +275,14 @@ async def get_style():
 async def world_details_js():
     return FileResponse(os.path.join(STATIC_DIR, "world-details.js"))
 
+@app.get("/bar-music.js")
+async def bar_music_js():
+    return FileResponse(os.path.join(STATIC_DIR, "bar-music.js"))
+
+@app.get("/world-expansion.js")
+async def world_expansion_js():
+    return FileResponse(os.path.join(STATIC_DIR, "world-expansion.js"))
+
 @app.get("/app.js")
 async def get_script():
     return FileResponse(os.path.join(STATIC_DIR, "app.js"))
@@ -540,7 +548,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str)
                             "id": client_id,
                             "table_id": table_id,
                             "seat_id": seat_id,
-                            "message": f"🪑 {mem['name']} đã kéo ghế ngồi vào bàn {table_id + 1}!"
+                            "message": (f"🪑 {mem['name']} đã kéo ghế ngồi vào bàn {table_id + 1}!" if table_id < 10 else f"🪑 {mem['name']} ngồi ghế nhựa nhậu ngoài vỉa hè!")
                         })
 
                 elif action == "stand":
