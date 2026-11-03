@@ -3448,164 +3448,125 @@ PubLoader.defer(buildLandmark81AndSkyline, 'buildLandmark81AndSkyline');
 // ========================================================
 function createCharacter3D(colorHex) {
   const root = new THREE.Group();
+  const std = (color, extra) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6 }, extra));
+  const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
 
-  // Torso: Thân hình Chibi tròn múp hạt đậu (Cute chubby bean body)
-  const shirtColor = colorHex || 0xf97316;
-  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.55 });
-  
-  // Thân giữa bo tròn
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.40, 0.54, 24), shirtMat);
-  torso.position.y = 0.74;
+  // Thân tròn múp hạt đậu, đầu to (tỉ lệ chibi ~2 đầu)
+  const shirtMat = std(colorHex || 0xf97316, { roughness: 0.55 });
+  const skinTone = '#ffc9a3';
+  const skinMat = std(skinTone, { roughness: 0.5, emissive: 0x5a2c14, emissiveIntensity: 0.45 });   // hơi tự phát sáng để da ấm dưới ánh đèn đêm
+  const torso = add(root, new THREE.CylinderGeometry(0.33, 0.39, 0.54, 24), shirtMat, 0, 0.74, 0);
   torso.castShadow = true;
-  root.add(torso);
-
-  // Vai bo tròn mềm mại
-  const shoulderDome = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), shirtMat);
-  shoulderDome.position.y = 1.01;
-  root.add(shoulderDome);
-
-  // Bụng bợm nhậu tròn xoe
-  const bellyDome = new THREE.Mesh(new THREE.SphereGeometry(0.40, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), shirtMat);
-  bellyDome.position.y = 0.47;
-  root.add(bellyDome);
-
-  // Viền cổ áo Chibi trắng tinh
-  const collarMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.035, 8, 20), collarMat);
+  add(root, new THREE.SphereGeometry(0.33, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), shirtMat, 0, 1.01, 0);
+  add(root, new THREE.SphereGeometry(0.39, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), shirtMat, 0, 0.47, 0);
+  const beltMat = std(0x3b2a1a, { roughness: 0.7 });
+  const belt = add(root, new THREE.TorusGeometry(0.385, 0.025, 8, 28), beltMat, 0, 0.5, 0);
+  belt.rotation.x = Math.PI / 2;
+  add(root, new THREE.BoxGeometry(0.1, 0.07, 0.02), std(0xfacc15, { metalness: 0.8, roughness: 0.3 }), 0, 0.5, 0.39);
+  const collar = add(root, new THREE.TorusGeometry(0.2, 0.04, 8, 20), std(0xffffff, { roughness: 0.5 }), 0, 1.06, 0);
   collar.rotation.x = Math.PI / 2;
-  collar.position.set(0, 1.06, 0);
-  root.add(collar);
 
-  // Đầu Chibi to tròn má phúng phính (Tỷ lệ Chibi 2.2 đầu đáng yêu y hệt Nhà Tù Online)
-  const skinTone = '#ffdfc4';
-  const faceTex = createFaceTexture(false, skinTone);
-  const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.5 });
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 28, 28), headMat);
+  // Đầu tròn bầu bĩnh + mặt dựng bằng hình khối 3D (mắt to long lanh, má hồng, miệng cười)
+  const head = add(root, new THREE.SphereGeometry(0.38, 28, 28), skinMat, 0, 1.46, 0);
   head.scale.set(1.10, 0.98, 1.04);
-  head.position.y = 1.46;
-  head.rotation.y = -Math.PI / 2; // Xoay 90 độ để tâm mặt (u=0.5) hướng chuẩn về phía trước (+Z)
   head.castShadow = true;
-  root.add(head);
+  const eyeMat = std(0x120d0b, { roughness: 0.12, metalness: 0.2 });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (const s of [-1, 1]) {
+    const eye = add(root, new THREE.SphereGeometry(0.085, 16, 14), eyeMat, s * 0.145, 1.5, 0.345);
+    eye.scale.set(0.85, 1.2, 0.55);
+    add(root, new THREE.SphereGeometry(0.028, 10, 8), white, s * 0.145 - s * 0.012 + 0.012, 1.545, 0.385);   // ánh sáng lớn
+    add(root, new THREE.SphereGeometry(0.014, 8, 6), white, s * 0.145 + 0.025, 1.47, 0.39);                // ánh sáng nhỏ
+    const brow = add(root, new THREE.BoxGeometry(0.085, 0.017, 0.02), std(0x2b1a12), s * 0.15, 1.625, 0.33);
+    brow.rotation.z = s * -0.18;
+    const blush = add(root, new THREE.CircleGeometry(0.065, 16), new THREE.MeshBasicMaterial({ color: 0xff6b8a, transparent: true, opacity: 0.5, depthWrite: false }), s * 0.255, 1.4, 0.3);
+    blush.rotation.y = s * 0.82;
+    add(root, new THREE.SphereGeometry(0.058, 10, 8), skinMat, s * 0.41, 1.44, 0.0);                       // tai
+  }
+  add(root, new THREE.SphereGeometry(0.02, 8, 8), std(0xf3b79a), 0, 1.43, 0.392);                          // mũi
+  const smile = add(root, new THREE.TorusGeometry(0.055, 0.01, 6, 14, Math.PI), new THREE.MeshBasicMaterial({ color: 0x9f1239 }), 0, 1.385, 0.382);
+  smile.rotation.z = Math.PI;
+  smile.rotation.x = -0.08;
 
-  // Tóc 3D khối mượt mà ôm sát đỉnh đầu & gáy, để lộ trọn vẹn gương mặt Chibi
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1f1917, roughness: 0.75 });
-  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.386, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.40), hairMat);
-  hairTop.scale.set(1.08, 0.96, 0.92);
-  hairTop.position.set(0, 1.50, -0.06);
-  root.add(hairTop);
+  // Tóc: chỏm tóc ôm đầu + mái ngố + hai lọn bên
+  const hairMat = std(0x2a1d17, { roughness: 0.75 });
+  const hairTop = add(root, new THREE.SphereGeometry(0.39, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.42), hairMat, 0, 1.5, -0.05);
+  hairTop.scale.set(1.1, 0.98, 1.0);
+  for (const [bx, by, bz, sx, sy] of [[-0.19, 0.17, 0.33, 1.3, 0.75], [0, 0.2, 0.37, 1.5, 0.8], [0.19, 0.17, 0.33, 1.3, 0.75]]) {
+    const bang = add(hairTop, new THREE.SphereGeometry(0.095, 10, 8), hairMat, bx, by, bz);
+    bang.scale.set(sx, sy, 0.7);
+  }
+  for (const s of [-1, 1]) add(hairTop, new THREE.SphereGeometry(0.1, 10, 8), hairMat, s * 0.37, -0.02, 0.0).scale.set(0.7, 1.4, 1.0);
 
-  // Mái tóc vuốt nhẹ trên đỉnh trán
-  const hairTuft = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), hairMat);
-  hairTuft.scale.set(1.3, 0.5, 0.8);
-  hairTuft.position.set(0.06, 0.32, 0.20);
-  hairTop.add(hairTuft);
+  // Mũ snapback (tuỳ chọn trong tủ đồ)
+  const capMat = std(0x0f172a, { roughness: 0.75 });
+  const cap = add(root, new THREE.SphereGeometry(0.4, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.32), capMat, 0, 1.57, -0.03);
+  cap.scale.set(1.1, 0.98, 1.0);
+  const visor = add(root, new THREE.BoxGeometry(0.34, 0.035, 0.22), capMat, 0, 1.66, 0.34);
+  visor.rotation.x = 0.12;
 
-  // Mũ Snapback đội ngược cá tính trên chỏm đầu (không che mắt)
-  const capMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.75 });
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.388, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.30), capMat);
-  cap.scale.set(1.08, 0.96, 0.96);
-  cap.position.set(0, 1.57, -0.04);
-  root.add(cap);
+  // Tay: ống tay áo + cẳng tay + bàn tay tròn, gắn ở vai
+  const handMat = skinMat;
+  function buildArm(x) {
+    const g = new THREE.Group();
+    g.position.set(x, 0.93, 0.02);
+    add(g, new THREE.CylinderGeometry(0.1, 0.095, 0.2, 14), shirtMat, 0, -0.1, 0);
+    add(g, new THREE.CylinderGeometry(0.072, 0.066, 0.17, 12), handMat, 0, -0.27, 0);
+    add(g, new THREE.SphereGeometry(0.085, 12, 12), handMat, 0, -0.385, 0);
+    return g;
+  }
 
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.035, 0.22), capMat);
-  visor.position.set(0, 1.63, -0.34);
-  visor.rotation.x = -0.15;
-  root.add(visor);
+  // Tay trái buông thả tự nhiên, hơi xoè ra ngoài
+  const leftArm = buildArm(-0.4);
+  leftArm.rotation.z = 0.22;
+  root.add(leftArm);
 
-  // Tay Chibi múp míp (Chubby arms & hands)
-  const leftArmGroup = new THREE.Group();
-  leftArmGroup.position.set(-0.42, 0.92, 0);
-  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.09, 0.36, 14), shirtMat);
-  leftArm.position.y = -0.16;
-  leftArmGroup.add(leftArm);
-  const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 }));
-  leftHand.position.y = -0.33;
-  leftArmGroup.add(leftHand);
-  root.add(leftArmGroup);
+  // Tay phải co lại, ôm ly bia trước bụng. `armSwing` xoay quanh vai để nâng ly khi cụng.
+  const armSwing = new THREE.Group();
+  armSwing.position.set(0.4, 0.93, 0.02);
+  root.add(armSwing);
+  const rightArm = buildArm(0);
+  rightArm.position.set(0, 0, 0);
+  const handTarget = new THREE.Vector3(0.34 - 0.4, 0.9 - 0.93, 0.4 - 0.02);
+  rightArm.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), handTarget.clone().normalize());
+  armSwing.add(rightArm);
 
-  const rightArmGroup = new THREE.Group();
-  rightArmGroup.position.set(0.42, 0.92, 0);
-  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.09, 0.36, 14), shirtMat);
-  rightArm.position.y = -0.16;
-  rightArmGroup.add(rightArm);
-  const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), new THREE.MeshStandardMaterial({ color: skinTone, roughness: 0.55 }));
-  rightHand.position.y = -0.33;
-  rightArmGroup.add(rightHand);
-  root.add(rightArmGroup);
-
-  // Ly bia thủy tinh quai dày sủi bọt sóng sánh (Frosty Beer Mug)
+  // Ly bia thủy tinh quai dày, bọt trắng; bàn tay nắm vào quai
   const beerMug = new THREE.Group();
-  beerMug.position.set(0.42, 0.72, 0.28);
-
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0xfef08a,
-    transparent: true,
-    opacity: 0.85,
-    roughness: 0.1,
-    metalness: 0.15
-  });
-  const mugBody = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.095, 0.26, 14), glassMat);
-  beerMug.add(mugBody);
-
-  const beerLiquid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.092, 0.08, 0.20, 12),
-    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2 })
-  );
-  beerLiquid.position.y = -0.02;
-  beerMug.add(beerLiquid);
-
-  const foamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
-  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.10, 0.08, 14), foamMat);
-  foam.position.y = 0.11;
-  beerMug.add(foam);
-
-  const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, roughness: 0.1 });
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.022, 8, 12), handleMat);
-  handle.position.set(0.11, 0, 0);
+  beerMug.position.set(0.2 - 0.4, 0.9 - 0.93, 0.4 - 0.02);
+  const glassMat = std(0xfef08a, { transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.15 });
+  add(beerMug, new THREE.CylinderGeometry(0.11, 0.095, 0.26, 16), glassMat, 0, 0, 0);
+  add(beerMug, new THREE.CylinderGeometry(0.092, 0.08, 0.2, 14), std(0xe08a0b, { roughness: 0.2 }), 0, -0.02, 0);
+  add(beerMug, new THREE.CylinderGeometry(0.115, 0.1, 0.07, 16), std(0xffffff, { roughness: 0.7 }), 0, 0.125, 0);
+  const handle = add(beerMug, new THREE.TorusGeometry(0.07, 0.022, 8, 14), std(0xffffff, { transparent: true, opacity: 0.75, roughness: 0.1 }), 0.125, 0, 0);
   handle.rotation.y = Math.PI / 2;
-  beerMug.add(handle);
+  armSwing.add(beerMug);
 
-  root.add(beerMug);
-
-  // Quần jean xanh denim Chibi (Chubby denim legs)
-  const denimMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.85 });
-  const leftLegGroup = new THREE.Group();
-  leftLegGroup.position.set(-0.18, 0.44, 0);
-
-  const leftLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.36, 14), denimMat);
-  leftLegPants.position.y = -0.14;
-  leftLegPants.castShadow = true;
-  leftLegGroup.add(leftLegPants);
-
-  // Giày sneaker Chibi bo tròn xinh xắn
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.12, 0.28), shoeMat);
-  leftShoe.position.set(0, -0.30, 0.05);
-  leftLegGroup.add(leftShoe);
-  root.add(leftLegGroup);
-
-  const rightLegGroup = new THREE.Group();
-  rightLegGroup.position.set(0.18, 0.44, 0);
-
-  const rightLegPants = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.36, 14), denimMat);
-  rightLegPants.position.y = -0.14;
-  rightLegPants.castShadow = true;
-  rightLegGroup.add(rightLegPants);
-
-  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.12, 0.28), shoeMat);
-  rightShoe.position.set(0, -0.30, 0.05);
-  rightLegGroup.add(rightShoe);
-  root.add(rightLegGroup);
+  // Chân quần jean bo tròn + giày sneaker
+  const denimMat = std(0x1e3a5f, { roughness: 0.85 });
+  const shoeMat = std(0xf8fafc, { roughness: 0.4 });
+  function buildLeg(x) {
+    const g = new THREE.Group();
+    g.position.set(x, 0.44, 0);
+    const pants = add(g, new THREE.CylinderGeometry(0.13, 0.12, 0.36, 14), denimMat, 0, -0.14, 0);
+    pants.castShadow = true;
+    const shoe = add(g, new THREE.BoxGeometry(0.17, 0.12, 0.28), shoeMat, 0, -0.30, 0.05);
+    root.add(g);
+    return { g, shoe };
+  }
+  const left = buildLeg(-0.18), right = buildLeg(0.18);
 
   return {
     mesh: root,
     torso,
     head,
     beerMug,
-    leftLeg: leftLegGroup,
-    rightLeg: rightLegGroup,
+    armSwing,
+    leftArm,
+    leftLeg: left.g,
+    rightLeg: right.g,
     // Các bộ phận để Features.dress() thay đồ (mũ, áo, giày...).
-    shirtMat, hairTop, capParts: [cap, visor], shoeMat, shoes: [leftShoe, rightShoe]
+    shirtMat, hairTop, capParts: [cap, visor], shoeMat, shoes: [left.shoe, right.shoe]
   };
 }
 
@@ -4867,19 +4828,27 @@ function animateCheerMug(id) {
     mug = remotePlayers.get(id).charParts.beerMug;
   }
   if (!mug) return;
+  const parts = id === clientId && localCharacter ? localCharacter : remotePlayers.get(id).charParts;
+  const swing = parts && parts.armSwing;
 
   const initialY = mug.position.y;
   let t = 0;
   const cheerInterval = setInterval(() => {
-    t += 0.2;
-    mug.position.y = initialY + Math.sin(t * Math.PI) * 0.25;
-    mug.rotation.z = Math.sin(t * Math.PI) * 0.4;
+    t += 0.1;
+    if (swing) {
+      swing.rotation.x = -Math.sin(Math.min(t, 1) * Math.PI) * 1.0;   // giơ tay lên
+      mug.rotation.x = -swing.rotation.x * 0.6;                        // giữ ly gần thẳng đứng
+    } else {
+      mug.position.y = initialY + Math.sin(t * Math.PI) * 0.25;
+      mug.rotation.z = Math.sin(t * Math.PI) * 0.4;
+    }
     if (t >= 1) {
       clearInterval(cheerInterval);
+      if (swing) { swing.rotation.x = 0; mug.rotation.x = 0; }
       mug.position.y = initialY;
       mug.rotation.z = 0;
     }
-  }, 30);
+  }, 40);
 }
 
 // ========================================================
@@ -5017,12 +4986,14 @@ function animate() {
       // Leg Swing & Chibi Waddle Animation (Bước đi lắc lư Chibi đáng yêu)
       localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.55;
       localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.55;
+      if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.6;
       localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.5) * 0.05;
     } else {
       localPlayerState.is_walking = false;
       localCharacter.leftLeg.rotation.x = 0;
       localCharacter.rightLeg.rotation.x = 0;
       localCharacter.mesh.rotation.z = 0;
+      if (localCharacter.leftArm) localCharacter.leftArm.rotation.x *= 0.8;
     }
 
     localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
@@ -5199,11 +5170,13 @@ function animate() {
       rp.walkTime += delta * 12;
       rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime) * 0.55;
       rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime) * 0.55;
+      if (rp.charParts.leftArm) rp.charParts.leftArm.rotation.x = -Math.sin(rp.walkTime) * 0.6;
       rp.mesh.rotation.z = Math.sin(rp.walkTime * 0.5) * 0.05;
     } else {
       rp.charParts.leftLeg.rotation.x = 0;
       rp.charParts.rightLeg.rotation.x = 0;
       rp.mesh.rotation.z = 0;
+      if (rp.charParts.leftArm) rp.charParts.leftArm.rotation.x *= 0.8;
     }
   });
 
