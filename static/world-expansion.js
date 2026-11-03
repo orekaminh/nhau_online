@@ -7,7 +7,8 @@
   'use strict';
 
   const lite = PERF.lite;
-  const animators = []; // (delta, t) => void, chạy mỗi khung hình qua Features.addTick
+  const animators = [];
+  const tmpCol = new THREE.Color(); // (delta, t) => void, chạy mỗi khung hình qua Features.addTick
 
   // ---------- Tiện ích dựng hình ----------
   const std = (color, extra) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.7 }, extra));
@@ -1301,7 +1302,148 @@
     reflPivot.add(refl);
     scene.add(reflPivot);
 
+    buildBridgeLife();
     buildFarBank();
+  }
+
+
+  // Đèn lung linh + khách tham quan nhộn nhịp trên cầu đi bộ
+  function buildBridgeLife() {
+    const P = (t) => new THREE.Vector3().copy(BR.A).addScaledVector(BR.dir, t * BR.len);
+    const archPoint = (t, side) => {
+      const base = P(t), lat = side * (BR.half + 0.2) * (1 - 0.45 * Math.sin(Math.PI * t));
+      return new THREE.Vector3(base.x + BR.nrm.x * lat, deckH(t) + BR.arch * Math.pow(Math.sin(Math.PI * t), 1.15), base.z + BR.nrm.z * lat);
+    };
+    const dotTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'), rg = g.createRadialGradient(16, 16, 1, 16, 16, 15); rg.addColorStop(0, '#fff'); rg.addColorStop(0.4, 'rgba(255,255,255,0.8)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
+
+    // 1) Chuỗi đèn nhấp nháy dọc hai vòm thép
+    const NB = lite ? 36 : 70, pts = [], phases = [];
+    for (const side of [-1, 1]) for (let i = 1; i < NB; i++) { const q = archPoint(i / NB, side); pts.push(q.x, q.y + 0.18, q.z); phases.push(Math.random() * 6.28); }
+    const nTw = phases.length, twCol = new Float32Array(nTw * 3);
+    const twGeo = new THREE.BufferGeometry();
+    twGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    twGeo.setAttribute('color', new THREE.BufferAttribute(twCol, 3));
+    const twinkle = new THREE.Points(twGeo, new THREE.PointsMaterial({ size: 0.75, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    twinkle.frustumCulled = false;
+    scene.add(twinkle);
+
+    // 2) Đèn nền sàn đổi màu chạy theo sóng dọc hai mép cầu
+    const floorN = lite ? 24 : 46;
+    const floor = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.05, 0.34), new THREE.MeshBasicMaterial({ color: 0xffffff }), floorN * 2);
+    const m4 = new THREE.Matrix4();
+    for (let i = 0; i < floorN; i++) for (const [k, side] of [[0, -1], [1, 1]]) {
+      const t = (i + 0.5) / floorN, base = P(t);
+      m4.makeTranslation(base.x + BR.nrm.x * side * (BR.half - 0.45), deckH(t) + 0.02, base.z + BR.nrm.z * side * (BR.half - 0.45));
+      floor.setMatrixAt(i * 2 + k, m4);
+      floor.setColorAt(i * 2 + k, new THREE.Color(0xffffff));
+    }
+    floor.frustumCulled = false;
+    scene.add(floor);
+
+    // 3) Cột đèn đường dọc cầu (quả cầu sáng)
+    const poleMat = std(0x1f2937), globeMat = glow(0xfff0c0);
+    for (let i = 1; i < 12; i++) {
+      const t = i / 12, side = i % 2 ? 1 : -1, base = P(t);
+      const x = base.x + BR.nrm.x * side * (BR.half - 0.25), z = base.z + BR.nrm.z * side * (BR.half - 0.25), y = deckH(t);
+      cyl(0.05, 0.07, 2.6, poleMat, x, y + 1.3, z);
+      const g = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), globeMat); g.position.set(x, y + 2.7, z); scene.add(g);
+    }
+
+    // 4) Khách tham quan: người đi dạo hai chiều, người chụp ảnh (có đèn flash), cặp đôi, nhóm đứng ngắm sông
+    const shirts = [0xf472b6, 0x38bdf8, 0xfacc15, 0x34d399, 0xfb923c, 0xa78bfa, 0xef4444, 0x22d3ee, 0xf9a8d4, 0xa3e635];
+    const packs = [null, 0x7c2d12, 0x1e3a8a, null, 0x4c1d95, null];
+    function visitor(color, pack) {
+      const p = makePerson(color, 0, 0, 0, pack);
+      p.beerMug.visible = false;
+      p.armSwing.rotation.x = 0;
+      return p;
+    }
+    const place = (p, t, lat, extraY) => {
+      const base = P(t);
+      p.mesh.position.set(base.x + BR.nrm.x * lat, deckH(t) + (extraY || 0), base.z + BR.nrm.z * lat);
+    };
+    const walkers = [], posers = [];
+    const nW = lite ? 8 : 18;
+    for (let i = 0; i < nW; i++) {
+      const dir = i % 2 ? -1 : 1, lat = (i % 4 - 1.5) * 0.9 + (Math.random() - 0.5) * 0.3;
+      const w = { p: visitor(shirts[i % shirts.length], packs[i % packs.length]), t: 0.05 + Math.random() * 0.9, lat, dir, speed: (0.45 + Math.random() * 0.35) / BR.len * 3.2, wt: Math.random() * 6, pause: 0 };
+      walkers.push(w);
+    }
+    // Cặp đôi tay trong tay
+    for (let c = 0; c < (lite ? 1 : 3); c++) {
+      const dir = c % 2 ? -1 : 1, t0 = 0.12 + c * 0.28, speed = 0.38 / BR.len * 3.2;
+      for (const [n, col] of [[-0.35, shirts[(c * 2) % 10]], [0.35, shirts[(c * 2 + 1) % 10]]]) {
+        walkers.push({ p: visitor(col, null), t: t0, lat: (c % 2 ? 0.7 : -0.7) + n, dir, speed, wt: 0, pause: 0, lock: c });
+      }
+    }
+    // Người chụp ảnh / ngắm sông: đứng sát lan can, giơ điện thoại
+    const phoneMat = new THREE.MeshBasicMaterial({ color: 0x0b1220 }), screenMat = new THREE.MeshBasicMaterial({ color: 0x9be7ff });
+    const flashes = [];
+    const spots = [[0.3, 1], [0.38, -1], [0.5, 1], [0.5, -1], [0.62, 1], [0.7, -1], [0.82, 1]].slice(0, lite ? 3 : 7);
+    spots.forEach(([t, side], i) => {
+      const p = visitor(shirts[(i + 3) % shirts.length], i % 2 ? 0x1e3a8a : null);
+      place(p, t, side * (BR.half - 0.8));
+      p.mesh.rotation.y = Math.atan2(BR.nrm.x * side, BR.nrm.z * side);      // quay mặt ra sông
+      const phone = new THREE.Group();
+      phone.add(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.14, 0.02), phoneMat));
+      const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.055, 0.11), screenMat); sc.position.z = 0.012; phone.add(sc);
+      phone.position.set(-0.04, -0.02, 0.44);
+      p.armSwing.add(phone);
+      p.armSwing.rotation.x = -1.15;
+      const flash = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+      flash.position.set(0, 0.2, 0.5); p.mesh.add(flash);
+      flashes.push({ flash, next: 1 + Math.random() * 6 });
+      posers.push({ p, ph: i * 1.7 });
+    });
+    // Nhóm bạn đứng chụp chung ở đỉnh cầu
+    if (!lite) for (let k = 0; k < 4; k++) {
+      const p = visitor(shirts[(k + 5) % shirts.length], null);
+      place(p, 0.5, -0.9 + k * 0.6 - 0.2);
+      p.mesh.rotation.y = Math.atan2(BR.dir.x, BR.dir.z);
+      posers.push({ p, ph: k * 0.9 + 9 });
+    }
+
+    animators.push((d, t) => {
+      // đèn nhấp nháy + đổi màu
+      for (let i = 0; i < nTw; i++) {
+        const w = 0.55 + 0.45 * Math.sin(t * 3.2 + phases[i]), hue = ((t * 0.05 + i * 0.013) % 1);
+        const warm = i % 3 !== 0;
+        tmpCol.setHSL(warm ? 0.12 : hue, warm ? 0.95 : 0.9, 0.55 * w + 0.12);
+        twCol[i * 3] = tmpCol.r; twCol[i * 3 + 1] = tmpCol.g; twCol[i * 3 + 2] = tmpCol.b;
+      }
+      twGeo.attributes.color.needsUpdate = true;
+      for (let i = 0; i < floorN * 2; i++) {
+        const wave = (t * 0.18 + (i >> 1) / floorN) % 1;
+        floor.setColorAt(i, tmpCol.setHSL(wave, 1, 0.5 + 0.12 * Math.sin(t * 4 + i)));
+      }
+      floor.instanceColor.needsUpdate = true;
+      // khách đi dạo
+      for (const w of walkers) {
+        if (w.pause > 0) { w.pause -= d; w.p.leftLeg.rotation.x *= 0.85; w.p.rightLeg.rotation.x *= 0.85; continue; }
+        w.t += w.dir * w.speed * d;
+        if (w.t > 0.96 || w.t < 0.04) { w.t = Math.max(0.04, Math.min(0.96, w.t)); w.dir *= -1; w.pause = 1 + Math.random() * 3; }
+        w.wt += d * 6;
+        place(w.p, w.t, w.lat, Math.abs(Math.sin(w.wt)) * 0.02);
+        const face = Math.atan2(BR.dir.x * w.dir, BR.dir.z * w.dir);
+        let diff = face - w.p.mesh.rotation.y;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        w.p.mesh.rotation.y += diff * Math.min(1, d * 6);
+        w.p.leftLeg.rotation.x = Math.sin(w.wt) * 0.45;
+        w.p.rightLeg.rotation.x = -Math.sin(w.wt) * 0.45;
+        w.p.leftArm.rotation.x = -Math.sin(w.wt) * 0.5;
+      }
+      // người đứng ngắm / chụp
+      for (const { p, ph } of posers) {
+        p.mesh.position.y += Math.sin(t * 1.6 + ph) * 0.0006;
+        p.mesh.rotation.z = Math.sin(t * 0.9 + ph) * 0.02;
+      }
+      for (const f of flashes) {
+        f.next -= d;
+        if (f.next < 0) { f.next = 3 + Math.random() * 7; f.on = 0.18; }
+        if (f.on > 0) { f.on -= d; f.flash.material.opacity = Math.max(0, f.on / 0.18); } else f.flash.material.opacity = 0;
+      }
+    });
   }
 
   // Bờ đối diện: quảng trường lát đá + mái vòm xoắn kiểu nhà đón cầu + cây
