@@ -275,6 +275,14 @@ async def get_style():
 async def world_details_js():
     return FileResponse(os.path.join(STATIC_DIR, "world-details.js"))
 
+@app.get("/manifest.webmanifest")
+async def manifest_file():
+    return FileResponse(os.path.join(STATIC_DIR, "manifest.webmanifest"), media_type="application/manifest+json")
+
+@app.get("/icon.svg")
+async def icon_file():
+    return FileResponse(os.path.join(STATIC_DIR, "icon.svg"), media_type="image/svg+xml")
+
 @app.get("/bar-music.js")
 async def bar_music_js():
     return FileResponse(os.path.join(STATIC_DIR, "bar-music.js"))

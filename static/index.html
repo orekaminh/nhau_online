@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Quán Nhậu Ảo 3D - 1 2 3 DÔ!</title>
   <meta name="theme-color" content="#0d1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Quán Nhậu 3D">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
   <style>
     /* Màn hình chờ: CSS nội tuyến để hiện ngay lập tức, không đợi file ngoài. */
     #loadingScreen { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; color: #fde68a; background: radial-gradient(circle at 50% 35%, #2a1747 0%, #0d1117 70%); font-family: system-ui, "Be Vietnam Pro", sans-serif; transition: opacity .5s ease, visibility .5s; }
@@ -21,7 +27,7 @@
     #loadingTip { max-width: 340px; font-size: .8rem; color: #94a3b8; }
     @media (prefers-reduced-motion: reduce) { .load-mug i { animation: none; transform: scaleY(.6); } }
   </style>
-  <link rel="stylesheet" href="style.css?v=20261103_1">
+  <link rel="stylesheet" href="style.css?v=20261103_4">
   <link rel="stylesheet" href="features.css?v=20261103_1">
   <link rel="stylesheet" href="features/karaoke.css?v=20261103_1">
   <link rel="stylesheet" href="features/voice-events.css?v=20261103_1">
@@ -49,7 +55,7 @@
   <script defer src="features/voice.js?v=20261103_1"></script>
   <script defer src="features/events.js?v=20261103_1"></script>
   <script defer src="features/daynight.js?v=20261103_1"></script>
-  <script defer src="app.js?v=20261103_3"></script>
+  <script defer src="app.js?v=20261103_4"></script>
   <script defer src="bar-music.js?v=20261103_3"></script>
   <script defer src="world-expansion.js?v=20261103_3"></script>
 </head>
@@ -69,6 +75,7 @@
     <button id="zoomInBtn" aria-label="Phóng to" title="Phóng to">+</button>
     <button id="resetCameraBtn" aria-label="Đặt lại góc nhìn" title="Đặt lại góc nhìn">⌖</button>
     <button id="comfortBtn" aria-pressed="true">Êm mắt</button>
+    <button id="fullscreenBtn" aria-label="Toàn màn hình" title="Toàn màn hình">⛶</button>
     <button id="moreActionsBtn" class="mobile-only" aria-expanded="false" aria-controls="extraActions">Thêm</button>
   </nav>
   <div id="wcControls" class="wc-controls" hidden>

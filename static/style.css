@@ -1021,10 +1021,25 @@ body.drunk-wobble-3 {
     margin: 0 !important;
     pointer-events: none !important;
     z-index: 70;
+    /* transform từ bản desktop làm .hud-bottom thành khung chứa của cụm nút fixed -> nút lệch ra ngoài màn hình */
+    transform: none !important;
+    max-width: none;
   }
 
   .hud-user-card {
     display: none !important;
+  }
+
+  /* backdrop-filter làm .hud-dock-wrapper thành "khung chứa" của phần tử position:fixed bên trong,
+     khiến cụm nút hành động bị đẩy ra ngoài màn hình. Trên mobile bỏ hiệu ứng khung này. */
+  .hud-dock-wrapper {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    pointer-events: none !important;
   }
 
   /* CỤM PHÍM KỸ NĂNG TAY PHẢI (LIÊN QUÂN STYLE) */
@@ -1453,3 +1468,6 @@ body.comfort-mode .tag-bubble { animation: none; opacity: 1; transform: none; }
 }
 .tag-bubble { position: relative; }
 .tag-bubble::after { left: var(--bubble-arrow-x, 50%); }
+
+#fullscreenBtn { display: none; }
+@media (pointer: coarse), (max-width: 768px) { body.can-fullscreen #fullscreenBtn { display: inline-flex; } }

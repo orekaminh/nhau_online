@@ -5483,3 +5483,21 @@ connectWebSocket();
 // Chi tiết phụ chạy sau khung hình đầu tiên để vào quán nhanh nhất có thể.
 PubLoader.afterFirstFrame(() => { loadHDREnvironment(); loadPBRDetailMaps(); });
 document.addEventListener('pointerdown', loadCheerVoice, { once: true });
+
+// Toàn màn hình (Android/desktop): ẩn thanh địa chỉ. iOS Safari không hỗ trợ API này nên nút tự ẩn;
+// ở iOS dùng "Thêm vào Màn hình chính" (đã có manifest + meta) để chạy toàn màn hình.
+(function setupFullscreenButton() {
+  const btn = document.getElementById('fullscreenBtn');
+  const root = document.documentElement;
+  const request = root.requestFullscreen || root.webkitRequestFullscreen;
+  if (!btn || !request) return;
+  document.body.classList.add('can-fullscreen');
+  const isFull = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  btn.addEventListener('click', () => {
+    if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else Promise.resolve(request.call(root, { navigationUI: 'hide' })).catch(() => {});
+  });
+  const sync = () => { btn.textContent = isFull() ? '🗗' : '⛶'; };
+  document.addEventListener('fullscreenchange', sync);
+  document.addEventListener('webkitfullscreenchange', sync);
+})();
