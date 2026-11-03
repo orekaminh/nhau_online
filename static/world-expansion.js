@@ -932,91 +932,1310 @@
 
 
   // ========================================================
-  // D. Ô TÔ ĐẬU DỌC ĐƯỜNG: taxi + VinFast VF3
   // ========================================================
-  function addWheels(g, halfW, zs, r) {
-    const tire = std(0x0b0f19, { roughness: 0.9 }), rim = std(0xcbd5e1, { metalness: 0.7, roughness: 0.3 });
-    for (const sx of [-1, 1]) for (const z of zs) {
-      const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.24, 14), tire);
-      w.rotation.z = Math.PI / 2; w.position.set(sx * halfW, r, z);
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.55, r * 0.55, 0.26, 10), rim);
-      hub.rotation.z = Math.PI / 2; hub.position.copy(w.position);
-      g.add(w, hub);
-    }
+  // D. Ô TÔ & PHỐ PHƯỜNG SÀI GÒN CHÂN THẬT: VINFAST VF3, TAXI XANH SM, TAXI VINASUN & CẢNH VẬT ĐÔ THỊ
+  // ========================================================
+  const CAR_CACHE = {};
+
+  // 1. Tấm bóng mờ tiếp xúc mặt đường (Ambient Contact Shadow) giúp xe cộ chạm đất tự nhiên
+  function getContactShadowTexture() {
+    if (CAR_CACHE.contactShadow) return CAR_CACHE.contactShadow;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    const rad = ctx.createRadialGradient(128, 128, 28, 128, 128, 122);
+    rad.addColorStop(0, 'rgba(0, 0, 0, 0.88)');
+    rad.addColorStop(0.45, 'rgba(0, 0, 0, 0.55)');
+    rad.addColorStop(0.8, 'rgba(0, 0, 0, 0.18)');
+    rad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = rad;
+    ctx.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.contactShadow = tex;
+    return tex;
   }
 
-  // VinFast VF3: xe điện mini dáng hộp vuông, đèn tròn, cao ~1.6m
-  function buildVF3(color, x, z, ry) {
-    const g = new THREE.Group();
-    const body = std(color, { roughness: 0.3, metalness: 0.35 });
-    const glass = std(0x0b1220, { roughness: 0.08, metalness: 0.7 });
-    box(1.62, 0.62, 3.1, body, 0, 0.6, 0, g);
-    box(1.5, 0.62, 2.2, body, 0, 1.22, -0.15, g);
-    box(1.52, 0.05, 2.22, std(0x1f2937), 0, 1.55, -0.15, g);              // mui đen
-    box(1.4, 0.46, 0.05, glass, 0, 1.23, 0.97, g);                        // kính trước
-    box(1.4, 0.42, 0.05, glass, 0, 1.23, -1.27, g);                       // kính sau
-    for (const sx of [-1, 1]) box(0.04, 0.42, 1.8, glass, sx * 0.76, 1.23, -0.15, g);
-    box(1.05, 0.2, 0.04, std(0x0f172a), 0, 0.62, 1.56, g);                // lưới tản nhiệt
-    for (const sx of [-1, 1]) {
-      const hl = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.05, 14), glow(0xfff4cf));
-      hl.rotation.x = Math.PI / 2; hl.position.set(sx * 0.56, 0.78, 1.57); g.add(hl);
-      box(0.3, 0.07, 0.04, glow(0xff2d2d), sx * 0.5, 0.78, -1.57, g);     // đèn hậu
+  // 2. Mặt ca-lăng VinFast VF3: Đen bóng vân micro-chevron chữ V, Logo cánh chim Chrome V & Dải crom nối đèn
+  function getVF3GrilleTexture() {
+    if (CAR_CACHE.vf3Grille) return CAR_CACHE.vf3Grille;
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const ctx = c.getContext('2d');
+    // Nền đen bóng ca-lăng xe điện
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 512, 128);
+    // Họa tiết vân nổi chữ V đặc trưng VinFast
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    for (let x = 20; x < 500; x += 18) {
+      for (let y = 16; y < 112; y += 14) {
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y - 4);
+        ctx.lineTo(x, y + 3);
+        ctx.lineTo(x + 5, y - 4);
+        ctx.stroke();
+      }
     }
-    const plate = signPlane([['VF 3', 110, 70]], 0.5, 0.18, 256, 128, '#e5e7eb', '#1e3a8a');
-    plate.position.set(0, 0.5, -1.575); plate.rotation.y = Math.PI; g.add(plate);
-    addWheels(g, 0.8, [-0.95, 0.95], 0.28);
-    g.position.set(x, 0, z); g.rotation.y = ry;
+    // Thanh crom chạy dài ôm viền dưới nối sang hai cụm đèn pha
+    const chromeGrad = ctx.createLinearGradient(0, 58, 0, 72);
+    chromeGrad.addColorStop(0, '#ffffff');
+    chromeGrad.addColorStop(0.35, '#cbd5e1');
+    chromeGrad.addColorStop(0.7, '#64748b');
+    chromeGrad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = chromeGrad;
+    ctx.fillRect(36, 62, 440, 7);
+
+    // Biểu tượng chữ V mạ Chrome dập nổi chính giữa
+    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = '#cbd5e1';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(256, 94);
+    ctx.lineTo(238, 34);
+    ctx.lineTo(248, 34);
+    ctx.lineTo(256, 70);
+    ctx.lineTo(264, 34);
+    ctx.lineTo(274, 34);
+    ctx.closePath();
+    ctx.fill();
+
+    // Hai cánh chim vuốt nhọn từ logo chữ V tỏa ra hai bên
+    ctx.beginPath();
+    ctx.moveTo(236, 46);
+    ctx.quadraticCurveTo(180, 56, 100, 64);
+    ctx.lineTo(100, 70);
+    ctx.quadraticCurveTo(180, 64, 236, 54);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(276, 46);
+    ctx.quadraticCurveTo(332, 56, 412, 64);
+    ctx.lineTo(412, 70);
+    ctx.quadraticCurveTo(332, 64, 276, 54);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    CAR_CACHE.vf3Grille = tex;
+    return tex;
+  }
+
+  // 3. Logo cánh chim Chrome đuôi xe VF3
+  function getVF3RearTrimTexture() {
+    if (CAR_CACHE.vf3Rear) return CAR_CACHE.vf3Rear;
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, 512, 128);
+    // Logo chữ V chrome đuôi xe
+    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = '#94a3b8';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(256, 90);
+    ctx.lineTo(240, 38);
+    ctx.lineTo(248, 38);
+    ctx.lineTo(256, 70);
+    ctx.lineTo(264, 38);
+    ctx.lineTo(272, 38);
+    ctx.closePath();
+    ctx.fill();
+    // Cánh nẹp crom sau
+    ctx.fillRect(80, 64, 152, 4);
+    ctx.fillRect(280, 64, 152, 4);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.vf3Rear = tex;
+    return tex;
+  }
+
+  // 4. Mâm xe thép dập việt dã 16 inch chuẩn VF3 (có ốp nắp chụp tròn + vòng crom + ốc tắc kê như ảnh thật)
+  function getVF3WheelCapTexture() {
+    if (CAR_CACHE.vf3WheelCap) return CAR_CACHE.vf3WheelCap;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    // Mặt mâm đen mờ
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, 256, 256);
+    // Các lỗ tản nhiệt tròn xung quanh vành mâm
+    ctx.fillStyle = '#09090b';
+    for (let i = 0; i < 10; i++) {
+      const a = (i * Math.PI * 2) / 10;
+      const x = 128 + Math.cos(a) * 90;
+      const y = 128 + Math.sin(a) * 90;
+      ctx.beginPath();
+      ctx.arc(x, y, 13, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Vòng mạ crom sáng bóng nổi bật (đặc trưng mâm VF3 thực tế)
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(128, 128, 56, 0, Math.PI * 2);
+    ctx.stroke();
+    // Nắp chụp tâm mâm
+    ctx.fillStyle = '#27272a';
+    ctx.beginPath();
+    ctx.arc(128, 128, 52, 0, Math.PI * 2);
+    ctx.fill();
+    // 5 Ốc tắc kê bánh xe mạ crom
+    ctx.fillStyle = '#cbd5e1';
+    for (let i = 0; i < 5; i++) {
+      const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const bx = 128 + Math.cos(a) * 32;
+      const by = 128 + Math.sin(a) * 32;
+      ctx.beginPath();
+      ctx.arc(bx, by, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Logo VinFast trung tâm nắp chụp
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(128, 142);
+    ctx.lineTo(119, 118);
+    ctx.lineTo(124, 118);
+    ctx.lineTo(128, 131);
+    ctx.lineTo(132, 118);
+    ctx.lineTo(137, 118);
+    ctx.closePath();
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.vf3WheelCap = tex;
+    return tex;
+  }
+
+  // 5. Tem cửa xe Taxi Xanh SM (GSM) - Màu xanh ngọc Cyan, logo Xanh SM, lá mầm, Hotline 1900 2088
+  function getTaxiXanhDoorTexture() {
+    if (CAR_CACHE.taxiXanhDoor) return CAR_CACHE.taxiXanhDoor;
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#00a7b5'; // Màu xanh ngọc đặc trưng Xanh SM
+    ctx.fillRect(0, 0, 512, 256);
+    // Dải lượn sóng xanh lá cây sinh thái
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.moveTo(0, 185);
+    ctx.quadraticCurveTo(256, 230, 512, 175);
+    ctx.lineTo(512, 215);
+    ctx.quadraticCurveTo(256, 260, 0, 225);
+    ctx.fill();
+
+    // Chữ XANH SM đậm chất nhận diện
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 68px "Be Vietnam Pro", sans-serif';
+    ctx.fillText('XANH SM', 44, 92);
+    ctx.fillStyle = '#bbf7d0';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText('🌱 TAXI THUẦN ĐIỆN', 46, 142);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText('HOTLINE: 1900 2088', 46, 184);
+
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.taxiXanhDoor = tex;
+    return tex;
+  }
+
+  // 6. Hộp đèn nóc Taxi Xanh SM
+  function getTaxiXanhRoofTexture() {
+    if (CAR_CACHE.taxiXanhRoof) return CAR_CACHE.taxiXanhRoof;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#00a7b5';
+    ctx.fillRect(8, 8, 240, 112);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 40px "Be Vietnam Pro", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('XANH SM', 128, 58);
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText('⚡ TAXI', 128, 96);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.taxiXanhRoof = tex;
+    return tex;
+  }
+
+  // 7. Tem xe Taxi Vinasun (Sọc kép đỏ - xanh lá, số điện thoại 028 38 27 27 27)
+  function getTaxiVinasunDoorTexture() {
+    if (CAR_CACHE.vinasunDoor) return CAR_CACHE.vinasunDoor;
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, 512, 256);
+    // Sọc đỏ và sọc xanh lá chạy dài thân xe
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(0, 134, 512, 20);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(0, 160, 512, 26);
+    // Chữ Vinasun Taxi
+    ctx.fillStyle = '#15803d';
+    ctx.font = '900 56px "Be Vietnam Pro", sans-serif';
+    ctx.fillText('VINASUN TAXI', 44, 88);
+    ctx.fillStyle = '#b91c1c';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText('(028) 38.27.27.27', 48, 126);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.vinasunDoor = tex;
+    return tex;
+  }
+
+  // 8. Hộp đèn nóc Taxi Vinasun
+  function getTaxiVinasunRoofTexture() {
+    if (CAR_CACHE.vinasunRoof) return CAR_CACHE.vinasunRoof;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(6, 6, 118, 116);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(132, 6, 118, 116);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 38px "Be Vietnam Pro", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TAXI', 65, 76);
+    ctx.font = '900 24px "Be Vietnam Pro", sans-serif';
+    ctx.fillText('38 27', 191, 56);
+    ctx.fillText('27 27', 191, 88);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.vinasunRoof = tex;
+    return tex;
+  }
+
+  // 9. Biển số xe Việt Nam: Biển trắng xe cá nhân (VF3) & Biển vàng xe kinh doanh dịch vụ (Taxi)
+  function getVNPlateTexture(text, isCommercial = false) {
+    const key = 'plate_' + text + '_' + (isCommercial ? 'y' : 'w');
+    if (CAR_CACHE[key]) return CAR_CACHE[key];
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = isCommercial ? '#facc15' : '#f8fafc'; // Vàng taxi hoặc Trắng xe gia đình
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, 244, 116);
+    // Dấu mộc quốc huy đỏ
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(128, 38, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.font = '900 50px "Be Vietnam Pro", Arial, sans-serif';
+    ctx.fillText(text, 128, 92);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE[key] = tex;
+    return tex;
+  }
+
+  // 10. Nắp cống thoát nước mưa kim loại vỉa hè
+  function getDrainGrateTexture() {
+    if (CAR_CACHE.drainGrate) return CAR_CACHE.drainGrate;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#090d16';
+    for (let x = 14; x < 244; x += 18) {
+      ctx.fillRect(x, 14, 10, 100);
+    }
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 248, 120);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.drainGrate = tex;
+    return tex;
+  }
+
+  // 11. Nắp hố ga tròn gang chống trượt giữa lòng đường
+  function getManholeTexture() {
+    if (CAR_CACHE.manhole) return CAR_CACHE.manhole;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#334155';
+    ctx.beginPath(); ctx.arc(128, 128, 124, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(128, 128, 116, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 4;
+    for (let r = 24; r <= 96; r += 24) {
+      ctx.beginPath(); ctx.arc(128, 128, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+      ctx.beginPath();
+      ctx.moveTo(128 + Math.cos(a) * 24, 128 + Math.sin(a) * 24);
+      ctx.lineTo(128 + Math.cos(a) * 104, 128 + Math.sin(a) * 104);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('THOÁT NƯỚC', 128, 135);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.manhole = tex;
+    return tex;
+  }
+
+  // 12. Lưới gang bảo vệ gốc cây đô thị (Tree Grate)
+  function getTreeGrateTexture() {
+    if (CAR_CACHE.treeGrate) return CAR_CACHE.treeGrate;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#27272a';
+    ctx.fillRect(0, 0, 256, 256);
+    // Vòng hở chính giữa cho thân cây xuyên qua
+    ctx.fillStyle = '#451a03'; // Đất mùn nâu
+    ctx.beginPath(); ctx.arc(128, 128, 48, 0, Math.PI * 2); ctx.fill();
+    // Các nan hoa gang tỏa tròn
+    ctx.strokeStyle = '#52525b';
+    ctx.lineWidth = 4;
+    for (let r = 56; r <= 116; r += 20) {
+      ctx.beginPath(); ctx.arc(128, 128, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+      ctx.beginPath();
+      ctx.moveTo(128 + Math.cos(a) * 48, 128 + Math.sin(a) * 48);
+      ctx.lineTo(128 + Math.cos(a) * 120, 128 + Math.sin(a) * 120);
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.treeGrate = tex;
+    return tex;
+  }
+
+  // 13. Gạch xúc giác màu vàng dẫn hướng cho người khiếm thị vỉa hè Sài Gòn
+  function getTactilePavingTexture() {
+    if (CAR_CACHE.tactilePaving) return CAR_CACHE.tactilePaving;
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#eab308'; // Vàng gạch xúc giác đô thị
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, 124, 124);
+    // 4 đường gờ nổi định hướng song song
+    for (let x = 16; x < 128; x += 32) {
+      ctx.fillStyle = '#ca8a04';
+      ctx.fillRect(x, 4, 14, 120);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(x + 2, 4, 4, 120);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(80, 1);
+    CAR_CACHE.tactilePaving = tex;
+    return tex;
+  }
+
+  // 14. Tủ điện hạ thế đô thị EVN HCMC (Vỏ kim loại, khe tản nhiệt, biển tam giác cảnh báo nguy hiểm điện cao thế)
+  function getElectricBoxTexture() {
+    if (CAR_CACHE.electricBox) return CAR_CACHE.electricBox;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 384;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#64748b'; // Kim loại sơn tĩnh điện xám ghi
+    ctx.fillRect(0, 0, 256, 384);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 240, 368);
+    // Khe tản nhiệt trên đầu tủ
+    ctx.fillStyle = '#1e293b';
+    for (let y = 30; y < 85; y += 12) {
+      ctx.fillRect(36, y, 184, 5);
+    }
+    // Biển tam giác cảnh báo sấm sét nguy hiểm điện cao thế
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(128, 115);
+    ctx.lineTo(210, 235);
+    ctx.lineTo(46, 235);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    // Biểu tượng tia sét đen
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.moveTo(132, 138);
+    ctx.lineTo(110, 180);
+    ctx.lineTo(128, 180);
+    ctx.lineTo(120, 222);
+    ctx.lineTo(150, 172);
+    ctx.lineTo(132, 172);
+    ctx.closePath();
+    ctx.fill();
+    // Chữ cảnh báo an toàn
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '900 20px "Be Vietnam Pro", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ĐIỆN CAO THẾ', 128, 272);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('CẤM LẠI GẦN', 128, 302);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('EVN HCMC • TB-2026', 128, 338);
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.electricBox = tex;
+    return tex;
+  }
+
+  // 15. Mũi tên chỉ hướng sơn trắng trên mặt đường nhựa
+  function getRoadArrowTexture() {
+    if (CAR_CACHE.roadArrow) return CAR_CACHE.roadArrow;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 512;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 256, 512);
+    ctx.fillStyle = '#f8fafc';
+    // Thân và đầu mũi tên đi thẳng
+    ctx.beginPath();
+    ctx.moveTo(128, 40);
+    ctx.lineTo(76, 130);
+    ctx.lineTo(112, 130);
+    ctx.lineTo(112, 430);
+    ctx.lineTo(144, 430);
+    ctx.lineTo(144, 130);
+    ctx.lineTo(180, 130);
+    ctx.closePath();
+    ctx.fill();
+    // Nhánh rẽ phải uốn lượn
+    ctx.beginPath();
+    ctx.moveTo(144, 260);
+    ctx.quadraticCurveTo(195, 260, 215, 205);
+    ctx.lineTo(215, 230);
+    ctx.lineTo(248, 185);
+    ctx.lineTo(202, 170);
+    ctx.lineTo(202, 195);
+    ctx.quadraticCurveTo(180, 232, 144, 232);
+    ctx.closePath();
+    ctx.fill();
+    const tex = new THREE.CanvasTexture(c);
+    CAR_CACHE.roadArrow = tex;
+    return tex;
+  }
+
+  // ========================================================
+  // VINFAST VF3 TẢ THỰC CHI TIẾT CAO (TỶ LỆ CHUẨN SUV MINI ĐIỆN 2 CỬA)
+  // Tham khảo trực tiếp hình ảnh thực tế của người dùng:
+  // - Ngoại thất 2 tông màu nổi bật (Thân Vàng Solar / Mui Trắng, vát rãnh gia cường)
+  // - Cản trước việt dã vát góc (chamfered), hốc hút gió, cảm biến radar, ốp chống trượt gầm màu bạc satin
+  // - Mặt ca-lăng đen bóng với logo cánh chim mạ crom và dải crom viền nối đèn
+  // - Đèn pha projector thấu kính bi cầu đơn LED mạ crom + phản quang cam thể thao + dải LED định vị ban ngày (DRL)
+  // - Ốp cua lốp (vè chắn bùn) vuông vắn hầm hố dập nổi quanh 4 bánh xe
+  // - Mâm thép dập việt dã 16 inch với nắp chụp tâm tròn viền crom + 5 ốc tắc kê chuẩn ảnh thật
+  // - Cánh gió sau tích hợp đèn phanh thứ 3 trên cao & ăng-ten vây cá mập
+  // ========================================================
+  function buildVF3(color, x, z, ry, options = {}) {
+    const g = new THREE.Group();
+
+    // Vật liệu PBR xe cao cấp
+    const bodyPaint = std(color, { roughness: 0.22, metalness: 0.42 });
+    const blackPlastic = std(0x181a20, { roughness: 0.88 }); // Nhựa sần ốp cản & cua lốp
+    const satinSilver = std(0xcbd5e1, { metalness: 0.82, roughness: 0.28 }); // Crom mờ ốp bệ bước & cản
+    const chromeMat = std(0xf8fafc, { metalness: 0.96, roughness: 0.1 });
+    const darkGlass = std(0x060b14, { roughness: 0.06, metalness: 0.88 });
+    const tireRubber = std(0x0f141d, { roughness: 0.94 });
+
+    // 1. Tấm bóng mờ tiếp xúc mặt đường (Contact Shadow)
+    const shadowGeo = new THREE.PlaneGeometry(2.1, 3.4);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: getContactShadowTexture(),
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.015;
+    g.add(shadow);
+
+    // 2. Gầm xe & Khung chịu lực
+    box(1.5, 0.22, 2.9, std(0x11161f, { roughness: 0.95 }), 0, 0.28, 0, g);
+    // Hốc bánh xe lót nhựa đen chống nhìn xuyên gầm
+    box(1.52, 0.36, 0.76, std(0x0a0c10), 0, 0.45, 0.98, g);
+    box(1.52, 0.36, 0.76, std(0x0a0c10), 0, 0.45, -0.98, g);
+
+    // 3. Cản trước dập nổi hầm hố có vát góc (Front Bumper Cladding với Chamfered Corners)
+    // Khối cản trung tâm
+    box(1.24, 0.38, 0.52, blackPlastic, 0, 0.45, 1.48, g);
+    // Hai góc cản vát chéo ôm theo hốc bánh xe khí động học
+    const bLeft = box(0.38, 0.38, 0.44, blackPlastic, -0.68, 0.45, 1.35, g);
+    bLeft.rotation.y = 0.30;
+    const bRight = box(0.38, 0.38, 0.44, blackPlastic, 0.68, 0.45, 1.35, g);
+    bRight.rotation.y = -0.30;
+
+    // Hốc hút gió & tản nhiệt pin dưới màu đen sâu
+    box(0.92, 0.12, 0.08, std(0x09090b), 0, 0.36, 1.75, g);
+    // Tấm ốp gầm bảo vệ việt dã màu bạc satin với 2 gân dập nổi thể thao
+    box(0.78, 0.08, 0.22, satinSilver, 0, 0.24, 1.58, g);
+    box(0.04, 0.05, 0.20, satinSilver, -0.22, 0.26, 1.58, g);
+    box(0.04, 0.05, 0.20, satinSilver, 0.22, 0.26, 1.58, g);
+
+    // Đèn sương mù tròn LED gầm hai bên cản trước & Khe gió khí động học
+    for (const sx of [-1, 1]) {
+      cyl(0.045, 0.045, 0.04, glow(0xfffbeb), sx * 0.62, 0.36, 1.58, g, 12);
+      box(0.02, 0.16, 0.06, std(0x09090b), sx * 0.78, 0.46, 1.42, g);
+      // Cảm biến radar trước
+      cyl(0.025, 0.025, 0.02, std(0x09090b), sx * 0.42, 0.46, 1.75, g);
+    }
+    // Nắp móc kéo xe phía trước
+    box(0.05, 0.05, 0.01, std(0x0a0a0c), 0.36, 0.45, 1.745, g);
+
+    // Biển số trước VF3
+    const fPlate = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.52, 0.2),
+      new THREE.MeshBasicMaterial({ map: getVNPlateTexture('VF 3', false) })
+    );
+    fPlate.position.set(0, 0.44, 1.76);
+    g.add(fPlate);
+
+    // 4. Cản sau việt dã (Rear Bumper Cladding)
+    box(1.24, 0.40, 0.45, blackPlastic, 0, 0.48, -1.48, g);
+    const rbLeft = box(0.38, 0.40, 0.40, blackPlastic, -0.68, 0.48, -1.35, g);
+    rbLeft.rotation.y = -0.30;
+    const rbRight = box(0.38, 0.40, 0.40, blackPlastic, 0.68, 0.48, -1.35, g);
+    rbRight.rotation.y = 0.30;
+    // Tấm ốp gầm sau màu bạc satin
+    box(0.78, 0.08, 0.20, satinSilver, 0, 0.26, -1.58, g);
+    // Đèn phản quang đỏ an toàn hai bên cản sau
+    for (const sx of [-1, 1]) {
+      box(0.24, 0.06, 0.02, glow(0xef4444), sx * 0.58, 0.45, -1.71, g);
+    }
+    // Biển số sau
+    const rPlate = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.52, 0.2),
+      new THREE.MeshBasicMaterial({ map: getVNPlateTexture('VF 3', false) })
+    );
+    rPlate.position.set(0, 0.52, -1.71);
+    rPlate.rotation.y = Math.PI;
+    g.add(rPlate);
+
+    // 5. Cua lốp vuông vức hầm hố (Squared Off-Road Wheel Arches) & Ốp sườn
+    for (const sx of [-1, 1]) {
+      // Vè cua lốp trước
+      box(0.12, 0.38, 0.72, blackPlastic, sx * 0.84, 0.55, 0.98, g);
+      // Vè cua lốp sau
+      box(0.12, 0.38, 0.72, blackPlastic, sx * 0.84, 0.55, -0.98, g);
+      // Bệ bước chân sườn xe nối 2 vè lốp
+      box(0.08, 0.22, 1.35, blackPlastic, sx * 0.83, 0.38, 0, g);
+      // Nẹp crom satin viền bệ bước
+      box(0.03, 0.05, 1.35, satinSilver, sx * 0.86, 0.30, 0, g);
+      // Tay nắm cửa đen chắc chắn
+      box(0.04, 0.06, 0.18, std(0x18181b), sx * 0.84, 0.92, 0.12, g);
+    }
+
+    // 6. Thân xe chính (Lower Body Tub)
+    box(1.64, 0.52, 2.95, bodyPaint, 0, 0.78, 0, g);
+    // Nắp ca-pô vuốt dốc nhẹ phía trước có 2 gân dập cơ bắp thể thao
+    box(1.54, 0.12, 0.92, bodyPaint, 0, 0.96, 0.98, g);
+    for (const sx of [-1, 1]) {
+      box(0.04, 0.025, 0.82, bodyPaint, sx * 0.52, 1.025, 0.96, g);
+    }
+    // Mép mũi ca-pô hơi vát nhẹ ôm lấy cụm đèn
+    const hoodNose = box(1.50, 0.04, 0.14, bodyPaint, 0, 0.96, 1.44, g);
+    hoodNose.rotation.x = 0.16;
+
+    // 7. Mặt ca-lăng đặc trưng VinFast (Front Fascia with Chrome Winglets & "V" Logo)
+    const grilleMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.48, 0.24),
+      new THREE.MeshBasicMaterial({ map: getVF3GrilleTexture() })
+    );
+    grilleMesh.position.set(0, 0.84, 1.54);
+    g.add(grilleMesh);
+
+    // Cụm đèn pha Projector bi cầu LED mạ crom + Phản quang cam góc chuẩn ảnh thật VF3
+    for (const sx of [-1, 1]) {
+      // Vỏ hộp đèn pha màu đen
+      box(0.36, 0.20, 0.06, std(0x18181b), sx * 0.54, 0.84, 1.52, g);
+      // Chóa phản xạ mạ crom bên trong
+      box(0.34, 0.18, 0.04, chromeMat, sx * 0.54, 0.84, 1.53, g);
+      // Thấu kính bi cầu LED Projector đơn tròn sáng rực rỡ chuẩn VF3
+      cyl(0.065, 0.065, 0.045, glow(0xffffff), sx * 0.52, 0.84, 1.55, g, 16);
+      // Vòng tròn halo viền crom bọc quanh thấu kính projector
+      cyl(0.078, 0.078, 0.035, chromeMat, sx * 0.52, 0.84, 1.545, g, 16);
+      // Miếng phản quang màu cam thể thao ở góc đèn ngoài cùng (như ảnh thật)
+      box(0.05, 0.14, 0.035, glow(0xf59e0b), sx * 0.67, 0.84, 1.545, g);
+      // Mặt kính đèn pha trong suốt bảo vệ
+      box(0.35, 0.19, 0.02, std(0xf1f5f9, { transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.9 }), sx * 0.54, 0.84, 1.57, g);
+    }
+
+    // 8. Đuôi xe: Logo V crom & Cụm đèn hậu LED
+    const rearTrim = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.48, 0.2),
+      new THREE.MeshBasicMaterial({ map: getVF3RearTrimTexture() })
+    );
+    rearTrim.position.set(0, 0.88, -1.50);
+    rearTrim.rotation.y = Math.PI;
+    g.add(rearTrim);
+
+    for (const sx of [-1, 1]) {
+      // Đèn phanh LED đỏ + Đèn xi-nhan vàng + Đèn lùi trắng
+      box(0.32, 0.12, 0.04, glow(0xef4444), sx * 0.54, 0.88, -1.51, g);
+      box(0.10, 0.05, 0.045, glow(0xf59e0b), sx * 0.54 + sx * 0.09, 0.88, -1.51, g);
+    }
+
+    // 9. Khoang cabin & Kính xe (Greenhouse Glass & Floating Roof)
+    // Kính chắn gió trước nghiêng khí động học
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 0.58), darkGlass);
+    windshield.position.set(0, 1.28, 0.86);
+    windshield.rotation.x = -Math.PI / 6.2;
+    g.add(windshield);
+    // Gương chiếu hậu trung tâm bên trong xe
+    box(0.18, 0.06, 0.04, std(0x0f172a), 0, 1.45, 0.72, g);
+    // Cần gạt nước kính lái
+    box(0.55, 0.02, 0.02, std(0x0f172a), -0.25, 1.06, 1.10, g);
+    box(0.55, 0.02, 0.02, std(0x0f172a), 0.32, 1.06, 1.10, g);
+
+    // Kính hông hai bên & Kính sau
+    for (const sx of [-1, 1]) {
+      box(0.04, 0.44, 1.78, darkGlass, sx * 0.77, 1.28, -0.15, g);
+      // Cột A, B, C màu đen mờ tạo hiệu ứng mui xe nổi (Floating Roof)
+      box(0.05, 0.45, 0.12, blackPlastic, sx * 0.775, 1.28, 0.05, g);
+    }
+    box(1.38, 0.44, 0.04, darkGlass, 0, 1.28, -1.35, g);
+    // Cần gạt nước kính sau
+    box(0.32, 0.02, 0.02, std(0x0f172a), 0, 1.12, -1.38, g);
+
+    // 10. Mui xe 2 tông màu nổi bật (Floating Roof với 4 rãnh gân gia cường như ảnh thật)
+    const roofColor = (color === 0xf8fafc) ? 0x111827 : 0xffffff;
+    const roofMat = std(roofColor, { roughness: 0.28, metalness: 0.2 });
+    box(1.52, 0.08, 2.18, roofMat, 0, 1.56, -0.22, g);
+    // 4 rãnh gân dập gia cường trên nóc xe
+    for (const rx of [-0.48, -0.16, 0.16, 0.48]) {
+      box(0.04, 0.03, 1.95, roofMat, rx, 1.61, -0.22, g);
+    }
+    // Cánh gió đuôi thể thao (Rear Spoiler) & Đèn phanh thứ ba
+    box(1.52, 0.06, 0.34, roofMat, 0, 1.57, -1.36, g);
+    box(0.42, 0.03, 0.02, glow(0xef4444), 0, 1.57, -1.535, g);
+    // Ăng-ten vây cá mập
+    box(0.04, 0.08, 0.18, roofMat, 0, 1.64, -0.92, g);
+
+    // 11. Gương chiếu hậu SUV góc cạnh
+    for (const sx of [-1, 1]) {
+      const mirrorGroup = new THREE.Group();
+      mirrorGroup.position.set(sx * 0.92, 1.16, 0.55);
+      // Chân gương đen
+      cyl(0.02, 0.02, 0.14, blackPlastic, 0, 0, 0, mirrorGroup);
+      // Ốp gương
+      box(0.12, 0.15, 0.22, blackPlastic, sx * 0.06, 0.05, 0, mirrorGroup);
+      box(0.12, 0.06, 0.22, bodyPaint, sx * 0.06, 0.10, 0, mirrorGroup);
+      // Dải đèn xi-nhan LED vàng trên gương
+      box(0.02, 0.03, 0.2, glow(0xf59e0b), sx * 0.12, 0.05, 0, mirrorGroup);
+      // Mặt kính gương phản chiếu
+      box(0.01, 0.12, 0.18, chromeMat, -sx * 0.01, 0.05, -0.01, mirrorGroup);
+      g.add(mirrorGroup);
+    }
+
+    // 12. Bốn bánh xe dã ngoại 16 inch (Mâm thép dập + Ốp nắp chụp tròn crom chuẩn VF3)
+    const wheelR = 0.31, halfW = 0.84;
+    const zs = [-0.98, 0.98];
+    const wheelCapMat = new THREE.MeshBasicMaterial({ map: getVF3WheelCapTexture() });
+
+    for (const sx of [-1, 1]) {
+      for (const zpos of zs) {
+        // Lốp cao su gai dã ngoại
+        const tireMesh = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, 0.22, 22), tireRubber);
+        tireMesh.rotation.z = Math.PI / 2;
+        tireMesh.position.set(sx * halfW, wheelR, zpos);
+
+        // Đĩa phanh bên trong
+        const brakeDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 16), chromeMat);
+        brakeDisc.rotation.z = Math.PI / 2;
+        brakeDisc.position.set(sx * (halfW - sx * 0.04), wheelR, zpos);
+
+        // Mặt mâm xe với nắp chụp tâm tròn crom và ốc tắc kê
+        const capMesh = new THREE.Mesh(new THREE.CircleGeometry(wheelR * 0.88, 22), wheelCapMat);
+        capMesh.rotation.y = sx * Math.PI / 2;
+        capMesh.position.set(sx * (halfW + sx * 0.112), wheelR, zpos);
+
+        g.add(tireMesh, brakeDisc, capMesh);
+      }
+    }
+
+    g.position.set(x, 0, z);
+    g.rotation.y = ry;
     scene.add(g);
+
+    // Vật cản chống người chơi đi xuyên xe
     const along = Math.abs(Math.sin(ry)) > 0.7;
     obstacle(x, z, along ? 3.3 : 1.8, along ? 1.8 : 3.3);
     return g;
   }
 
-  // Taxi sedan trắng viền xanh, đèn nóc "TAXI"
-  function buildTaxi(x, z, ry) {
+  // ========================================================
+  // TAXI SÀI GÒN TẢ THỰC (ĐỒNG THỜI HỖ TRỢ TAXI XANH SM VÀ TAXI VINASUN)
+  // - TAXI XANH SM: Kiểu dáng xe điện VinFast, màu xanh ngọc Cyan, dải LED cánh chim VinFast, logo Xanh SM, hotline 1900 2088, biển vàng dịch vụ.
+  // - TAXI VINASUN: Kiểu dáng sedan trắng thanh lịch, calang crom Toyota, sọc kép đỏ - xanh lá, số tổng đài 028 38 27 27 27.
+  // - Cả hai đều có hộp đèn nóc phát sáng ban đêm, đồng hồ tính tiền taximeter hiển thị bên trong kính lái!
+  // ========================================================
+  function buildTaxi(x, z, ry, brand = 'xanh') {
+    const isXanh = brand === 'xanh';
     const g = new THREE.Group();
-    const white = std(0xf8fafc, { roughness: 0.3, metalness: 0.3 });
-    const glass = std(0x0b1220, { roughness: 0.08, metalness: 0.7 });
-    box(1.75, 0.6, 4.3, white, 0, 0.58, 0, g);
-    box(1.55, 0.55, 2.1, white, 0, 1.16, -0.25, g);
-    box(1.45, 0.4, 0.05, glass, 0, 1.17, 0.83, g);
-    box(1.45, 0.4, 0.05, glass, 0, 1.17, -1.33, g);
-    for (const sx of [-1, 1]) {
-      box(0.04, 0.4, 1.9, glass, sx * 0.78, 1.17, -0.25, g);
-      box(0.03, 0.14, 3.2, std(0x16a34a), sx * 0.88, 0.62, 0.0, g);       // viền xanh bên hông
-      const door = signPlane([['TAXI', 96, 70]], 1.0, 0.3, 256, 96, '#065f2f', '#f8fafc');
-      door.position.set(sx * 0.89, 0.86, 0.0); door.rotation.y = sx * Math.PI / 2; g.add(door);
+
+    const bodyColor = isXanh ? 0x00a7b5 : 0xf8fafc;
+    const bodyMat = std(bodyColor, { roughness: 0.25, metalness: 0.38 });
+    const chromeMat = std(0xf1f5f9, { metalness: 0.95, roughness: 0.12 });
+    const darkGlass = std(0x070c14, { roughness: 0.06, metalness: 0.85 });
+    const tireMat = std(0x0f141d, { roughness: 0.94 });
+    const blackTrim = std(0x181a20, { roughness: 0.85 });
+
+    // 1. Tấm bóng mờ tiếp xúc mặt đường (Contact Shadow)
+    const shadowGeo = new THREE.PlaneGeometry(2.3, 4.6);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: getContactShadowTexture(),
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.015;
+    g.add(shadow);
+
+    // 2. Thân xe sedan / crossover hiện đại
+    // Phần thân dưới
+    box(1.78, 0.48, 4.35, bodyMat, 0, 0.54, 0, g);
+    // Nắp ca-pô vuốt dốc khí động học
+    box(1.70, 0.16, 1.25, bodyMat, 0, 0.82, 1.35, g);
+    // Cốp sau sedan
+    box(1.70, 0.18, 0.95, bodyMat, 0, 0.84, -1.55, g);
+    // Cản trước & Hốc hút gió
+    box(1.76, 0.32, 0.35, blackTrim, 0, 0.36, 2.15, g);
+    box(1.10, 0.14, 0.08, std(0x09090b), 0, 0.32, 2.32, g);
+    // Cản sau & Bộ khuếch tán khí
+    box(1.76, 0.36, 0.35, blackTrim, 0, 0.40, -2.15, g);
+
+    if (isXanh) {
+      // Dải đèn LED cánh chim VinFast đặc trưng trên đầu xe Taxi Xanh SM
+      box(0.12, 0.04, 0.03, chromeMat, 0, 0.84, 2.08, g);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.025, 0.03), glow(0x67e8f9));
+        wing.position.set(sx * 0.42, 0.83, 2.06);
+        wing.rotation.z = -sx * 0.08;
+        g.add(wing);
+      }
+    } else {
+      // Lưới tản nhiệt mạ crom Toyota Vios / Innova của Taxi Vinasun
+      box(0.85, 0.12, 0.04, chromeMat, 0, 0.72, 2.16, g);
+      box(0.92, 0.02, 0.045, chromeMat, 0, 0.76, 2.16, g);
+      // Ống xả mạ crom phía sau
+      cyl(0.04, 0.04, 0.18, chromeMat, 0.65, 0.26, -2.25, g, 10).rotation.x = Math.PI / 2;
     }
-    const roofMat = new THREE.MeshBasicMaterial({ map: signTexture([['TAXI', 78, 60]], 256, 96, '#1f2937', '#fde047') });
-    box(0.7, 0.2, 0.3, roofMat, 0, 1.55, -0.25, g);
+
+    // 3. Biển số xe dịch vụ vận tải màu vàng (51H-889.98 / 51F-765.43)
+    const plateNo = isXanh ? '51H • 889.98' : '51F • 765.43';
+    const fPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.2), new THREE.MeshBasicMaterial({ map: getVNPlateTexture(plateNo, true) }));
+    fPlate.position.set(0, 0.38, 2.33); g.add(fPlate);
+
+    const rPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.2), new THREE.MeshBasicMaterial({ map: getVNPlateTexture(plateNo, true) }));
+    rPlate.position.set(0, 0.48, -2.33); rPlate.rotation.y = Math.PI; g.add(rPlate);
+
+    // 4. Kính chắn gió vát nghiêng thanh lịch & Khoang cabin
+    // Kính trước vát 32 độ
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.52, 0.72), darkGlass);
+    windshield.position.set(0, 1.18, 0.82);
+    windshield.rotation.x = -Math.PI / 5.2;
+    g.add(windshield);
+    // Đồng hồ tính tiền taxi meter phát sáng màu xanh lá bên trong kính lái
+    box(0.24, 0.09, 0.05, glow(0x22c55e), 0.28, 0.98, 0.68, g);
+    // Đèn báo "CÓ KHÁCH / FOR HIRE" màu đỏ/xanh
+    box(0.14, 0.06, 0.03, glow(0xef4444), -0.38, 1.28, 0.75, g);
+
+    // Kính sau vát nhẹ
+    const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.48, 0.62), darkGlass);
+    rearGlass.position.set(0, 1.18, -1.22);
+    rearGlass.rotation.x = Math.PI / 5.8;
+    g.add(rearGlass);
+
+    // Đèn phanh thứ ba trên cao ở kính sau
+    box(0.28, 0.025, 0.02, glow(0xef4444), 0, 1.44, -1.25, g);
+
+    // Mui xe phẳng
+    box(1.52, 0.06, 2.05, bodyMat, 0, 1.48, -0.20, g);
+
+    // 5. Tem hông xe Taxi (Xanh SM hoặc Vinasun) & Cửa sổ hai bên
+    const doorTex = isXanh ? getTaxiXanhDoorTexture() : getTaxiVinasunDoorTexture();
+    const doorMat = new THREE.MeshBasicMaterial({ map: doorTex });
     for (const sx of [-1, 1]) {
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.05), glow(0xfff4cf));
-      hl.position.set(sx * 0.6, 0.72, 2.16); g.add(hl);
-      box(0.34, 0.1, 0.05, glow(0xff2d2d), sx * 0.6, 0.78, -2.16, g);
+      // Kính hông
+      box(0.04, 0.42, 2.02, darkGlass, sx * 0.80, 1.18, -0.20, g);
+      // Tem dán cửa hông taxi
+      const doorMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.65, 0.42), doorMat);
+      doorMesh.position.set(sx * 0.90, 0.68, -0.05);
+      doorMesh.rotation.y = sx * Math.PI / 2;
+      g.add(doorMesh);
+      // Tay nắm cửa mạ crom
+      box(0.04, 0.05, 0.16, chromeMat, sx * 0.91, 0.76, 0.42, g);
+      box(0.04, 0.05, 0.16, chromeMat, sx * 0.91, 0.76, -0.52, g);
+      // Gương chiếu hậu
+      box(0.10, 0.12, 0.18, bodyMat, sx * 0.95, 1.05, 0.72, g);
+      box(0.01, 0.09, 0.14, chromeMat, sx * 0.89, 1.05, 0.70, g);
     }
-    addWheels(g, 0.82, [-1.3, 1.3], 0.3);
-    g.position.set(x, 0, z); g.rotation.y = ry;
+
+    // 6. Hộp đèn mui taxi phát sáng (Light Box on Roof)
+    const roofTex = isXanh ? getTaxiXanhRoofTexture() : getTaxiVinasunRoofTexture();
+    const roofLightMat = new THREE.MeshBasicMaterial({ map: roofTex });
+    box(0.68, 0.22, 0.32, roofLightMat, 0, 1.62, -0.20, g);
+    // Chân đế cao su đen gắn đèn nóc
+    box(0.72, 0.03, 0.36, blackTrim, 0, 1.50, -0.20, g);
+
+    // 7. Cụm đèn pha & Đèn hậu LED
+    for (const sx of [-1, 1]) {
+      // Đèn pha trước
+      box(0.38, 0.14, 0.06, glow(0xfff8db), sx * 0.62, 0.74, 2.16, g);
+      // Đèn sương mù gầm
+      cyl(0.045, 0.045, 0.03, glow(0xfef08a), sx * 0.64, 0.36, 2.22, g, 12);
+      // Đèn hậu đỏ đa khoang
+      box(0.38, 0.12, 0.06, glow(0xef4444), sx * 0.62, 0.78, -2.16, g);
+      box(0.12, 0.06, 0.065, glow(0xf59e0b), sx * 0.74, 0.78, -2.16, g); // Xi-nhan
+    }
+
+    // 8. Bánh xe mâm đúc hợp kim thể thao
+    const wheelR = 0.31, halfW = 0.88;
+    const zs = [-1.35, 1.35];
+    for (const sx of [-1, 1]) {
+      for (const zpos of zs) {
+        // Lốp cao su
+        const tire = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, 0.22, 20), tireMat);
+        tire.rotation.z = Math.PI / 2;
+        tire.position.set(sx * halfW, wheelR, zpos);
+        // Vành mâm nhôm phay xước thể thao
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.65, wheelR * 0.65, 0.23, 14), chromeMat);
+        rim.rotation.z = Math.PI / 2;
+        rim.position.copy(tire.position);
+        // Đĩa phanh
+        const brake = new THREE.Mesh(new THREE.CylinderGeometry(wheelR * 0.48, wheelR * 0.48, 0.02, 12), chromeMat);
+        brake.rotation.z = Math.PI / 2;
+        brake.position.set(sx * (halfW - sx * 0.03), wheelR, zpos);
+        g.add(tire, rim, brake);
+      }
+    }
+
+    g.position.set(x, 0, z);
+    g.rotation.y = ry;
     scene.add(g);
+
     const along = Math.abs(Math.sin(ry)) > 0.7;
     obstacle(x, z, along ? 4.5 : 1.9, along ? 1.9 : 4.5);
     return g;
   }
 
+  // ========================================================
+  // XE MÁY SÀI GÒN DỰNG CHÂN CHỐNG NGHIÊNG VEN ĐƯỜNG (HONDA SH & XE SỐ WAVE)
+  // ========================================================
+  function buildMotorbike(px, pz, ry = 0, color = 0xf8fafc, isScooter = true) {
+    const bike = new THREE.Group();
+    bike.position.set(px, 0.31, pz);
+    bike.rotation.y = ry;
+    bike.rotation.z = -0.12; // Nghiêng 7 độ tự nhiên trên chân chống nghiêng!
+
+    const paintMat = std(color, { roughness: 0.25, metalness: 0.35 });
+    const blackMat = std(0x18181b, { roughness: 0.9 });
+    const chromeMat = std(0xe2e8f0, { metalness: 0.9, roughness: 0.15 });
+    const tireMat = std(0x0f141d, { roughness: 0.95 });
+
+    const wheelR = 0.22;
+    // Bánh trước
+    const fTire = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, 0.08, 16), tireMat);
+    fTire.rotation.z = Math.PI / 2;
+    fTire.position.set(0, wheelR, 0.62);
+    // Bánh sau
+    const rTire = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, 0.09, 16), tireMat);
+    rTire.rotation.z = Math.PI / 2;
+    rTire.position.set(0, wheelR, -0.62);
+    bike.add(fTire, rTire);
+
+    // Thân xe & Yếm xe
+    if (isScooter) {
+      // Kiểu xe tay ga cao cấp (Honda SH)
+      box(0.38, 0.06, 0.55, blackMat, 0, 0.22, 0, bike); // Sàn để chân
+      box(0.42, 0.52, 0.18, paintMat, 0, 0.52, 0.38, bike); // Yếm trước
+      box(0.38, 0.36, 0.72, paintMat, 0, 0.44, -0.32, bike); // Thân sau
+      box(0.32, 0.10, 0.68, std(0x27272a, { roughness: 0.9 }), 0, 0.64, -0.30, bike); // Yên đôi
+    } else {
+      // Kiểu xe số thanh lịch (Honda Wave)
+      box(0.24, 0.28, 0.42, chromeMat, 0, 0.30, 0, bike); // Khung sườn & lốc máy
+      box(0.36, 0.46, 0.28, paintMat, 0, 0.48, 0.28, bike); // Yếm gió
+      box(0.26, 0.09, 0.72, std(0x27272a), 0, 0.62, -0.26, bike); // Yên dài
+    }
+
+    // Ghi đông tay lái
+    cyl(0.02, 0.02, 0.58, chromeMat, 0, 0.88, 0.46, bike).rotation.z = Math.PI / 2;
+    for (const sx of [-1, 1]) {
+      // Tay nắm cao su & Gương chiếu hậu
+      cyl(0.028, 0.028, 0.12, blackMat, sx * 0.25, 0.88, 0.46, bike).rotation.z = Math.PI / 2;
+      cyl(0.008, 0.008, 0.16, chromeMat, sx * 0.22, 0.98, 0.46, bike);
+      box(0.08, 0.05, 0.02, blackMat, sx * 0.22, 1.06, 0.46, bike);
+    }
+    // Đèn pha trước & Đèn hậu sau
+    box(0.18, 0.12, 0.06, glow(0xfffbeb), 0, 0.82, 0.52, bike);
+    box(0.18, 0.08, 0.04, glow(0xef4444), 0, 0.60, -0.68, bike);
+    // Ống pô xả mạ crom
+    cyl(0.045, 0.045, 0.58, chromeMat, 0.20, 0.22, -0.38, bike).rotation.x = Math.PI / 2.1;
+
+    // Chân chống nghiêng
+    const kick = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.32, 6), blackMat);
+    kick.position.set(-0.16, 0.15, -0.05);
+    kick.rotation.z = 0.45;
+    bike.add(kick);
+
+    scene.add(bike);
+    obstacle(px, pz, 0.6, 1.5);
+    return bike;
+  }
+
+  // ========================================================
+  // CẢNH VẬT ĐÔ THỊ TỰ NHIÊN: Ô ĐỖ XE, GẠCH XÚC GIÁC, MŨI TÊN ĐƯỜNG, TỦ ĐIỆN EVN,
+  // NẮP CỐNG, HỐ GA, GỜ GIẢM TỐC, BỒN CÂY CÓ LƯỚI GANG, HOA GIẤY VỈA HÈ, XE MÁY, CỨU HỎA
+  // ========================================================
+  function buildStreetAtmosphere() {
+    // 1. Vạch sơn trắng kẻ ô đỗ xe ô tô tiêu chuẩn dọc theo 2 bên lề đường
+    const whitePaint = std(0xf8fafc, { roughness: 0.4 });
+    const yellowCurb = std(0xfacc15, { roughness: 0.45 });
+
+    function drawParkingBay(px, pz, length = 5.2, width = 2.1) {
+      // Vạch ngang đầu và cuối ô đỗ
+      box(0.12, 0.015, width, whitePaint, px - length / 2, 0.02, pz);
+      box(0.12, 0.015, width, whitePaint, px + length / 2, 0.02, pz);
+      // Vạch dọc phía lòng đường
+      box(length, 0.015, 0.12, whitePaint, px, 0.02, pz > 7.5 ? pz - width / 2 : pz + width / 2);
+    }
+
+    // Các vị trí ô đỗ xe tương ứng với hàng xe đậu
+    [-46, -33, -10, 12, 31, 39, 46].forEach(px => drawParkingBay(px, 10.2));
+    [-30, 30, 38, 46].forEach(px => drawParkingBay(px, 4.9));
+
+    // Vạch vàng viền mép vỉa hè cấm đỗ sai quy định
+    box(108, 0.015, 0.14, yellowCurb, 0, 0.02, 3.82);
+    box(108, 0.015, 0.14, yellowCurb, 0, 0.02, 11.35);
+
+    // 2. Dải gạch xúc giác màu vàng dẫn hướng cho người khiếm thị dọc 2 bên vỉa hè
+    const tactileMat = new THREE.MeshBasicMaterial({ map: getTactilePavingTexture() });
+    const tNorth = new THREE.Mesh(new THREE.PlaneGeometry(108, 0.36), tactileMat);
+    tNorth.rotation.x = -Math.PI / 2;
+    tNorth.position.set(0, 0.315, 2.75);
+    scene.add(tNorth);
+
+    const tSouth = new THREE.Mesh(new THREE.PlaneGeometry(108, 0.36), tactileMat);
+    tSouth.rotation.x = -Math.PI / 2;
+    tSouth.position.set(0, 0.315, 11.95);
+    scene.add(tSouth);
+
+    // 3. Mũi tên chỉ hướng sơn trắng trên mặt đường nhựa
+    const arrowMat = new THREE.MeshBasicMaterial({ map: getRoadArrowTexture(), transparent: true, opacity: 0.9 });
+    [-20, 16].forEach(ax => {
+      // Mũi tên làn xuôi (quay về phía Đông +X)
+      const arEast = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.4), arrowMat);
+      arEast.rotation.x = -Math.PI / 2;
+      arEast.rotation.z = -Math.PI / 2;
+      arEast.position.set(ax, 0.018, 8.8);
+      scene.add(arEast);
+
+      // Mũi tên làn ngược (quay về phía Tây -X)
+      const arWest = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.4), arrowMat);
+      arWest.rotation.x = -Math.PI / 2;
+      arWest.rotation.z = Math.PI / 2;
+      arWest.position.set(ax + 8, 0.018, 6.2);
+      scene.add(arWest);
+    });
+
+    // 4. Miệng cống thoát nước mưa kim loại (Storm Drain Grates) đặt sát mép bó vỉa hè
+    const grateMat = new THREE.MeshBasicMaterial({ map: getDrainGrateTexture() });
+    [-42, -18, 8, 28, 48].forEach(gx => {
+      const gNorth = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.45), grateMat);
+      gNorth.rotation.x = -Math.PI / 2;
+      gNorth.position.set(gx, 0.018, 3.9);
+      scene.add(gNorth);
+
+      const gSouth = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.45), grateMat);
+      gSouth.rotation.x = -Math.PI / 2;
+      gSouth.position.set(gx + 6, 0.018, 11.25);
+      scene.add(gSouth);
+    });
+
+    // 5. Nắp hố ga tròn gang chống trượt giữa lòng đường
+    const manholeMat = new THREE.MeshBasicMaterial({ map: getManholeTexture() });
+    [-36, -6, 20, 44].forEach(mx => {
+      const mh = new THREE.Mesh(new THREE.CircleGeometry(0.44, 24), manholeMat);
+      mh.rotation.x = -Math.PI / 2;
+      mh.position.set(mx, 0.018, 6.4);
+      scene.add(mh);
+    });
+
+    // 6. Gờ giảm tốc cao su vàng-đen đúc nổi trước các vạch qua đường người đi bộ (Zebra Crossings)
+    [-24, 0, 24].forEach(zx => {
+      for (const offset of [-2.4, 2.4]) {
+        const bx = zx + offset;
+        for (let s = 0; s < 6; s++) {
+          const segZ = 4.2 + s * 1.25;
+          const isYellow = s % 2 === 0;
+          const bumpMat = std(isYellow ? 0xfacc15 : 0x18181b, { roughness: 0.6 });
+          box(0.38, 0.035, 1.2, bumpMat, bx, 0.02, segZ);
+        }
+      }
+    });
+
+    // 7. Bồn cây vỉa hè có viền bê tông & Lưới gang bảo vệ gốc cây (Tree Pits & Grates)
+    const treeGrateMat = new THREE.MeshBasicMaterial({ map: getTreeGrateTexture() });
+    const concreteMat = std(0x94a3b8, { roughness: 0.8 });
+    [-18, 2, 22].forEach(tx => {
+      // Viền bê tông vuông nhô cao 6cm
+      box(1.4, 0.08, 0.12, concreteMat, tx, 0.34, 1.2);
+      box(1.4, 0.08, 0.12, concreteMat, tx, 0.34, 2.6);
+      box(0.12, 0.08, 1.4, concreteMat, tx - 0.65, 0.34, 1.9);
+      box(0.12, 0.08, 1.4, concreteMat, tx + 0.65, 0.34, 1.9);
+      // Tấm lưới gang bảo vệ gốc cây
+      const tg = new THREE.Mesh(new THREE.PlaneGeometry(1.22, 1.22), treeGrateMat);
+      tg.rotation.x = -Math.PI / 2;
+      tg.position.set(tx, 0.31, 1.9);
+      scene.add(tg);
+    });
+
+    // 8. Chậu hoa giấy rực rỡ (Bougainvillea) & Chậu kiểng gốm sứ Lái Thiêu trên vỉa hè
+    function buildBougainvilleaPot(px, pz, flowerCol = 0xf43f5e) {
+      const potGroup = new THREE.Group();
+      potGroup.position.set(px, 0.3, pz);
+      // Chậu gốm men xanh trắng
+      const pot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.36, 0.25, 0.55, 12),
+        std(0x0284c7, { roughness: 0.35, metalness: 0.15 })
+      );
+      pot.position.y = 0.28;
+      potGroup.add(pot);
+      // Đất trong chậu
+      const soil = new THREE.Mesh(new THREE.CircleGeometry(0.34, 12), std(0x3e2723, { roughness: 0.95 }));
+      soil.rotation.x = -Math.PI / 2;
+      soil.position.y = 0.55;
+      potGroup.add(soil);
+
+      // Thân cây hoa giấy uốn khúc tự nhiên
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.75, 8), std(0x5c4033, { roughness: 0.9 }));
+      trunk.position.set(0, 0.85, 0);
+      trunk.rotation.z = 0.12;
+      potGroup.add(trunk);
+
+      // Tán lá xanh tươi & Chùm hoa giấy nở bung rực rỡ
+      if (window.Veg && Veg.makeShrub) {
+        const shrub = Veg.makeShrub(0.75, Math.floor(px * 13 + pz * 7), [flowerCol, 0xff70a6, 0xffffff]);
+        shrub.position.set(0, 1.15, 0);
+        potGroup.add(shrub);
+      } else {
+        const foliage = new THREE.Mesh(new THREE.SphereGeometry(0.48, 10, 8), std(0x15803d, { roughness: 0.8 }));
+        foliage.position.set(0, 1.25, 0);
+        potGroup.add(foliage);
+      }
+      scene.add(potGroup);
+      obstacle(px, pz, 0.7, 0.7);
+    }
+
+    // Đặt chậu hoa giấy tạo điểm nhấn tươi xanh trước sảnh và các góc phố
+    buildBougainvilleaPot(-14.2, 1.8, 0xf43f5e); // Hồng Fuchsia rực rỡ
+    buildBougainvilleaPot(15.2, 1.8, 0xe11d48);  // Đỏ hoa giấy Sài Gòn
+    buildBougainvilleaPot(37.5, 8.6, 0xf43f5e);  // Gần bến Taxi
+    buildBougainvilleaPot(-49.5, 8.6, 0xfb7185); // Lối vào công viên
+
+    // 9. Tủ điện hạ thế đô thị EVN HCMC trên vỉa hè
+    function buildElectricCabinet(px, pz, ry = 0) {
+      const g = new THREE.Group();
+      g.position.set(px, 0.3, pz);
+      g.rotation.y = ry;
+      // Bệ móng bê tông nâng cao chống ngập nước
+      box(0.95, 0.20, 0.55, concreteMat, 0, 0.10, 0, g);
+      // Thân tủ kim loại
+      box(0.85, 1.25, 0.45, std(0x64748b, { metalness: 0.7, roughness: 0.4 }), 0, 0.825, 0, g);
+      // Mặt trước có dán tem cảnh báo sấm sét nguy hiểm điện cao thế
+      const doorMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.84, 1.24),
+        new THREE.MeshBasicMaterial({ map: getElectricBoxTexture() })
+      );
+      doorMesh.position.set(0, 0.825, 0.23);
+      g.add(doorMesh);
+      scene.add(g);
+      obstacle(px, pz, 1.0, 0.6);
+    }
+    buildElectricCabinet(-4.5, 2.2, 0);
+
+    // 10. Khu vực đỗ xe máy vỉa hè Sài Gòn & Xe máy dựng chân chống
+    function buildMotorbikeZone() {
+      // Vạch sơn trắng kẻ ô đỗ xe máy
+      box(4.6, 0.015, 1.6, whitePaint, 5.0, 0.315, 2.2);
+      // Xe 1: Honda SH màu trắng ngọc trai sang trọng
+      buildMotorbike(4.0, 2.2, 0, 0xf8fafc, true);
+      // Xe 2: Honda Wave màu đỏ cá tính
+      buildMotorbike(5.8, 2.2, 0, 0xdc2626, false);
+    }
+    buildMotorbikeZone();
+
+    // 11. Trụ cứu hỏa màu đỏ Sài Gòn (Red Fire Hydrant)
+    function buildFireHydrant(px, pz) {
+      const hGroup = new THREE.Group();
+      hGroup.position.set(px, 0.3, pz);
+      const redPaint = std(0xdc2626, { roughness: 0.35, metalness: 0.25 });
+      const brassMat = std(0xd97706, { metalness: 0.85, roughness: 0.3 });
+      // Thân trụ gang
+      cyl(0.14, 0.16, 0.65, redPaint, 0, 0.32, 0, hGroup);
+      // Nắp đỉnh vòm & Đai ốc đỉnh
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), redPaint);
+      dome.position.y = 0.65;
+      hGroup.add(dome);
+      box(0.05, 0.05, 0.05, brassMat, 0, 0.80, 0, hGroup);
+      // 2 họng xả ren bên hông có nắp vặn kim loại
+      for (const sx of [-1, 1]) {
+        cyl(0.06, 0.06, 0.14, redPaint, sx * 0.14, 0.46, 0, hGroup, 10);
+        cyl(0.05, 0.05, 0.04, brassMat, sx * 0.21, 0.46, 0, hGroup, 10);
+      }
+      scene.add(hGroup);
+      obstacle(px, pz, 0.5, 0.5);
+    }
+    buildFireHydrant(-11.5, 3.2);
+    buildFireHydrant(43.5, 8.6);
+
+    // 12. Thùng rác công cộng đô thị 2 ngăn (Xanh lá - Rác hữu cơ & Cam - Rác vô cơ tái chế)
+    function buildPublicTrashBin(px, pz, ry = 0) {
+      const binGroup = new THREE.Group();
+      binGroup.position.set(px, 0.3, pz);
+      binGroup.rotation.y = ry;
+      // Chân đế kim loại đen
+      box(0.92, 0.06, 0.46, std(0x18181b), 0, 0.03, 0, binGroup);
+      box(0.06, 0.72, 0.06, std(0x334155), -0.42, 0.40, 0, binGroup);
+      box(0.06, 0.72, 0.06, std(0x334155), 0.42, 0.40, 0, binGroup);
+      // Thùng xanh lá (Rác sinh hoạt)
+      box(0.38, 0.68, 0.38, std(0x16a34a, { roughness: 0.5 }), -0.21, 0.40, 0, binGroup);
+      // Nắp lật bập bênh xanh
+      box(0.40, 0.08, 0.40, std(0x15803d), -0.21, 0.76, 0, binGroup);
+      // Thùng cam (Rác tái chế)
+      box(0.38, 0.68, 0.38, std(0xea580c, { roughness: 0.5 }), 0.21, 0.40, 0, binGroup);
+      // Nắp lật bập bênh cam
+      box(0.40, 0.08, 0.40, std(0xc2410c), 0.21, 0.76, 0, binGroup);
+      scene.add(binGroup);
+      obstacle(px, pz, 0.95, 0.5);
+    }
+    buildPublicTrashBin(12.6, 3.2, 0);
+    buildPublicTrashBin(-28.0, 3.2, 0);
+
+    // 13. Biển báo giao thông đô thị Việt Nam (Biển P Bãi Đỗ Xe & Biển Cấm Đỗ)
+    function buildTrafficSign(px, pz, type = 'parking') {
+      const pole = new THREE.Group();
+      pole.position.set(px, 0.3, pz);
+      // Cột thép tròn mạ kẽm
+      cyl(0.04, 0.04, 2.6, std(0x94a3b8, { metalness: 0.7, roughness: 0.3 }), 0, 1.3, 0, pole);
+
+      const signCanvas = document.createElement('canvas');
+      signCanvas.width = signCanvas.height = 256;
+      const sctx = signCanvas.getContext('2d');
+
+      if (type === 'parking') {
+        // Biển hình vuông xanh chữ P trắng
+        sctx.fillStyle = '#0284c7';
+        sctx.fillRect(0, 0, 256, 256);
+        sctx.strokeStyle = '#ffffff';
+        sctx.lineWidth = 14;
+        sctx.strokeRect(10, 10, 236, 236);
+        sctx.fillStyle = '#ffffff';
+        sctx.font = '900 160px "Be Vietnam Pro", Arial, sans-serif';
+        sctx.textAlign = 'center';
+        sctx.fillText('P', 128, 185);
+      } else {
+        // Biển tròn viền đỏ nền xanh cấm đỗ
+        sctx.fillStyle = '#ef4444';
+        sctx.beginPath(); sctx.arc(128, 128, 124, 0, Math.PI * 2); sctx.fill();
+        sctx.fillStyle = '#0284c7';
+        sctx.beginPath(); sctx.arc(128, 128, 98, 0, Math.PI * 2); sctx.fill();
+        sctx.strokeStyle = '#ef4444';
+        sctx.lineWidth = 26;
+        sctx.beginPath(); sctx.moveTo(48, 48); sctx.lineTo(208, 208); sctx.stroke();
+      }
+
+      const signBoard = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.75, 0.75),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(signCanvas) })
+      );
+      signBoard.position.set(0, 2.3, 0.05);
+      pole.add(signBoard);
+      scene.add(pole);
+      obstacle(px, pz, 0.3, 0.3);
+    }
+    buildTrafficSign(48.5, 8.4, 'parking');
+    buildTrafficSign(-48.5, 8.4, 'noparking');
+
+    // 14. Cột đèn đường đô thị vươn cong (Curved Cobra-Head Street Lamp) rọi sáng mặt đường
+    function buildCobraStreetLamp(px, pz, ry = 0) {
+      const lamp = new THREE.Group();
+      lamp.position.set(px, 0.3, pz);
+      lamp.rotation.y = ry;
+      const poleMat = std(0x64748b, { metalness: 0.6, roughness: 0.35 });
+      // Thân cột vát thon dần lên cao
+      cyl(0.08, 0.12, 6.2, poleMat, 0, 3.1, 0, lamp, 12);
+      // Cần đèn vươn cong hình chữ L vuốt mềm ra lòng đường
+      cyl(0.06, 0.08, 2.2, poleMat, 0.85, 6.1, 0, lamp, 8);
+      lamp.children[lamp.children.length - 1].rotation.z = -Math.PI / 3.5;
+      // Chóa đèn LED hình thoi
+      box(0.55, 0.12, 0.28, std(0x1e293b), 1.65, 6.6, 0, lamp);
+      // Mặt bóng đèn LED phát sáng vàng ấm
+      const bulb = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.22), glow(0xfef08a));
+      bulb.rotation.x = Math.PI / 2;
+      bulb.position.set(1.65, 6.53, 0);
+      lamp.add(bulb);
+      // Vệt sáng tròn dịu trên mặt đường (Light pool on asphalt)
+      const lightPool = new THREE.Mesh(
+        new THREE.CircleGeometry(3.2, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.18, depthWrite: false })
+      );
+      lightPool.rotation.x = -Math.PI / 2;
+      lightPool.position.set(1.65, -0.28, 0);
+      lamp.add(lightPool);
+
+      // Ánh sáng điểm rọi xuống mặt đường
+      if (!lite) {
+        const spot = new THREE.PointLight(0xffedd5, 1.2, 14, 1.2);
+        spot.position.set(1.65, 6.2, 0);
+        lamp.add(spot);
+      }
+      scene.add(lamp);
+      obstacle(px, pz, 0.5, 0.5);
+    }
+    buildCobraStreetLamp(-22, 3.4, Math.PI / 2);
+    buildCobraStreetLamp(20, 3.4, Math.PI / 2);
+    buildCobraStreetLamp(35, 11.6, -Math.PI / 2);
+    buildCobraStreetLamp(-15, 11.6, -Math.PI / 2);
+  }
+
   function buildParkedCars() {
     const E = Math.PI / 2, W = -Math.PI / 2;
-    // Làn nam (z=10.2) quay đầu về phía đông, làn bắc (z=4.9) ngược lại
-    buildTaxi(-46, 10.2, E);
-    buildVF3(0xf472b6, -33, 10.2, E);
-    buildVF3(0xf8fafc, -10, 10.2, E);
-    buildVF3(0xfacc15, 12, 10.2, E);
-    buildTaxi(31, 10.2, E);
-    buildVF3(0xdc2626, 39, 10.2, E);
-    buildTaxi(46, 10.2, E);
-    buildVF3(0x38bdf8, -30, 4.9, W);
-    buildVF3(0x34d399, 24 + 6, 4.9, W);
-    buildTaxi(38, 4.9, W);
-    buildVF3(0xfb923c, 46, 4.9, W);
-    const sign = signPlane([['BẾN TAXI', 70, 60], ['Gọi xe • 24/7', 30, 108]], 1.8, 0.8, 512, 160, '#fde047', '#10261a');
+
+    // Dựng hệ thống cảnh vật đường phố Sài Gòn chân thực trước
+    buildStreetAtmosphere();
+
+    // Hàng xe đậu làn Nam (z = 10.2) quay đầu về phía Đông (E)
+    buildTaxi(-46, 10.2, E, 'xanh');                 // Taxi Xanh SM (VinFast GSM xanh ngọc)
+    buildVF3(0xf472b6, -33, 10.2, E);                // VF3 Hồng cá tính mui trắng
+    buildVF3(0xf8fafc, -10, 10.2, E);                // VF3 Trắng ngọc trai mui đen
+    buildVF3(0xfacc15, 12, 10.2, E);                 // VF3 VÀNG SOLAR (ĐÚNG MÀU ẢNH THẬT NGƯỜI DÙNG TẢI LÊN)
+    buildTaxi(31, 10.2, E, 'vinasun');               // Taxi Vinasun truyền thống trắng sọc đỏ xanh
+    buildVF3(0xdc2626, 39, 10.2, E);                 // VF3 Đỏ Crimson mui trắng
+    buildTaxi(46, 10.2, E, 'xanh');                  // Taxi Xanh SM đón khách
+
+    // Hàng xe đậu làn Bắc (z = 4.9) quay đầu về phía Tây (W)
+    buildVF3(0x38bdf8, -30, 4.9, W);                 // VF3 Xanh Electric mui trắng
+    buildVF3(0x34d399, 30, 4.9, W);                  // VF3 Xanh Mint tươi mát mui trắng
+    buildTaxi(38, 4.9, W, 'vinasun');                // Taxi Vinasun bến xe
+    buildVF3(0xfb923c, 46, 4.9, W);                  // VF3 Cam Năng Động mui trắng
+
+    // Biển hiệu Bến Đón Taxi & Gọi Xe 24/7 phản quang
+    const sign = signPlane([['BẾN TAXI SÀI GÒN', 66, 55], ['XANH SM • VINASUN • 24/7', 32, 105]], 2.0, 0.85, 512, 160, '#fde047', '#10261a');
     sign.position.set(41, 1.9, 8.2);
     scene.add(sign);
     box(0.08, 1.6, 0.08, std(0x6b7280), 41, 1.1, 8.2);
