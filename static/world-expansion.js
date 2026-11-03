@@ -328,7 +328,7 @@
         const sx = tx + Math.cos(a) * 1.0, sz = tz + Math.sin(a) * 1.0;
         cyl(0.2, 0.23, 0.42, stoolMat, sx, 0.51, sz);
         // Ghế ngồi thật [E]: dùng chung hệ thống chairSlots với bàn trong quán
-        chairSlots.push({ tableId, seatId: k, x: sx, z: sz, ry: Math.atan2(tx - sx, tz - sz), mesh: null, prompt: `Ngồi ghế nhựa nhậu bia hơi ở ${name}` });
+        chairSlots.push({ tableId, seatId: k, x: sx, z: sz, ry: Math.atan2(tx - sx, tz - sz), mesh: null, prompt: `Ngồi ghế nhựa nhậu bia hơi ở ${name}`, seatY: 0.74 });
       }
       obstacle(tx, tz, 0.9, 0.9);   // chỉ chặn mặt bàn để người ngồi/đứng dậy ở ghế không bị kẹt
     }
@@ -337,8 +337,8 @@
 
   // ---------- Nội thất quán bar (đi vào được) ----------
   let seatTableCounter = 300;
-  function addSeat(tableId, seatId, x, z, faceX, faceZ, prompt) {
-    chairSlots.push({ tableId, seatId, x, z, ry: Math.atan2(faceX - x, faceZ - z), mesh: null, prompt });
+  function addSeat(tableId, seatId, x, z, faceX, faceZ, prompt, seatY) {
+    chairSlots.push({ tableId, seatId, x, z, ry: Math.atan2(faceX - x, faceZ - z), mesh: null, prompt, seatY });
   }
 
   // Trả về danh sách vật liệu của đồ trang trí gắn tường để mờ cùng tường khi che camera.
@@ -376,7 +376,7 @@
     [3.0, 4.4, 5.8, 7.2].forEach((v, k) => {
       const [x, z] = P(2.6, v);
       stool(x, z, k % 2 ? 0xdc2626 : 0x2563eb, 0.62);
-      addSeat(barTable, k, x, z, x + 1, z, `Ngồi quầy bar ${name}`);
+      addSeat(barTable, k, x, z, x + 1, z, `Ngồi quầy bar ${name}`, 0.96);
     });
     const bartender = makePerson(0xe11d48, ...P(4.5, 4.9), -Math.PI / 2);
     animators.push((d, t) => { bartender.mesh.position.y = 0.3 + Math.abs(Math.sin(t * 2.4)) * 0.03; bartender.mesh.rotation.y = -Math.PI / 2 + Math.sin(t * 0.8) * 0.5; });
@@ -389,7 +389,7 @@
       put(0.18, 0.9, 1.9, sofaMat, -5.0, 0.95, v);
       for (const dv of [-0.45, 0.45]) {
         const [x, z] = P(-4.5, v + dv);
-        addSeat(sofaTable, k * 2 + (dv > 0 ? 1 : 0), x, z, x + 1, z, `Ngồi sofa ở ${name}`);
+        addSeat(sofaTable, k * 2 + (dv > 0 ? 1 : 0), x, z, x + 1, z, `Ngồi sofa ở ${name}`, 0.8);
       }
     });
 
@@ -458,7 +458,7 @@
         for (let k = 0; k < 4; k++) {
           const a = k * Math.PI / 2 + Math.PI / 4, sx = x + Math.cos(a) * 1.05, sz = z + Math.sin(a) * 1.05;
           cyl(0.32, 0.34, 0.36, std([0xdc2626, 0x0ea5e9, 0xeab308, 0xa855f7][(k + ti) % 4], { roughness: 0.9 }), sx, 0.5, sz, null, 14);
-          addSeat(base + ti, k, sx, sz, x, z, `Ngồi ghế đệm shisha ở ${name}`);
+          addSeat(base + ti, k, sx, sz, x, z, `Ngồi ghế đệm shisha ở ${name}`, 0.7);
         }
       });
       seatTableCounter += 3;
@@ -482,7 +482,7 @@
       [[-4.2, 0], [0.7, 1]].forEach(([u, k]) => {
         const [x, z] = P(u, 5);
         stool(x, z, 0xdc2626, 0.6);
-        addSeat(poolTable, k, x, z, ...P(-1.8, 5), `Ngồi nghỉ bên bàn bi-a ${name}`);
+        addSeat(poolTable, k, x, z, ...P(-1.8, 5), `Ngồi nghỉ bên bàn bi-a ${name}`, 0.94);
       });
       const c = document.createElement('canvas'); c.width = c.height = 128;
       const g = c.getContext('2d');

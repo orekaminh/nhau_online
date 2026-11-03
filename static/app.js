@@ -3886,7 +3886,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
   if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
 
-  if (e.key === 'e' || e.key === 'E') {
+  if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
     handleToggleSit();
   }
 
@@ -3939,7 +3939,23 @@ function findNearestChair() {
   return nearest;
 }
 
+// Chiều cao hông của nhân vật chibi so với gốc (khớp createCharacter3D) và mặt ghế mặc định.
+const SIT_HIP_Y = 0.44, DEFAULT_SEAT_Y = 0.74;
+const seatRootY = (chair) => (chair && chair.seatY ? chair.seatY : DEFAULT_SEAT_Y) - SIT_HIP_Y + 0.04;
+// Tư thế ngồi: đùi gập ngang về phía trước, cơ thể hạ xuống ngang mặt ghế.
+function applySitPose(parts, mesh, rootY, delta) {
+  const k = 1 - Math.exp(-14 * delta);
+  mesh.position.y += (rootY - mesh.position.y) * k;
+  for (const leg of [parts.leftLeg, parts.rightLeg]) leg.rotation.x += (-1.5 - leg.rotation.x) * k;
+  mesh.rotation.z += (0 - mesh.rotation.z) * k;
+  if (parts.torso) parts.torso.rotation.x += (0.06 - parts.torso.rotation.x) * k;
+}
+let lastSitToggleAt = 0;
 function handleToggleSit() {
+  // Bỏ qua lần gọi thứ hai trong 350ms (phím E tự lặp, hoặc touchstart + click cùng lúc).
+  const nowMs = performance.now();
+  if (nowMs - lastSitToggleAt < 350) return;
+  lastSitToggleAt = nowMs;
   clearClickTarget();
   if (localPlayerState.is_sitting) {
     // Đứng dậy
@@ -3959,6 +3975,7 @@ function handleToggleSit() {
       localPlayerState.x = chair.x;
       localPlayerState.z = chair.z;
       localPlayerState.ry = chair.ry;
+      localPlayerState.seatRef = chair;
       sitStandText.textContent = "Đứng Dậy";
       sitStandBtn.classList.add('is-sitting');
       sendAction({ action: "sit", table_id: chair.tableId, seat_id: chair.seatId });
@@ -4566,7 +4583,11 @@ function connectWebSocket() {
         if (satPlayer) {
           satPlayer.data.is_sitting = true;
           const chair = chairSlots.find(c => c.tableId === data.table_id && c.seatId === data.seat_id);
+          satPlayer.sitting = true;
+          satPlayer.seatRef = chair || null;
           if (chair) {
+            satPlayer.targetPos.set(chair.x, 0.3, chair.z);
+            satPlayer.targetRot = chair.ry;
             satPlayer.mesh.position.set(chair.x, 0.3, chair.z);
             satPlayer.mesh.rotation.y = chair.ry;
           }
@@ -4578,6 +4599,9 @@ function connectWebSocket() {
         const stoodPlayer = remotePlayers.get(data.id);
         if (stoodPlayer) {
           stoodPlayer.data.is_sitting = false;
+          stoodPlayer.sitting = false;
+          stoodPlayer.seatRef = null;
+          if (stoodPlayer.charParts.torso) stoodPlayer.charParts.torso.rotation.x = 0;
         }
         setTicker(data.message);
         break;
@@ -4806,8 +4830,19 @@ function spawnRemotePlayer(memberData) {
     targetPos: new THREE.Vector3(memberData.x, 0.3, memberData.z),
     targetRot: memberData.ry,
     walkTime: 0,
-    is_walking: false
+    is_walking: false,
+    sitting: false,
+    seatRef: null
   });
+  if (memberData.is_sitting) {
+    const seat = chairSlots.find(c => c.tableId === memberData.table_id && c.seatId === memberData.seat_id);
+    const rpNew = remotePlayers.get(memberData.id);
+    if (seat && rpNew) {
+      rpNew.sitting = true; rpNew.seatRef = seat;
+      rpNew.targetPos.set(seat.x, 0.3, seat.z); rpNew.targetRot = seat.ry;
+      rpNew.mesh.position.set(seat.x, seatRootY(seat), seat.z);
+    }
+  }
 }
 
 function removeRemotePlayer(id) {
@@ -4992,6 +5027,7 @@ function animate() {
 
     localCharacter.mesh.position.set(localPlayerState.x, 0.3, localPlayerState.z);
     localCharacter.mesh.rotation.y = localPlayerState.ry;
+    if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
 
     // Gửi vị trí lên server (khoảng 20Hz để mượt mạng)
     networkTimer += delta;
@@ -5133,15 +5169,33 @@ function animate() {
   }
   updateWallOcclusion(delta);
 
+  // Nhân vật của mình đang ngồi: trượt vào đúng vị trí ghế rồi ngồi
+  if (localCharacter && localPlayerState.is_sitting && (!selfMember || selfMember.status !== 'guc_nga')) {
+    const kPos = 1 - Math.exp(-12 * delta);
+    const m = localCharacter.mesh;
+    m.position.x += (localPlayerState.x - m.position.x) * kPos;
+    m.position.z += (localPlayerState.z - m.position.z) * kPos;
+    let dy = localPlayerState.ry - m.rotation.y;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    m.rotation.y += dy * kPos;
+    applySitPose(localCharacter, m, seatRootY(localPlayerState.seatRef), delta);
+  }
+
   // Interpolate Remote Players
   remotePlayers.forEach((rp) => {
+    const sitY = rp.sitting ? seatRootY(rp.seatRef) : null;
+    const keepY = rp.mesh.position.y;
     rp.mesh.position.lerp(rp.targetPos, 0.2);
+    if (rp.sitting) rp.mesh.position.y = keepY;
     let diff = rp.targetRot - rp.mesh.rotation.y;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
     rp.mesh.rotation.y += diff * 0.2;
 
-    if (rp.is_walking) {
+    if (rp.sitting) {
+      applySitPose(rp.charParts, rp.mesh, sitY, delta);
+    } else if (rp.is_walking) {
       rp.walkTime += delta * 12;
       rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime) * 0.55;
       rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime) * 0.55;
