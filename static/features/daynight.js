@@ -36,6 +36,7 @@
     const ms = F.serverNow() + 7 * 3600e3;
     return (ms % 86400e3) / 3600e3;
   }
+  function isDay(hour) { const h = hour !== undefined ? hour : vnHour(); return h >= 5.8 && h <= 18.2; }
   function labelFor(hour) { return (LABELS.find(([end]) => hour < end) || LABELS[LABELS.length - 1])[1]; }
 
   function sample(hour) {
@@ -64,7 +65,7 @@
     return m;
   }
 
-  function apply(hour) {
+  function apply(hour, opts) {
     const k = sample(hour);
     scene.background.copy(k.bg);
     if (scene.fog) { scene.fog.color.copy(k.bg); scene.fog.density = k.fog; }
@@ -72,7 +73,8 @@
     streetLight.color.copy(k.sun.color); streetLight.intensity = k.sun.i;
     moonLight.intensity = k.moon;
     renderer.toneMappingExposure = k.exp;
-    neonCyan.intensity = base.cyan * k.neon; neonMagenta.intensity = base.magenta * k.neon; neonAmber.intensity = base.amber * k.neon;
+    const neonMul = (opts && opts.blackout) ? 0 : k.neon;
+    neonCyan.intensity = base.cyan * neonMul; neonMagenta.intensity = base.magenta * neonMul; neonAmber.intensity = base.amber * neonMul;
 
     // Mặt trời mọc 6h lặn 18h; trăng mọc 18h lặn 6h. Cả hai lướt qua bầu trời phía sông & Landmark 81.
     const sunT = (hour - 6) / 12;
@@ -112,7 +114,7 @@
     buildPill();
     apply(vnHour());
     updatePill(vnHour());
-    F.daynight = { hour: vnHour, apply: (hr) => apply(hr) };
+    F.daynight = { hour: vnHour, isDay, apply: (hr, opts) => apply(hr, opts), applyCurrent: (opts) => apply(vnHour(), opts) };
     F.addTick((delta) => {
       acc += delta;
       if (acc < 1) return;       // 1 giây cập nhật một lần là đủ mượt vì ánh sáng đổi rất chậm
@@ -121,7 +123,11 @@
       updatePill(hour);
       // Sự kiện mất điện / Happy Hour tự điều khiển đèn: không tranh giành với chúng.
       const active = F.events ? F.events.active() : [];
-      if (active.includes('blackout') || active.includes('happy_hour')) return;
+      if (active.includes('happy_hour')) return;
+      if (active.includes('blackout')) {
+        if (isDay(hour)) apply(hour, { blackout: true });
+        return;
+      }
       apply(hour);
     });
   });

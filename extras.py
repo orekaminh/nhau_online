@@ -37,6 +37,12 @@ EVENT_KINDS = {
 EVENT_WEIGHTS = {"happy_hour": 3, "patrol": 3, "blackout": 2, "rain": 3, "lucky_crate": 3}
 
 
+def is_daytime() -> bool:
+    """Kiểm tra thời điểm hiện tại (giờ VN UTC+7) có phải ban ngày không (5h50 sáng - 18h15 tối)."""
+    vn_hour = ((now_ms() + 7 * 3600 * 1000) % 86400000) / 3600000
+    return 5.8 <= vn_hour <= 18.2
+
+
 class EventDirector:
     MIN_GAP = float(os.environ.get("PUB_EVENT_MIN", "90"))
     MAX_GAP = float(os.environ.get("PUB_EVENT_MAX", "170"))
@@ -78,7 +84,12 @@ class EventDirector:
         self._seq += 1
         eid = f"e{self._seq}{random.randrange(16**4):04x}"
         seconds = duration if duration is not None else spec["duration"]
-        event = {"type": "world_event", "id": eid, "kind": kind, "title": spec["title"], "text": spec["text"],
+        title = spec["title"]
+        text = spec["text"]
+        if kind == "blackout" and is_daytime():
+            title = "⚡ Cúp điện khu vực!"
+            text = "Quán cúp điện: quạt tắt, nhạc tắt! Ra ngoài đường đón gió sông và tắm nắng nào!"
+        event = {"type": "world_event", "id": eid, "kind": kind, "title": title, "text": text,
                  "started_ms": now_ms(), "ends_ms": now_ms() + int(seconds * 1000), "seconds": seconds}
         if kind == "lucky_crate":
             x, z = random.choice(LUCKY_SPOTS)
@@ -121,7 +132,10 @@ class EventDirector:
                 await room.award(cid, 12, "event", reason="Né Dân phòng trót lọt")
             return
         if event["kind"] in ("blackout", "rain"):
-            end["text"] = "Có điện lại rồi!" if event["kind"] == "blackout" else "Tạnh mưa rồi, phố sáng bóng."
+            if event["kind"] == "blackout":
+                end["text"] = "Có điện lại rồi! Quạt quay vù vù, nhạc lại xập xình!" if is_daytime() else "Có điện lại rồi! Phố sáng rực rỡ trở lại."
+            else:
+                end["text"] = "Tạnh mưa rồi, phố sáng bóng."
             await room.broadcast(end)
             for cid in list(room.members):
                 await room.award(cid, 5, "event", reason="Vượt qua biến cố cùng quán")

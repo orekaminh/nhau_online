@@ -11,7 +11,7 @@
   const KIND_INFO = {
     happy_hour: { icon: '🍻', title: 'Happy Hour!', text: 'Mọi hành động nhận x2 XP. Dô nào anh em!' },
     patrol: { icon: '🚨', title: 'Dân phòng đi kiểm tra!', text: 'Ngồi xuống ghế hoặc trốn vào WC để không bị phạt!' },
-    blackout: { icon: '💡', title: 'Mất điện!', text: 'Cả phố tối om. Cứ nhậu bằng ánh trăng thôi.' },
+    blackout: { icon: '⚡', title: 'Mất điện!', text: 'Cả phố tối om. Cứ nhậu bằng ánh trăng thôi.', dayTitle: '⚡ Cúp điện khu vực!', dayText: 'Quán cúp điện: quạt tắt, nhạc tắt! Ra ngoài đường đón gió sông và tắm nắng nào!' },
     rain: { icon: '🌧️', title: 'Mưa bất chợt!', text: 'Mưa Sài Gòn nói đến là đến. Vào mái hiên nhậu tiếp!' },
     lucky_crate: { icon: '🎁', title: 'Thùng bia may mắn!', text: 'Ai chạm vào đầu tiên được thưởng XP.' },
   };
@@ -23,6 +23,12 @@
   let bannerTimer = 0;
 
   const isLite = () => !!(window.PUB_PERF && window.PUB_PERF.lite) || matchMedia('(pointer: coarse)').matches;
+  const isDaytime = () => {
+    if (F.daynight && typeof F.daynight.isDay === 'function') return F.daynight.isDay();
+    const forced = parseFloat(new URLSearchParams(location.search).get('time'));
+    const h = Number.isFinite(forced) ? (((forced % 24) + 24) % 24) : (((F.serverNow() + 7 * 3600e3) % 86400e3) / 3600e3);
+    return h >= 5.8 && h <= 18.2;
+  };
   // Đèn của app.js là const cấp script: đọc trực tiếp (không qua window) sau khi Features.start().
   const worldLights = () => ({
     ambientLight: typeof ambientLight !== 'undefined' ? ambientLight : null,
@@ -62,10 +68,11 @@
     if (scene.fog && lights.fog) scene.fog.density = lights.fog;
     lights.orig = null; lights.flash = 0;
     lights.black.cur = 1; lights.happy.cur = 0;
+    if (F.daynight && typeof F.daynight.applyCurrent === 'function') F.daynight.applyCurrent();
   }
   function lightsRetarget() {
     const kinds = [...active.values()].map((e) => e.kind);
-    lights.black.target = kinds.includes('blackout') ? 0.15 : 1;
+    lights.black.target = kinds.includes('blackout') ? (isDaytime() ? 0 : 0.15) : 1;
     lights.happy.target = kinds.includes('happy_hour') ? 1 : 0;
     if (lights.black.target !== 1 || lights.happy.target !== 0) lightsAcquire();
   }
@@ -77,11 +84,29 @@
     lights.flash = Math.max(0, lights.flash - dt * 2.4);
     const neutral = Math.abs(lights.black.cur - 1) < 0.01 && lights.happy.cur < 0.01 && lights.flash <= 0.001;
     if (neutral && lights.black.target === 1 && lights.happy.target === 0) { lightsRestore(); return; }
+    const isDay = isDaytime();
     for (const o of lights.orig) {
       const warm = o.name === 'neonAmber' || o.name === 'streetLight' ? 1 + 0.4 * lights.happy.cur : 1;
-      o.light.intensity = o.value * lights.black.cur * warm + (o.name === 'ambientLight' ? lights.flash * 1.4 : 0);
+      if (isDay) {
+        if (o.name === 'streetLight' || o.name === 'ambientLight') {
+          o.light.intensity = o.value * warm + (o.name === 'ambientLight' ? lights.flash * 1.4 : 0);
+        } else if (o.name === 'moonLight') {
+          o.light.intensity = 0;
+        } else {
+          o.light.intensity = o.value * lights.black.cur * warm;
+        }
+      } else {
+        if (o.name === 'moonLight') {
+          o.light.intensity = o.value;
+        } else {
+          o.light.intensity = o.value * lights.black.cur * warm + (o.name === 'ambientLight' ? lights.flash * 1.4 : 0);
+        }
+      }
     }
-    if (scene.fog && lights.fog) scene.fog.density = lights.fog * (1 + (1 - lights.black.cur) * 0.7);
+    if (scene.fog && lights.fog) {
+      const fogMul = isDay ? 1 : (1 + (1 - lights.black.cur) * 0.7);
+      scene.fog.density = lights.fog * fogMul;
+    }
   }
 
   // ---------------------------------------------------------- âm thanh
@@ -185,12 +210,20 @@
   FX.blackout = {
     start(ev) {
       const el = h('div', { id: 'fx-blackout', 'aria-hidden': 'true' });
+      const isDay = isDaytime();
+      if (isDay) el.classList.add('is-daytime');
       document.body.append(el);
-      requestAnimationFrame(() => el.classList.add('is-on'));
-      ev.fx = { el };
+      if (!isDay) requestAnimationFrame(() => el.classList.add('is-on'));
+      ev.fx = { el, isDay };
     },
     tick() { /* ánh sáng do lightsTick xử lý */ },
-    end(ev) { ev.fx.el.classList.remove('is-on'); const el = ev.fx.el; setTimeout(() => el.remove(), 900); },
+    end(ev) {
+      if (ev.fx && ev.fx.el) {
+        ev.fx.el.classList.remove('is-on');
+        const el = ev.fx.el;
+        setTimeout(() => el.remove(), 900);
+      }
+    },
   };
 
   FX.rain = {
@@ -320,9 +353,15 @@
     if (active.has(data.id)) return;
     const info = KIND_INFO[data.kind] || { icon: '✨', title: 'Sự kiện bất ngờ', text: '' };
     const ends = local ? F.serverNow() + LOCAL_MS : Number(data.ends_ms) || F.serverNow() + 15000;
+    let title = data.title;
+    let text = data.text;
+    if (data.kind === 'blackout' && isDaytime()) {
+      if (!title || title === KIND_INFO.blackout.title) title = KIND_INFO.blackout.dayTitle;
+      if (!text || text === KIND_INFO.blackout.text) text = KIND_INFO.blackout.dayText;
+    }
     const ev = {
       id: data.id, kind: data.kind, local: !!local, ends, total: Math.max(1000, ends - F.serverNow()),
-      icon: info.icon, title: String(data.title || info.title), text: String(data.text || info.text),
+      icon: info.icon, title: String(title || info.title), text: String(text || info.text),
       params: { x: Number(data.x), z: Number(data.z) }, fx: null, ui: null,
     };
     if (ev.kind === 'lucky_crate' && !(isFinite(ev.params.x) && isFinite(ev.params.z))) {
@@ -354,7 +393,7 @@
       const caught = list(d.caught), safe = list(d.safe);
       return (caught ? '🚨 Bị phạt: ' + caught + '. ' : '') + (safe ? '😎 Né trót lọt: ' + safe : (caught ? '' : '🚨 Dân phòng đã đi qua.'));
     }
-    if (ev.kind === 'blackout') return '💡 Có điện lại rồi!';
+    if (ev.kind === 'blackout') return isDaytime() ? '💡 Có điện lại rồi! Quạt quay vù vù, nhạc lại xập xình!' : '💡 Có điện lại rồi! Phố sáng rực rỡ trở lại.';
     if (ev.kind === 'rain') return '☀️ Tạnh mưa rồi.';
     if (ev.kind === 'happy_hour') return '⏰ Hết giờ Happy Hour.';
     return '';
