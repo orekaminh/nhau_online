@@ -1428,6 +1428,277 @@
   }
 
   // ========================================================
+  // ========================================================
+  // HỆ THỐNG XE DẠO PHỐ SÀI GÒN (VINFAST VF3 & TAXI XANH SM / VINASUN)
+  // - Cho phép nhân vật leo lên xe bằng phím [F] hoặc nút tương tác
+  // - Xe nổ máy, bấm còi bíp bíp, bật đèn pha chiếu sáng mặt đường
+  // - Xe tự động lái chở người chơi chạy dạo 1 vòng quanh đường phố ven sông Sài Gòn
+  // - Ngắm toàn cảnh Landmark 81, bờ sông, quán bar, phố đi bộ lung linh
+  // - Có thể bấm [F] để xuống xe bất kỳ lúc nào, hoàn thành chuyến đi nhận XP
+  // ========================================================
+  let vehicleSeq = 0;
+  const VEHICLE_SCALE_VF3 = 1.38;
+  const VEHICLE_SCALE_TAXI = 1.35;
+
+  function playCarHorn() {
+    try {
+      const c = typeof getAudioContext === 'function' ? getAudioContext() : null;
+      if (!c) return;
+      const now = c.currentTime;
+      [0, 0.20].forEach(delay => {
+        [440, 554].forEach(f => {
+          const o = c.createOscillator();
+          const g = c.createGain();
+          o.type = 'sawtooth';
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.04, now + delay);
+          g.gain.linearRampToValueAtTime(0.04, now + delay + 0.11);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.15);
+          o.connect(g);
+          g.connect(c.destination);
+          o.start(now + delay);
+          o.stop(now + delay + 0.16);
+        });
+      });
+    } catch (_) {}
+  }
+
+  // Quỹ đạo đường phố khép kín (làn Nam z=8.65, vòng chữ U ở x=45, làn Bắc z=6.35, vòng chữ U ở x=-45)
+  const LOOP_STRAIGHT = 90.0;
+  const LOOP_RADIUS = 1.15;
+  const LOOP_TURN = Math.PI * LOOP_RADIUS;
+  const LOOP_TOTAL = 2 * LOOP_STRAIGHT + 2 * LOOP_TURN;
+
+  function getLoopPoint(s) {
+    const d = ((s % LOOP_TOTAL) + LOOP_TOTAL) % LOOP_TOTAL;
+    if (d < LOOP_STRAIGHT) {
+      const t = d / LOOP_STRAIGHT;
+      return { x: -45.0 + t * 90.0, z: 8.65, ry: Math.PI / 2 };
+    } else if (d < LOOP_STRAIGHT + LOOP_TURN) {
+      const arc = (d - LOOP_STRAIGHT) / LOOP_RADIUS;
+      const theta = Math.PI / 2 - arc;
+      return { x: 45.0 + Math.cos(theta) * LOOP_RADIUS, z: 7.50 + Math.sin(theta) * LOOP_RADIUS, ry: Math.PI / 2 - arc };
+    } else if (d < 2 * LOOP_STRAIGHT + LOOP_TURN) {
+      const t = (d - (LOOP_STRAIGHT + LOOP_TURN)) / LOOP_STRAIGHT;
+      return { x: 45.0 - t * 90.0, z: 6.35, ry: -Math.PI / 2 };
+    } else {
+      const arc = (d - (2 * LOOP_STRAIGHT + LOOP_TURN)) / LOOP_RADIUS;
+      const theta = -Math.PI / 2 - arc;
+      return { x: -45.0 + Math.cos(theta) * LOOP_RADIUS, z: 7.50 + Math.sin(theta) * LOOP_RADIUS, ry: -Math.PI / 2 - arc };
+    }
+  }
+
+  function findClosestS(x, z, ry) {
+    if (Math.abs(ry - Math.PI / 2) < 0.6) {
+      const clampedX = Math.max(-45, Math.min(45, x));
+      return clampedX + 45.0;
+    } else {
+      const clampedX = Math.max(-45, Math.min(45, x));
+      return LOOP_STRAIGHT + LOOP_TURN + (45.0 - clampedX);
+    }
+  }
+
+  window.VehicleSystem = {
+    cars: [],
+    activeRide: null,
+
+    register(car) {
+      this.cars.push(car);
+    },
+
+    findNearest(px, pz, maxDist = 3.8) {
+      if (this.activeRide) return null;
+      let best = null, bestD = maxDist;
+      for (const car of this.cars) {
+        const d = Math.hypot(px - car.position.x, pz - car.position.z);
+        if (d < bestD) {
+          bestD = d;
+          best = car;
+        }
+      }
+      if (best) {
+        const isVF3 = best.userData.model === 'vf3';
+        return {
+          car: best,
+          prompt: isVF3
+            ? 'Lên xe VinFast VF3 vi vu dạo phố ngắm Landmark 81'
+            : ('Lên ' + best.userData.name + ' dạo 1 vòng Sài Gòn'),
+          dist: bestD
+        };
+      }
+      return null;
+    },
+
+    isRiding() {
+      return !!this.activeRide;
+    },
+
+    handleInteract() {
+      if (this.activeRide) {
+        this.exitRide();
+      } else {
+        const near = this.findNearest(localPlayerState.x, localPlayerState.z);
+        if (near) this.startRide(near.car);
+      }
+    },
+
+    startRide(car) {
+      if (this.activeRide) return;
+      playCarHorn();
+
+      if (!car.userData.headlightBeam) {
+        const beamGroup = new THREE.Group();
+        for (const sx of [-0.65, 0.65]) {
+          const spot = new THREE.SpotLight(0xfff7ed, 4.0, 32, Math.PI / 5, 0.45, 1.2);
+          spot.position.set(sx * car.scale.x, 0.65 * car.scale.y, 1.8 * car.scale.z);
+          const tgt = new THREE.Object3D();
+          tgt.position.set(sx * car.scale.x, 0.1, 15 * car.scale.z);
+          beamGroup.add(spot, tgt);
+          spot.target = tgt;
+        }
+        car.add(beamGroup);
+        car.userData.headlightBeam = beamGroup;
+      }
+      car.userData.headlightBeam.visible = true;
+
+      const startS = findClosestS(car.position.x, car.position.z, car.rotation.y);
+      const targetPoint = getLoopPoint(startS);
+
+      this.activeRide = {
+        car,
+        state: 'pullout',
+        tPull: 0,
+        pullDuration: 1.6,
+        startX: car.position.x,
+        startZ: car.position.z,
+        startRy: car.rotation.y,
+        targetX: targetPoint.x + Math.sin(targetPoint.ry) * 4.0,
+        targetZ: targetPoint.z,
+        targetRy: targetPoint.ry,
+        s: startS + 4.0,
+        speed: 0,
+        maxSpeed: 11.5,
+        lapDistance: 0,
+      };
+
+      localPlayerState.is_riding_car = true;
+      if (typeof clearClickTarget === 'function') clearClickTarget();
+
+      if (typeof setTicker === 'function') {
+        setTicker('🚗 Bạn đã lên ' + car.userData.name + '! Xe đang chở bạn dạo một vòng ngắm cảnh Landmark 81...');
+      }
+      if (window.Features && Features.toast) {
+        Features.toast('🚗 Đang vi vu ' + car.userData.name + '! Nhấn [F] hoặc [Xuống xe] bất kỳ lúc nào để dừng.', 'success', 5000);
+      }
+    },
+
+    exitRide() {
+      if (!this.activeRide) return;
+      const { car } = this.activeRide;
+
+      if (car.userData.headlightBeam) car.userData.headlightBeam.visible = false;
+
+      const curbZ = car.position.z > 7.5 ? 11.4 : 3.6;
+      localPlayerState.x = car.position.x;
+      localPlayerState.z = curbZ;
+      localPlayerState.is_riding_car = false;
+      localPlayerState.groundY = WORLD_BOUNDS.groundY(localPlayerState.x, localPlayerState.z);
+
+      if (localCharacter) {
+        localCharacter.mesh.position.set(localPlayerState.x, localPlayerState.groundY, localPlayerState.z);
+        localCharacter.mesh.rotation.y = car.position.z > 7.5 ? Math.PI : 0;
+        localCharacter.mesh.scale.set(1, 1, 1);
+        if (localCharacter.leftLeg) localCharacter.leftLeg.rotation.x = 0;
+        if (localCharacter.rightLeg) localCharacter.rightLeg.rotation.x = 0;
+      }
+
+      car.position.set(car.userData.originalX, 0, car.userData.originalZ);
+      car.rotation.y = car.userData.originalRy;
+
+      this.activeRide = null;
+
+      if (typeof sendAction === 'function') {
+        sendAction({ action: 'award', xp: 20, reason: 'Dạo phố Sài Gòn' });
+      }
+      if (typeof setTicker === 'function') {
+        setTicker('🎉 Đã xuống xe an toàn. Chúc bạn một ngày dạo phố vui vẻ!');
+      }
+      if (window.Features && Features.toast) {
+        Features.toast('🎉 Chuyến dạo phố hoàn tất! +20 XP ngắm cảnh thành phố.', 'info', 4000);
+      }
+    },
+
+    update(delta) {
+      if (!this.activeRide) return;
+      const ride = this.activeRide;
+      const car = ride.car;
+
+      if (ride.state === 'pullout') {
+        ride.tPull += delta;
+        const progress = Math.min(1.0, ride.tPull / ride.pullDuration);
+        const smooth = progress * progress * (3 - 2 * progress);
+
+        car.position.x = ride.startX + (ride.targetX - ride.startX) * smooth;
+        car.position.z = ride.startZ + (ride.targetZ - ride.startZ) * smooth;
+
+        let dRy = ride.targetRy - ride.startRy;
+        while (dRy > Math.PI) dRy -= Math.PI * 2;
+        while (dRy < -Math.PI) dRy += Math.PI * 2;
+        car.rotation.y = ride.startRy + dRy * smooth;
+
+        ride.speed = Math.min(ride.maxSpeed, ride.speed + delta * 6.0);
+
+        if (progress >= 1.0) {
+          ride.state = 'cruising';
+        }
+      } else if (ride.state === 'cruising') {
+        ride.speed = Math.min(ride.maxSpeed, ride.speed + delta * 4.0);
+        ride.s += ride.speed * delta;
+        ride.lapDistance += ride.speed * delta;
+
+        const pt = getLoopPoint(ride.s);
+        car.position.x = pt.x;
+        car.position.z = pt.z;
+        car.rotation.y = pt.ry;
+
+        if (ride.lapDistance >= LOOP_TOTAL) {
+          ride.lapDistance = 0;
+          if (window.Features && Features.toast) {
+            Features.toast('🚕 Đã đi được 1 vòng ngắm phố Sài Gòn! Nhấn [F] để xuống xe hoặc tiếp tục ngắm cảnh.', 'info', 4000);
+          }
+        }
+      }
+
+      if (car.userData.wheels) {
+        const rollSpeed = (ride.speed * delta) / (0.31 * car.scale.x);
+        for (const w of car.userData.wheels) {
+          w.rotation.x += rollSpeed;
+        }
+      }
+
+      const driverOffsetX = -0.32 * car.scale.x;
+      const driverOffsetY = 0.04 * car.scale.y;
+      const driverOffsetZ = 0.05 * car.scale.z;
+
+      const cos = Math.cos(car.rotation.y), sin = Math.sin(car.rotation.y);
+      const px = car.position.x + driverOffsetX * cos + driverOffsetZ * sin;
+      const pz = car.position.z - driverOffsetX * sin + driverOffsetZ * cos;
+      const py = car.position.y + driverOffsetY;
+
+      localPlayerState.x = car.position.x;
+      localPlayerState.z = car.position.z;
+      localPlayerState.ry = car.rotation.y;
+
+      if (localCharacter) {
+        localCharacter.mesh.position.set(px, py, pz);
+        localCharacter.mesh.rotation.y = car.rotation.y;
+        localCharacter.mesh.scale.set(0.85, 0.85, 0.85);
+        if (localCharacter.leftLeg) localCharacter.leftLeg.rotation.x = -1.35;
+        if (localCharacter.rightLeg) localCharacter.rightLeg.rotation.x = -1.35;
+      }
+    }
+  };
+
   // VINFAST VF3 TẢ THỰC CHI TIẾT CAO (TỶ LỆ CHUẨN SUV MINI ĐIỆN 2 CỬA)
   // Tham khảo trực tiếp hình ảnh thực tế của người dùng:
   // - Ngoại thất 2 tông màu nổi bật (Thân Vàng Solar / Mui Trắng, vát rãnh gia cường)
@@ -1643,6 +1914,7 @@
     const wheelR = 0.31, halfW = 0.84;
     const zs = [-0.98, 0.98];
     const wheelCapMat = new THREE.MeshBasicMaterial({ map: getVF3WheelCapTexture() });
+    const vf3Wheels = [];
 
     for (const sx of [-1, 1]) {
       for (const zpos of zs) {
@@ -1662,16 +1934,32 @@
         capMesh.position.set(sx * (halfW + sx * 0.112), wheelR, zpos);
 
         g.add(tireMesh, brakeDisc, capMesh);
+        vf3Wheels.push(tireMesh);
       }
     }
 
+    // Tỉ lệ SUV chuẩn cân đối với nhân vật Chibi (Xe to lớn vững chãi hơn nhân vật)
+    g.scale.set(VEHICLE_SCALE_VF3, VEHICLE_SCALE_VF3, VEHICLE_SCALE_VF3);
     g.position.set(x, 0, z);
     g.rotation.y = ry;
     scene.add(g);
 
+    g.userData = {
+      id: 'vf3_' + (++vehicleSeq),
+      type: 'car',
+      model: 'vf3',
+      name: 'VinFast VF3',
+      color: color,
+      wheels: vf3Wheels,
+      originalX: x,
+      originalZ: z,
+      originalRy: ry
+    };
+    if (window.VehicleSystem) window.VehicleSystem.register(g);
+
     // Vật cản chống người chơi đi xuyên xe
     const along = Math.abs(Math.sin(ry)) > 0.7;
-    obstacle(x, z, along ? 3.3 : 1.8, along ? 1.8 : 3.3);
+    obstacle(x, z, along ? 3.3 * VEHICLE_SCALE_VF3 : 1.8 * VEHICLE_SCALE_VF3, along ? 1.8 * VEHICLE_SCALE_VF3 : 3.3 * VEHICLE_SCALE_VF3);
     return g;
   }
 
@@ -1806,6 +2094,7 @@
     // 8. Bánh xe mâm đúc hợp kim thể thao
     const wheelR = 0.31, halfW = 0.88;
     const zs = [-1.35, 1.35];
+    const taxiWheels = [];
     for (const sx of [-1, 1]) {
       for (const zpos of zs) {
         // Lốp cao su
@@ -1821,15 +2110,31 @@
         brake.rotation.z = Math.PI / 2;
         brake.position.set(sx * (halfW - sx * 0.03), wheelR, zpos);
         g.add(tire, rim, brake);
+        taxiWheels.push(tire);
       }
     }
 
+    // Tỉ lệ Taxi chuẩn cân đối với nhân vật Chibi
+    g.scale.set(VEHICLE_SCALE_TAXI, VEHICLE_SCALE_TAXI, VEHICLE_SCALE_TAXI);
     g.position.set(x, 0, z);
     g.rotation.y = ry;
     scene.add(g);
 
+    g.userData = {
+      id: 'taxi_' + (++vehicleSeq),
+      type: 'car',
+      model: isXanh ? 'taxi_xanh' : 'taxi_vinasun',
+      name: isXanh ? 'Taxi Xanh SM' : 'Taxi Vinasun',
+      brand: brand,
+      wheels: taxiWheels,
+      originalX: x,
+      originalZ: z,
+      originalRy: ry
+    };
+    if (window.VehicleSystem) window.VehicleSystem.register(g);
+
     const along = Math.abs(Math.sin(ry)) > 0.7;
-    obstacle(x, z, along ? 4.5 : 1.9, along ? 1.9 : 4.5);
+    obstacle(x, z, along ? 4.5 * VEHICLE_SCALE_TAXI : 1.9 * VEHICLE_SCALE_TAXI, along ? 1.9 * VEHICLE_SCALE_TAXI : 4.5 * VEHICLE_SCALE_TAXI);
     return g;
   }
 
@@ -1906,7 +2211,7 @@
     const whitePaint = std(0xf8fafc, { roughness: 0.4 });
     const yellowCurb = std(0xfacc15, { roughness: 0.45 });
 
-    function drawParkingBay(px, pz, length = 5.2, width = 2.1) {
+    function drawParkingBay(px, pz, length = 6.2, width = 2.6) {
       // Vạch ngang đầu và cuối ô đỗ
       box(0.12, 0.015, width, whitePaint, px - length / 2, 0.02, pz);
       box(0.12, 0.015, width, whitePaint, px + length / 2, 0.02, pz);
@@ -2891,5 +3196,8 @@
   PubLoader.defer(buildGrass, 'buildGrass');
   PubLoader.defer(buildBridge, 'buildBridge');
   PubLoader.defer(buildCruiseBoats, 'buildCruiseBoats');
-  Features.addTick((delta, t) => { for (const a of animators) a(delta, t); });
+  Features.addTick((delta, t) => {
+    for (const a of animators) a(delta, t);
+    if (window.VehicleSystem) window.VehicleSystem.update(delta);
+  });
 })();

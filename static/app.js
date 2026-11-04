@@ -3776,6 +3776,10 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'f' || e.key === 'F') {
+    if (window.VehicleSystem && (window.VehicleSystem.isRiding() || window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z))) {
+      window.VehicleSystem.handleInteract();
+      return;
+    }
     const nearPG = checkNearbyPG();
     if (nearPG) {
       handleTalkPG(nearPG.brand);
@@ -3783,6 +3787,11 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.code === 'Space') {
+    if (window.VehicleSystem && window.VehicleSystem.isRiding()) {
+      e.preventDefault();
+      window.VehicleSystem.exitRide();
+      return;
+    }
     e.preventDefault();
     cheerBtn.click();
   }
@@ -4837,7 +4846,7 @@ function animate() {
   const delta = Math.min(clock.getDelta(), 0.05);
 
   // Local Character Movement & Physics (Theo hướng nhìn của Camera)
-  if (localCharacter && !localPlayerState.is_sitting && (!selfMember || selfMember.status !== 'guc_nga')) {
+  if (localCharacter && !localPlayerState.is_sitting && !localPlayerState.is_riding_car && (!selfMember || selfMember.status !== 'guc_nga')) {
     // Vector hướng tới & sang phải dựa theo góc xoay cameraYaw
     const forwardX = -Math.sin(cameraYaw);
     const forwardZ = -Math.cos(cameraYaw);
@@ -4943,12 +4952,21 @@ function animate() {
       });
     }
 
-    // Hiển thị nút tương tác [E] ghế ngồi, [P] xả lũ / đái bậy, hoặc [F] Em Gái Tiếp Thị Bia (PG)
+    // Hiển thị nút tương tác [E] ghế ngồi, [P] xả lũ, [F] Lên Xe Dạo Phố hoặc Em Gái Tiếp Thị Bia (PG)
     const nearChair = findNearestChair();
     const nearPee = findNearestPeeSpot();
     const nearPG = checkNearbyPG();
+    const nearVehicle = window.VehicleSystem ? window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
 
-    if (nearChair) {
+    if (window.VehicleSystem && window.VehicleSystem.isRiding()) {
+      interactPrompt.style.display = 'flex';
+      interactPrompt.querySelector('.prompt-key').textContent = "F";
+      interactPrompt.querySelector('.prompt-text').textContent = "Xuống xe (Dừng dạo phố)";
+    } else if (nearVehicle && !nearChair) {
+      interactPrompt.style.display = 'flex';
+      interactPrompt.querySelector('.prompt-key').textContent = "F";
+      interactPrompt.querySelector('.prompt-text').textContent = nearVehicle.prompt;
+    } else if (nearChair) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "E";
       const isBench = nearChair.tableId >= 10;
@@ -5320,6 +5338,10 @@ if (interactPrompt) {
     } else if (key === 'P') {
       handlePeeAction();
     } else if (key === 'F') {
+      if (window.VehicleSystem && (window.VehicleSystem.isRiding() || window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z))) {
+        window.VehicleSystem.handleInteract();
+        return;
+      }
       const nearPG = checkNearbyPG();
       if (nearPG) handleTalkPG(nearPG.brand);
     }
