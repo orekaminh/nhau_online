@@ -3174,7 +3174,7 @@
       || ((x - POND.x) / (POND.rx + 0.5)) ** 2 + ((z - POND.z) / (POND.rz + 0.5)) ** 2 < 1
       || (x > -52 && z > 5.5 && z < 9.5) || (x > -60 && z > 24);
     scene.add(Veg.scatterGrass({ x0: -121, x1: -49, z0: -4.5, z1: 24, y: 0.3, seed: 3 }, 1300, westAvoid));
-    const eastAvoid = (x, z) => nearObstacle(x, z) || Math.hypot(x, z - 19.5) < 4.4;
+    const eastAvoid = (x, z) => nearObstacle(x, z) || Math.hypot(x, z - 19.5) < 4.4 || (x > 16 && x < 50 && z > 11 && z < 25);
     scene.add(Veg.scatterGrass({ x0: -47, x1: 47, z0: 12.3, z1: 23.8, y: 0.3, seed: 8 }, 1100, eastAvoid));
   }
 
@@ -3188,6 +3188,569 @@
     }
   }
 
+  
+  // ========================================================
+  // CENTURYON 24K LUXURY FITNESS & WELLNESS COMPLEX
+  // Cỡ Centuryon Hoàng Gia: PT riêng Hoàng Nam, Locker thông minh,
+  // Khăn tắm 24K, Phòng xông hơi đá muối & nham thạch giải rượu bia,
+  // Hồ bơi vô cực 100m nhìn thẳng sông Sài Gòn & Landmark 81.
+  // ========================================================
+  function buildCenturyonGym() {
+    const goldMat = std(0xf59e0b, { metalness: 0.95, roughness: 0.16 });
+    const darkMarble = std(0x0a0c10, { roughness: 0.15, metalness: 0.35 });
+    const wallMarble = std(0x11141c, { roughness: 0.72 });
+    const cedarWood = std(0x78350f, { roughness: 0.85 });
+    const tintedGlass = std(0x06111e, { roughness: 0.08, transparent: true, opacity: 0.35 });
+    const waterMat = std(0x06b6d4, { roughness: 0.06, metalness: 0.3, transparent: true, opacity: 0.80 });
+
+    const gymWalls = [];
+
+    // 1. SÀN CLB MARBLE ĐEN & HOA VĂN KIM LOẠI VÀNG 24K (x: 18..48, z: 12..24)
+    const floor = box(30.4, 0.22, 12.2, darkMarble, 33, 0.22, 18);
+    floor.receiveShadow = true;
+    for (let gx = 22; gx <= 44; gx += 5.5) {
+      box(0.06, 0.23, 12.0, goldMat, gx, 0.23, 18);
+    }
+    box(30.0, 0.23, 0.06, goldMat, 33, 0.23, 18);
+
+    // 2. VÁCH TƯỜNG SAU (z = 12) & HỌA TIẾT CÁNH CHIM CENTURYON 24K
+    const backWall = box(30.4, 5.4, 0.6, wallMarble, 33, 2.7, 12);
+    backWall.receiveShadow = true;
+    gymWalls.push(backWall);
+    obstacle(33, 12, 30.4, 0.6);
+
+    // Vách trái (x = 18)
+    const leftW = box(0.6, 5.4, 12.2, wallMarble, 18, 2.7, 18);
+    gymWalls.push(leftW);
+    obstacle(18, 18, 0.6, 12.2);
+
+    // Vách phải ngoài (x = 48)
+    const rightW = box(0.6, 5.4, 12.2, wallMarble, 48, 2.7, 18);
+    gymWalls.push(rightW);
+    obstacle(48, 18, 0.6, 12.2);
+
+    // Trụ cột vàng 24K sang trọng ở mặt tiền
+    for (const cx of [18.2, 28, 38, 47.8]) {
+      const col = box(0.65, 5.4, 0.65, goldMat, cx, 2.7, 24);
+      col.receiveShadow = true;
+      gymWalls.push(col);
+      obstacle(cx, 24, 0.7, 0.7);
+    }
+
+    // Mặt tiền kính cường lực màu khói nhìn ra hồ bơi & sông Sài Gòn
+    for (const gx of [23, 33]) {
+      const glass = box(8.8, 5.0, 0.08, tintedGlass, gx, 2.7, 24);
+      gymWalls.push(glass);
+    }
+    // Lối đi vào CLB ở x = 43..47 (mở toang, có rèm vàng đón khách)
+
+    // Mái che vát cạnh mạ vàng
+    const roof = box(31.2, 0.5, 13.0, wallMarble, 33, 5.45, 18);
+    box(31.4, 0.12, 13.2, goldMat, 33, 5.25, 18);
+    gymWalls.push(roof);
+
+    // Biển hiệu 3D Hoàng Gia Centuryon 24K
+    const gymSign = signPlane([
+      ['CENTURYON 24K', 78, 52],
+      ['LUXURY FITNESS & WELLNESS • VIP INFINITY 100M', 30, 108]
+    ], 14.5, 2.4, 1024, 180, '#f59e0b', '#070a12');
+    gymSign.position.set(33, 5.9, 24.2);
+    scene.add(gymSign);
+
+    // Đèn LED rọi ấm trần
+    if (!lite) {
+      const gymLight1 = new THREE.PointLight(0xffedd5, 1.8, 20);
+      gymLight1.position.set(26, 4.6, 18);
+      const gymLight2 = new THREE.PointLight(0xffd700, 1.6, 20);
+      gymLight2.position.set(40, 4.6, 18);
+      scene.add(gymLight1, gymLight2);
+    }
+
+    // Đăng ký toàn bộ tường/mái với hệ thống làm mờ chống che camera
+    if (window.registerOccluder) {
+      for (const w of gymWalls) window.registerOccluder(w, [gymSign.material]);
+    }
+
+    // 3. QUẦY LỄ TÂN VIP & CỔNG TỪ VÀNG (x = 42, z = 22)
+    const desk = box(2.6, 1.1, 0.8, std(0xf8fafc, { roughness: 0.2 }), 42, 0.75, 22);
+    box(2.7, 0.08, 0.9, goldMat, 42, 1.32, 22);
+    obstacle(42, 22, 2.7, 0.9);
+    // Bình nước Detox chanh sả đá mát lạnh
+    cyl(0.12, 0.12, 0.45, std(0xe0f2fe, { transparent: true, opacity: 0.7 }), 42.8, 1.58, 22);
+
+    // 4. KHU TỦ KHÓA THÔNG MINH (LOCKER 24K) & KHĂN TẮM CAO CẤP (x = 20, z = 19)
+    const lockerMat = std(0x181a20, { roughness: 0.6 });
+    const locker1 = box(3.4, 2.8, 0.7, lockerMat, 20, 1.7, 19);
+    for (let lx = 18.6; lx <= 21.4; lx += 0.7) {
+      for (let ly = 0.8; ly <= 2.6; ly += 0.9) {
+        box(0.04, 0.08, 0.02, glow(0x38bdf8), lx + 0.2, ly, 19.38); // Đèn khóa điện tử
+        box(0.02, 0.25, 0.04, goldMat, lx + 0.15, ly - 0.1, 19.38); // Tay nắm vàng
+      }
+    }
+    obstacle(20, 19, 3.4, 0.7);
+
+    // Kệ khăn tắm ấm & Khăn bông trắng cuộn nơ vàng
+    const towelRack = box(1.8, 1.6, 0.5, cedarWood, 20, 1.1, 21.2);
+    for (let tx = 19.4; tx <= 20.6; tx += 0.35) {
+      for (let ty = 0.6; ty <= 1.6; ty += 0.32) {
+        const roll = cyl(0.08, 0.08, 0.32, std(0xffffff, { roughness: 0.9 }), tx, ty, 21.2);
+        roll.rotation.z = Math.PI / 2;
+        cyl(0.082, 0.082, 0.04, goldMat, tx, ty, 21.2); // Nơ vàng buộc khăn
+      }
+    }
+    obstacle(20, 21.2, 1.8, 0.5);
+
+    // 5. KHU TẠ NẶNG HOÀNG GIA (BENCH PRESS & DUMBBELL RACK 24K)
+    // a) Olympic Bench Press 100kg (x = 26, z = 16)
+    const benchGroup = new THREE.Group();
+    benchGroup.position.set(26, 0.3, 16);
+    box(0.65, 0.48, 1.5, std(0x18181b, { roughness: 0.4 }), 0, 0.24, 0, benchGroup); // Đệm da đen
+    box(0.08, 1.3, 0.08, goldMat, -0.42, 0.65, -0.4, benchGroup); // Giá đỡ mạ vàng
+    box(0.08, 1.3, 0.08, goldMat, 0.42, 0.65, -0.4, benchGroup);
+    // Đòn tạ Olympic vàng 24K
+    const bar = cyl(0.022, 0.022, 1.8, goldMat, 0, 1.18, -0.4, benchGroup);
+    bar.rotation.z = Math.PI / 2;
+    // Bánh tạ vàng 45 lbs (20kg mỗi bên)
+    for (const sx of [-0.75, -0.68, 0.68, 0.75]) {
+      const plate = cyl(0.24, 0.24, 0.05, goldMat, sx, 1.18, -0.4, benchGroup, 16);
+      plate.rotation.z = Math.PI / 2;
+    }
+    scene.add(benchGroup);
+    obstacle(26, 16, 1.6, 1.7);
+
+    // b) Giá để tạ tay Dumbbell 24K (x = 31, z = 15.5)
+    const rackGroup = new THREE.Group();
+    rackGroup.position.set(31, 0.3, 15.5);
+    box(2.8, 0.85, 0.6, std(0x27272a), 0, 0.45, 0, rackGroup);
+    for (let dx = -1.1; dx <= 1.1; dx += 0.45) {
+      for (const dz of [-0.15, 0.15]) {
+        const db = cyl(0.018, 0.018, 0.26, goldMat, dx, 0.9, dz, rackGroup);
+        db.rotation.z = Math.PI / 2;
+        cyl(0.075, 0.075, 0.04, goldMat, dx - 0.12, 0.9, dz, rackGroup, 12).rotation.z = Math.PI / 2;
+        cyl(0.075, 0.075, 0.04, goldMat, dx + 0.12, 0.9, dz, rackGroup, 12).rotation.z = Math.PI / 2;
+      }
+    }
+    scene.add(rackGroup);
+    obstacle(31, 15.5, 2.9, 0.7);
+
+    // c) Dãy máy chạy bộ Cardio view sông (x = 27..35, z = 21.5)
+    const treadmills = [];
+    for (let tx = 27; tx <= 35; tx += 2.6) {
+      const tm = new THREE.Group();
+      tm.position.set(tx, 0.3, 21.5);
+      // Băng chuyền đen
+      box(0.9, 0.22, 1.8, std(0x18181b), 0, 0.11, 0, tm);
+      const belt = box(0.68, 0.02, 1.5, std(0x09090b, { roughness: 0.95 }), 0, 0.23, 0, tm);
+      // Khung tay vịn & Màn hình hiển thị LED
+      box(0.05, 1.0, 0.05, goldMat, -0.4, 0.6, 0.65, tm);
+      box(0.05, 1.0, 0.05, goldMat, 0.4, 0.6, 0.65, tm);
+      box(0.85, 0.05, 0.05, goldMat, 0, 1.1, 0.65, tm);
+      const screen = box(0.5, 0.3, 0.03, glow(0x38bdf8), 0, 1.25, 0.68, tm);
+      screen.rotation.x = -0.3;
+      scene.add(tm);
+      treadmills.push({ group: tm, belt });
+      obstacle(tx, 21.5, 1.1, 1.9);
+    }
+
+    // 6. PT RIÊNG HOÀNG NAM (CENTURYON MASTER TRAINER) (x = 23.5, z = 16.5)
+    const ptGroup = new THREE.Group();
+    ptGroup.position.set(23.5, 0.3, 16.5);
+    // Vóc dáng gymer cơ bắp: áo ba lỗ đen có logo Centuryon vàng, quần short thể thao
+    const ptSkin = std(0xd49b73, { roughness: 0.8 });
+    const ptShirt = std(0x09090b, { roughness: 0.6 });
+    const ptShorts = std(0x1e293b, { roughness: 0.8 });
+
+    // Chân & Giày thể thao
+    const ptLegL = box(0.18, 0.6, 0.2, ptShorts, -0.16, 0.55, 0, ptGroup);
+    const ptLegR = box(0.18, 0.6, 0.2, ptShorts, 0.16, 0.55, 0, ptGroup);
+    cyl(0.07, 0.07, 0.35, ptSkin, -0.16, 0.25, 0, ptGroup);
+    cyl(0.07, 0.07, 0.35, ptSkin, 0.16, 0.25, 0, ptGroup);
+    box(0.16, 0.12, 0.3, goldMat, -0.16, 0.06, 0.05, ptGroup); // Giày vàng Centuryon
+    box(0.16, 0.12, 0.3, goldMat, 0.16, 0.06, 0.05, ptGroup);
+
+    // Thân hình chữ V lực lưỡng
+    const ptTorso = box(0.68, 0.75, 0.38, ptShirt, 0, 1.15, 0, ptGroup);
+    box(0.24, 0.18, 0.02, goldMat, 0, 1.25, 0.20, ptGroup); // Huy hiệu Centuryon trước ngực
+
+    // Cổ & Đầu + Mũ lưỡi trai đen
+    cyl(0.1, 0.1, 0.18, ptSkin, 0, 1.55, 0, ptGroup);
+    const ptHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 14), ptSkin);
+    ptHead.position.set(0, 1.76, 0);
+    ptGroup.add(ptHead);
+    const ptCap = box(0.38, 0.12, 0.42, std(0x18181b), 0, 1.88, -0.02, ptGroup);
+    box(0.34, 0.03, 0.22, std(0x18181b), 0, 1.86, 0.24, ptGroup); // Lưỡi trai
+
+    // Còi huấn luyện viên vàng đeo cổ
+    box(0.04, 0.04, 0.08, goldMat, 0, 1.35, 0.22, ptGroup);
+
+    // Bảng kẹp điểm / Tablet chấm form trên tay PT
+    const ptBoard = box(0.32, 0.02, 0.42, std(0x334155), 0.36, 1.15, 0.18, ptGroup);
+    ptBoard.rotation.set(0.4, 0, -0.2);
+
+    scene.add(ptGroup);
+    obstacle(23.5, 16.5, 0.9, 0.9);
+
+    // 7. PHÒNG XÔNG HƠI HOÀNG GIA (CENTURYON CEDAR & HIMALAYAN SALT SAUNA) (x = 42..47, z = 13..18)
+    const saunaCabin = new THREE.Group();
+    saunaCabin.position.set(43.5, 0.3, 15.5);
+    // Vách gỗ tuyết tùng (Cedar) ấm áp
+    box(7.0, 4.4, 0.35, cedarWood, 0, 2.2, -2.6, saunaCabin); // Tường sau
+    box(0.35, 4.4, 5.2, cedarWood, -3.5, 2.2, 0, saunaCabin); // Tường ngăn phòng gym
+    box(0.35, 4.4, 5.2, cedarWood, 3.5, 2.2, 0, saunaCabin);  // Tường phải
+    box(4.6, 4.4, 0.35, cedarWood, 1.2, 2.2, 2.6, saunaCabin); // Tường trước
+    // Cửa kính phòng xông hơi trong suốt đọng hơi sương
+    const saunaDoor = box(2.0, 3.4, 0.08, std(0xfef3c7, { transparent: true, opacity: 0.35 }), -2.1, 1.7, 2.6, saunaCabin);
+    // Trần cabin gỗ
+    box(7.2, 0.25, 5.4, cedarWood, 0, 4.4, 0, saunaCabin);
+    gymWalls.push(saunaDoor);
+
+    // Bức tường đá muối Himalaya phát sáng cam đỏ ấm áp
+    const saltWall = box(6.2, 2.2, 0.15, glow(0xf97316), 0, 1.4, -2.4, saunaCabin);
+    if (!lite) {
+      const saltLight = new THREE.PointLight(0xff6a00, 2.2, 10);
+      saltLight.position.set(43.5, 1.8, 15.5);
+      scene.add(saltLight);
+    }
+
+    // Băng ghế gỗ tuyết tùng đa tầng
+    box(5.8, 0.45, 0.9, cedarWood, 0, 0.45, -1.8, saunaCabin);
+    box(5.8, 0.45, 0.8, cedarWood, 0, 0.85, -2.1, saunaCabin);
+    obstacle(43.5, 13.6, 6.0, 1.2);
+
+    // Lò đá nham thạch nóng rực (Volcanic Stones Brazier)
+    const brazier = box(1.0, 0.8, 1.0, std(0x262626), -2.2, 0.4, -1.2, saunaCabin);
+    for (let r = 0; r < 8; r++) {
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12, 0), std(0x1c1917, { roughness: 0.9 }));
+      rock.position.set(-2.2 + (Math.random() - 0.5) * 0.6, 0.85, -1.2 + (Math.random() - 0.5) * 0.6);
+      saunaCabin.add(rock);
+    }
+    // Hạt than hồng phát quang
+    const ember = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), glow(0xef4444));
+    ember.position.set(-2.2, 0.82, -1.2);
+    saunaCabin.add(ember);
+
+    // Hiệu ứng khói sương bốc lên từ đá xông hơi (Steam Mist Particles)
+    const steamGeo = new THREE.PlaneGeometry(0.7, 0.7);
+    const steamMat = new THREE.MeshBasicMaterial({
+      color: 0xffedd5,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const steams = [];
+    for (let s = 0; s < 10; s++) {
+      const sp = new THREE.Mesh(steamGeo, steamMat);
+      sp.position.set(-2.2 + (Math.random() - 0.5) * 0.7, 1.0 + s * 0.25, -1.2 + (Math.random() - 0.5) * 0.7);
+      saunaCabin.add(sp);
+      steams.push({ mesh: sp, baseSpeed: 0.6 + s * 0.12, seed: s });
+    }
+
+    // Xô gỗ & gáo múc nước dội đá
+    cyl(0.18, 0.15, 0.32, cedarWood, -1.2, 0.4, 0.8, saunaCabin);
+    cyl(0.02, 0.02, 0.42, cedarWood, -1.2, 0.55, 0.8, saunaCabin).rotation.z = 0.5;
+
+    scene.add(saunaCabin);
+    obstacle(43.5, 15.5, 7.2, 5.4);
+
+    // Biển "PHÒNG XÔNG HƠI HOÀNG GIA"
+    const saunaSign = signPlane([['PHÒNG XÔNG HƠI', 66, 52], ['Đá Muối Himalaya • Giải Rượu', 30, 106]], 3.8, 1.4, 512, 160, '#f97316', '#1c0c05');
+    saunaSign.position.set(41.4, 3.8, 18.2);
+    scene.add(saunaSign);
+
+    // 8. HỒ BƠI 100M VÔ CỰC (INFINITY POOL 100M OVERLOOKING SAIGON RIVER & LANDMARK 81)
+    // Trải dài từ x = -10 đến x = 90 (ĐÚNG 100 MÉT!), chiều rộng z = 25.5 đến 35.5 (10m)
+    const poolGroup = new THREE.Group();
+    poolGroup.position.set(40, 0, 30.5);
+
+    // Thành hồ bằng gỗ Teak chống trượt & Đá cẩm thạch trắng
+    const teakMat = std(0x78350f, { roughness: 0.7 });
+    const whiteMarble = std(0xf8fafc, { roughness: 0.2 });
+
+    // Sàn gỗ bao quanh 100m bên bờ (z = 25.2)
+    box(102.0, 0.35, 1.2, teakMat, 40, 0.18, 25.1);
+
+    // Đáy hồ bơi màu xanh ngọc lam Caribbean
+    const poolFloor = box(100.0, 0.1, 10.0, std(0x0284c7, { roughness: 0.4 }), 40, -0.05, 30.5);
+
+    // Nước hồ bơi vô cực trong vắt
+    const poolWater = box(100.0, 0.28, 9.8, waterMat, 40, 0.16, 30.5);
+
+    // Vách kính tràn viền vô cực (Infinity Edge Glass Weir) ở mép ngoài sông (z = 35.5)
+    const infinityGlass = box(100.0, 0.85, 0.08, std(0xa5f3fc, { transparent: true, opacity: 0.45, roughness: 0.05 }), 40, 0.55, 35.5);
+    // Máng hứng nước tràn phản chiếu róc rách
+    box(100.0, 0.2, 0.6, std(0x0369a1, { roughness: 0.3 }), 40, 0.02, 35.85);
+
+    // Hai vách kính hai đầu hồi hồ bơi (x = -10 và x = 90)
+    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), -10, 0.55, 30.5);
+    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), 90, 0.55, 30.5);
+
+    // 8 Dải đèn LED âm nước phát sáng xanh ngọc lung linh trong đêm
+    const poolLeds = [];
+    for (let px = -5; px <= 85; px += 13) {
+      const led = box(0.8, 0.04, 8.0, glow(0x38bdf8), px, 0.02, 30.5);
+      poolLeds.push(led);
+    }
+
+    // 4 Chòi VIP Cabana ven hồ bơi với rèm trắng rủ bay theo gió
+    for (const cx of [6, 26, 56, 78]) {
+      const cab = new THREE.Group();
+      cab.position.set(cx, 0.35, 25.1);
+      box(3.2, 0.1, 2.6, teakMat, 0, 0.05, 0, cab); // Sàn gỗ
+      // 4 Cột trụ mạ vàng
+      for (const dx of [-1.4, 1.4]) {
+        for (const dz of [-1.1, 1.1]) {
+          box(0.08, 2.5, 0.08, goldMat, dx, 1.25, dz, cab);
+        }
+      }
+      // Mái che râm vải trắng
+      box(3.4, 0.08, 2.8, std(0xf8fafc), 0, 2.5, 0, cab);
+      // Giường đệm nằm thư giãn có gối tựa
+      box(2.2, 0.28, 1.6, std(0xe0e7ff), 0, 0.24, 0, cab);
+      scene.add(cab);
+      obstacle(cx, 25.1, 3.4, 2.8);
+    }
+
+    // Giường tắm nắng ngâm nước (Aqua Sun Loungers) tại thềm nước cạn
+    for (let lx = 14; lx <= 44; lx += 4.5) {
+      const lounger = box(1.8, 0.22, 0.75, whiteMarble, lx, 0.22, 27.2);
+      lounger.rotation.y = 0.1;
+    }
+
+    // Cầu nhảy hồ bơi (Diving Board & Teak Ladder) ở x = 20, z = 25.4
+    const diveBoard = box(0.7, 0.08, 3.2, goldMat, 20, 0.85, 27.0);
+    box(0.08, 0.6, 0.08, std(0x475569), 19.8, 0.55, 25.6);
+    box(0.08, 0.6, 0.08, std(0x475569), 20.2, 0.55, 25.6);
+
+    // Phao hồng hạc khổng lồ bơm hơi (Giant Inflatable Flamingo Float)
+    const floatGroup = new THREE.Group();
+    floatGroup.position.set(38, 0.25, 31);
+    const floatRing = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.32, 10, 20), std(0xf43f5e, { roughness: 0.3 }));
+    floatRing.rotation.x = Math.PI / 2;
+    floatGroup.add(floatRing);
+    // Cổ & Mỏ hồng hạc
+    const neck = cyl(0.12, 0.14, 0.9, std(0xf43f5e), 0, 0.65, 0.85, floatGroup);
+    neck.rotation.x = -0.35;
+    box(0.16, 0.12, 0.28, std(0x09090b), 0, 1.1, 1.1, floatGroup);
+    scene.add(floatGroup);
+
+    // KẾT NỐI VÙNG ĐI LẠI VÀO WORLD_BOUNDS
+    if (window.WORLD_BOUNDS) {
+      window.WORLD_BOUNDS.gym = {
+        constrain(x, z) {
+          // Hồ bơi 100m vô cực mở rộng tới z = 35.8
+          if (x >= -10.2 && x <= 90.2 && z >= 24.5 && z <= 35.8) {
+            return { x: Math.max(-9.6, Math.min(89.6, x)), z: Math.min(35.5, z) };
+          }
+          return null;
+        },
+        groundY(x, z) {
+          // Bơi trong hồ bơi 100m vô cực (mặt nước sâu ngang hông, bơi lội tung tăng)
+          if (x >= -9.8 && x <= 89.8 && z >= 25.8 && z <= 35.4) {
+            return 0.06;
+          }
+          // Sàn CLB Centuryon cao ráo sang trọng
+          if (x >= 18 && x <= 48 && z >= 12 && z <= 24.2) {
+            return 0.35;
+          }
+          return null;
+        }
+      };
+    }
+
+    // ANIMATIONS (Hơi nước bốc lên, sóng hồ bơi, phao nhấp nhô)
+    animators.push((d, t) => {
+      // 1. Hơi nước xông hơi bốc lên uốn lượn
+      steams.forEach((s) => {
+        s.mesh.position.y += d * s.baseSpeed;
+        s.mesh.position.x += Math.sin(t * 2.2 + s.seed) * 0.005;
+        if (s.mesh.position.y > 3.8) {
+          s.mesh.position.y = 1.1;
+        }
+        s.mesh.material.opacity = Math.max(0, 0.35 * (1 - (s.mesh.position.y - 1.1) / 2.7));
+      });
+
+      // 2. Phao hồng hạc bồng bềnh trên nước hồ
+      floatGroup.position.y = 0.22 + Math.sin(t * 1.8) * 0.04;
+      floatGroup.rotation.z = Math.sin(t * 1.2) * 0.05;
+      floatGroup.rotation.y += d * 0.15;
+
+      // 3. Đèn LED âm nước hồ bơi lung linh huyền ảo
+      poolLeds.forEach((led, idx) => {
+        led.material.color.setHSL(0.52 + Math.sin(t * 0.8 + idx) * 0.03, 0.9, 0.6 + Math.sin(t * 1.5 + idx) * 0.15);
+      });
+
+      // 4. Băng chuyền máy chạy bộ quay đều
+      treadmills.forEach((tm, i) => {
+        tm.belt.material.roughness = 0.9 + Math.sin(t * 10 + i) * 0.05;
+      });
+
+      // 5. PT Hoàng Nam thở đều & ngắm nhìn hướng dẫn học viên
+      ptTorso.scale.y = 1 + Math.sin(t * 2.5) * 0.03;
+      ptHead.rotation.y = Math.sin(t * 0.8) * 0.25;
+    });
+
+    // ========================================================
+    // HỆ THỐNG TƯƠNG TÁC CENTURYON GYM SYSTEM
+    // ========================================================
+    window.GymSystem = {
+      ptPos: { x: 23.5, z: 16.5 },
+      benchPos: { x: 26, z: 16 },
+      dumbPos: { x: 31, z: 15.5 },
+      treadPos: { x: 31, z: 21.5 },
+      lockerPos: { x: 20, z: 20 },
+      saunaPos: { x: 43.5, z: 15.5 },
+
+      findNearest(px, pz) {
+        if (Math.hypot(px - this.ptPos.x, pz - this.ptPos.z) < 2.8) {
+          return { key: 'F', prompt: 'Tập cùng PT riêng Hoàng Nam (Centuryon Master Trainer)' };
+        }
+        if (Math.hypot(px - this.benchPos.x, pz - this.benchPos.z) < 2.0) {
+          return { key: 'F', prompt: 'Đẩy ngực Olympic Bench Press 100kg' };
+        }
+        if (Math.hypot(px - this.dumbPos.x, pz - this.dumbPos.z) < 2.2) {
+          return { key: 'F', prompt: 'Tập tạ tay Dumbbell 24K (20kg)' };
+        }
+        if (Math.hypot(px - this.treadPos.x, pz - this.treadPos.z) < 3.2 && pz > 20.0) {
+          return { key: 'F', prompt: 'Chạy bộ Cardio trên máy view Landmark 81' };
+        }
+        if (Math.hypot(px - this.lockerPos.x, pz - this.lockerPos.z) < 2.6) {
+          return { key: 'F', prompt: 'Cất đồ & Nhận khăn tắm Centuryon 24K' };
+        }
+        if (Math.hypot(px - this.saunaPos.x, pz - this.saunaPos.z) < 3.4 && pz < 18.0) {
+          return { key: 'E', prompt: 'Ngồi xông hơi đá muối Himalaya giải bia rượu' };
+        }
+        return null;
+      },
+
+      handleInteract(requestedKey) {
+        const px = localPlayerState.x, pz = localPlayerState.z;
+        const target = this.findNearest(px, pz);
+        if (!target) return false;
+        if (requestedKey && target.key !== requestedKey) return false;
+
+        // Âm thanh còi & tạ
+        playBeep(440, 0.12);
+
+        // 1. PT Riêng Hoàng Nam
+        if (Math.hypot(px - this.ptPos.x, pz - this.ptPos.z) < 2.8) {
+          playBeep(880, 0.25);
+          if (localCharacter) {
+            localCharacter.torso.rotation.x = -0.5;
+            setTimeout(() => { if (localCharacter) localCharacter.torso.rotation.x = 0; }, 800);
+          }
+          if (typeof setTicker === 'function') {
+            setTicker('💪 PT Hoàng Nam: "Xuống chậm 3 giây, hít sâu gồng cơ bụng, đẩy dứt khoát! Form chuẩn lắm đại gia!"');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('🏋️ PT Hoàng Nam huấn luyện nhiệt huyết! +50 XP thể lực. Giảm 50% độ say bia rượu!', 'success', 5000);
+          }
+          if (typeof sendAction === 'function') {
+            sendAction({ action: 'award', xp: 50, reason: 'Tập cùng PT riêng Centuryon' });
+          }
+          if (selfMember) {
+            selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 35);
+          }
+          return true;
+        }
+
+        // 2. Bench Press 100kg
+        if (Math.hypot(px - this.benchPos.x, pz - this.benchPos.z) < 2.0) {
+          playBeep(520, 0.15);
+          setTimeout(() => playBeep(660, 0.15), 180);
+          if (typeof setTicker === 'function') {
+            setTicker('🏋️ Bạn đang đẩy ngực 100kg: 1... 2... 3... Cố lên! Ngực nở nang vạm vỡ!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('💪 Đẩy tạ ngực 100kg thành công! +30 XP thể hình.', 'info', 4000);
+          }
+          if (typeof sendAction === 'function') {
+            sendAction({ action: 'award', xp: 30, reason: 'Bench Press 100kg' });
+          }
+          return true;
+        }
+
+        // 3. Dumbbell 20kg
+        if (Math.hypot(px - this.dumbPos.x, pz - this.dumbPos.z) < 2.2) {
+          playBeep(580, 0.15);
+          if (typeof setTicker === 'function') {
+            setTicker('💪 Nâng tạ tay Dumbbell 20kg: Cơ bắp tay cuồn cuộn như đá tảng!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('💪 Nâng tạ tay 20kg thành công! +25 XP.', 'info', 4000);
+          }
+          if (typeof sendAction === 'function') {
+            sendAction({ action: 'award', xp: 25, reason: 'Nâng tạ tay 24K' });
+          }
+          return true;
+        }
+
+        // 4. Chạy bộ Cardio
+        if (Math.hypot(px - this.treadPos.x, pz - this.treadPos.z) < 3.2 && pz > 20.0) {
+          playBeep(620, 0.12);
+          if (typeof setTicker === 'function') {
+            setTicker('🏃 Bạn đang chạy bộ Cardio 12km/h ngắm hoàng hôn bến sông & Landmark 81! Đốt 200 Calo bia.');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('🏃 Chạy bộ Cardio hoàn tất! Đốt cháy calo mồi nhậu. +25 XP.', 'info', 4000);
+          }
+          if (typeof sendAction === 'function') {
+            sendAction({ action: 'award', xp: 25, reason: 'Cardio ngắm Landmark 81' });
+          }
+          return true;
+        }
+
+        // 5. Locker & Khăn Tắm 24K
+        if (Math.hypot(px - this.lockerPos.x, pz - this.lockerPos.z) < 2.6) {
+          playBeep(780, 0.2);
+          if (typeof setTicker === 'function') {
+            setTicker('🧺 Bạn đã cất đồ vào Locker thông minh & nhận khăn bông Centuryon thơm mùi tinh dầu sả chanh!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('🧺 Nhận khăn tắm Centuryon 24K mềm mại! Sẵn sàng bơi lội & xông hơi.', 'success', 4000);
+          }
+          return true;
+        }
+
+        // 6. Xông Hơi Đá Muối Himalaya
+        if (Math.hypot(px - this.saunaPos.x, pz - this.saunaPos.z) < 3.4 && pz < 18.0) {
+          playBeep(330, 0.35);
+          setTimeout(() => playBeep(440, 0.4), 250);
+          if (selfMember) {
+            selfMember.drunk_level = 0;
+            selfMember.bladder_level = 0;
+            selfMember.status = 'tinh_tao';
+          }
+          if (typeof setTicker === 'function') {
+            setTicker('🧖 Xông hơi đá nóng & đá muối Himalaya thành công! Cồn bia rượu đào thải 100%, sảng khoái tuyệt đối!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('🧖 ĐÃ GIẢI HẾT BIA RƯỢU! Xông hơi Centuryon phục hồi 100% sinh lực. +40 XP.', 'success', 5000);
+          }
+          if (typeof sendAction === 'function') {
+            sendAction({ action: 'award', xp: 40, reason: 'Xông hơi giải rượu Centuryon' });
+          }
+          return true;
+        }
+
+        return false;
+      },
+
+      update(delta, t) {
+        // Tự động kiểm tra trạng thái bơi lội trong hồ 100m vô cực
+        if (localPlayerState && localPlayerState.groundY <= 0.08) {
+          if (!this.lastSwam || t - this.lastSwam > 15) {
+            this.lastSwam = t;
+            if (window.Features && Features.toast) {
+              Features.toast('🏊 Bạn đang bơi tại Hồ Vô Cực 100m Landmark 81! Nước mát lạnh sảng khoái.', 'info', 4000);
+            }
+          }
+        }
+      }
+    };
+  }
+
+  PubLoader.defer(buildCenturyonGym, 'buildCenturyonGym');
   PubLoader.defer(buildBuiVien, 'buildBuiVien');
   PubLoader.defer(buildWestPark, 'buildWestPark');
   PubLoader.defer(buildRiverExtension, 'buildRiverExtension');
@@ -3199,5 +3762,6 @@
   Features.addTick((delta, t) => {
     for (const a of animators) a(delta, t);
     if (window.VehicleSystem) window.VehicleSystem.update(delta);
+    if (window.GymSystem) window.GymSystem.update(delta, t);
   });
 })();

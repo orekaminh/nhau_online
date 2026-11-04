@@ -4,16 +4,27 @@ window.WORLD_BOUNDS = {
   // Phía sau dãy bar Bùi Viện có nội thất quán nên cho đi sâu hơn.
   minZAt: (x) => (x > 59 && x < 117 ? -12.2 : -4.5),
   bridge: null,   // world-expansion.js gắn cầu đi bộ vào đây: { constrain(x,z), groundY(x,z) }
-  // Kẹp vị trí vào vùng đi được (có tính cả cầu đi bộ qua sông)
+  gym: null,      // Centuryon Luxury Fitness & 100m Infinity pool
+  // Kẹp vị trí vào vùng đi được (có tính cả cầu đi bộ qua sông và hồ bơi vô cực)
   clamp(x, z) {
     const cx = Math.max(this.minX, Math.min(this.maxX, x));
+    if (this.gym) {
+      const g = this.gym.constrain(cx, z);
+      if (g) return g;
+    }
     if (this.bridge && z > this.maxZ - 0.7) {
       const r = this.bridge.constrain(x, z);
       if (r) return r;
     }
     return { x: cx, z: Math.max(this.minZAt(cx), Math.min(this.maxZ - 0.7, z)) };
   },
-  groundY(x, z) { return this.bridge ? this.bridge.groundY(x, z) : 0.3; },
+  groundY(x, z) {
+    if (this.gym) {
+      const gy = this.gym.groundY(x, z);
+      if (gy !== null && gy !== undefined) return gy;
+    }
+    return this.bridge ? this.bridge.groundY(x, z) : 0.3;
+  },
 };
 function createPubDetails(scene) {
   const room = new THREE.Group();
@@ -49,6 +60,7 @@ function createPubDetails(scene) {
   function wall(w, h, d, x, y, z) {
     const mesh = box(room, w, h, d, x, y, z, tile);
     obstacles.push({ x, z, w, d });
+    if (window.registerOccluder) window.registerOccluder(mesh);
     return mesh;
   }
   box(room, 5.6, 0.12, 5, -20.2, 0.3, -2.3, blue);

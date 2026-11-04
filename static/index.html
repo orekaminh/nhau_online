@@ -27,7 +27,7 @@
     #loadingTip { max-width: 340px; font-size: .8rem; color: #94a3b8; }
     @media (prefers-reduced-motion: reduce) { .load-mug i { animation: none; transform: scaleY(.6); } }
   </style>
-  <link rel="stylesheet" href="style.css?v=20261103_6">
+  <link rel="stylesheet" href="style.css?v=20261104_2">
   <link rel="stylesheet" href="features.css?v=20261103_6">
   <link rel="stylesheet" href="features/karaoke.css?v=20261103_1">
   <link rel="stylesheet" href="features/voice-events.css?v=20261104_1">
@@ -44,7 +44,7 @@
     }
   </script>
   <!-- Mã của game: tải song song với Three.js, chạy theo đúng thứ tự sau khi trang dựng xong -->
-  <script defer src="world-details.js?v=20261103_12"></script>
+  <script defer src="world-details.js?v=20261104_1"></script>
   <script defer src="features/core.js?v=20261103_1"></script>
   <script defer src="features/perf.js?v=20261103_1"></script>
   <script defer src="features/profile.js?v=20261103_6"></script>
@@ -56,9 +56,9 @@
   <script defer src="features/events.js?v=20261104_1"></script>
   <script defer src="features/daynight.js?v=20261104_1"></script>
   <script defer src="vegetation.js?v=20261103_11"></script>
-  <script defer src="app.js?v=20261104_1"></script>
+  <script defer src="app.js?v=20261104_2"></script>
   <script defer src="bar-music.js?v=20261103_3"></script>
-  <script defer src="world-expansion.js?v=20261104_3"></script>
+  <script defer src="world-expansion.js?v=20261104_4"></script>
 </head>
 <body class="street-vibe-3d">
   <!-- Màn hình chờ -->
@@ -89,6 +89,12 @@
   <div id="drunkFilter" class="drunk-layer"></div>
 
   <!-- Top HUD: Room & Stats Bar (Thiết kế tinh gọn phong cách Nhà Tù Online) -->
+    <!-- Mobile HUD Quick Toggle (Tu an logo & menu, cham de troi ra) -->
+  <button id="mobHudToggleBtn" class="mob-hud-toggle-pill mobile-only" aria-label="Mở Menu và Thông tin">
+    <span class="mob-hud-ico">📊</span>
+    <span class="mob-hud-lbl">Menu & Chỉ số</span>
+  </button>
+
   <header class="hud-top">
     <!-- Brand & Pub Info Card (Góc trái trên) -->
     <div class="hud-brand-container">
@@ -141,6 +147,7 @@
         <button id="helpBtn" class="pill-btn help-toggle-btn" title="Hướng dẫn điều khiển [?]">❓ Trợ giúp</button>
       </div>
     </div>
+      <button id="mobHudCloseBtn" class="mob-hud-close-btn mobile-only" aria-label="Thu gọn Menu">✕ Thu gọn</button>
   </header>
 
   <!-- Interactive Prompt when near a chair -->
@@ -212,6 +219,10 @@
 
       <!-- Quick Action Buttons -->
       <div class="hud-actions-group">
+        <button id="mobMenuBtn" class="btn-action btn-menu mobile-only" title="Mở toàn bộ Menu tính năng">
+          <span class="btn-icon">☰</span>
+          <span>Menu</span>
+        </button>
         <button id="cheerBtn" class="btn-cheer" title="Cụng ly 1 2 3 DÔ! [Space]">
           <span class="btn-icon">🍻</span>
           <span class="btn-text">1, 2, 3 DÔ!</span>

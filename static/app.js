@@ -1240,38 +1240,79 @@ scene.add(leftWall);
 const occluderWalls = [wall, ...leftWall.children];
 const occluderFades = new Map();
 const occluderRay = new THREE.Raycaster();
+const camRay = new THREE.Raycaster(); // Bi-directional raycasting: từ camera vào người chơi
 const occluderDir = new THREE.Vector3();
 const occluderOrigin = new THREE.Vector3();
 const occluderFollowers = new Map(); // material -> decor materials that fade together with it
 const occluderBoxes = []; // buildings: also fade when the camera hovers above/inside their footprint
+
 function registerOccluder(mesh, followers) {
-  occluderWalls.push(mesh);
-  occluderBoxes.push({ box: new THREE.Box3().setFromObject(mesh), mat: mesh.material });
-  if (!occluderFades.has(mesh.material)) occluderFades.set(mesh.material, 1);
-  if (followers) occluderFollowers.set(mesh.material, followers);
+  if (!mesh) return;
+  if (!occluderWalls.includes(mesh)) occluderWalls.push(mesh);
+  try {
+    occluderBoxes.push({ box: new THREE.Box3().setFromObject(mesh), mat: mesh.material });
+  } catch (_) {}
+  if (mesh.material && !occluderFades.has(mesh.material)) occluderFades.set(mesh.material, 1);
+  if (followers && mesh.material) {
+    const prev = occluderFollowers.get(mesh.material) || [];
+    occluderFollowers.set(mesh.material, prev.concat(followers.filter(Boolean)));
+  }
 }
+window.registerOccluder = registerOccluder;
+
 occluderFades.set(wallMat, 1);
 occluderFades.set(leftWallMaterial, 1);
+
 function updateWallOcclusion(delta) {
   occluderOrigin.set(localPlayerState.x, 1.2, localPlayerState.z);
   occluderDir.copy(camera.position).sub(occluderOrigin);
   const dist = occluderDir.length();
-  occluderRay.set(occluderOrigin, occluderDir.normalize());
+  if (dist < 0.001) return;
+  const dirNorm = occluderDir.clone().normalize();
+
+  // 1. Ray từ người chơi ra camera
+  occluderRay.set(occluderOrigin, dirNorm);
   occluderRay.far = dist;
+
+  // 2. Ray từ camera vào người chơi (bắt mặt trước tường ngoài toà nhà)
+  camRay.set(camera.position, dirNorm.clone().negate());
+  camRay.far = dist;
+
   const blocked = new Set();
-  if (!isScenicView) for (const hit of occluderRay.intersectObjects(occluderWalls, false)) blocked.add(hit.object.material);
   if (!isScenicView) {
+    for (const hit of occluderRay.intersectObjects(occluderWalls, false)) {
+      if (hit.object && hit.object.material) blocked.add(hit.object.material);
+    }
+    for (const hit of camRay.intersectObjects(occluderWalls, false)) {
+      if (hit.object && hit.object.material) blocked.add(hit.object.material);
+    }
+
     const cp = camera.position;
     for (const { box, mat } of occluderBoxes) {
-      if (cp.x > box.min.x - 0.5 && cp.x < box.max.x + 0.5 && cp.z > box.min.z - 0.5 && cp.z < box.max.z + 0.5) blocked.add(mat);
+      if (!box || !mat) continue;
+      // Làm trong suốt khi camera ở bên trong hoặc đứng sát mép toà nhà
+      if (cp.x > box.min.x - 2.2 && cp.x < box.max.x + 2.2 &&
+          cp.z > box.min.z - 2.2 && cp.z < box.max.z + 2.2 &&
+          cp.y > box.min.y - 0.5 && cp.y < box.max.y + 2.5) {
+        blocked.add(mat);
+      }
+      // Khi nhân vật đứng sát tường toà nhà và xoay camera ra ngoài
+      if (localPlayerState.x > box.min.x - 1.8 && localPlayerState.x < box.max.x + 1.8 &&
+          localPlayerState.z > box.min.z - 1.8 && localPlayerState.z < box.max.z + 1.8) {
+        if (box.distanceToPoint(cp) < 4.0) {
+          blocked.add(mat);
+        }
+      }
     }
   }
-  const k = 1 - Math.exp(-10 * delta);
+
+  const k = 1 - Math.exp(-12 * delta);
   occluderFades.forEach((fade, m) => {
-    fade += ((blocked.has(m) ? 0.12 : 1) - fade) * k;
+    fade += ((blocked.has(m) ? 0.08 : 1) - fade) * k;
     occluderFades.set(m, fade);
-    const solid = fade > 0.98;
+    const solid = fade > 0.96;
     for (const mm of [m, ...(occluderFollowers.get(m) || [])]) {
+      if (!mm) continue;
       mm.transparent = !solid;
       mm.opacity = solid ? 1 : fade;
       mm.depthWrite = solid;
@@ -2383,7 +2424,7 @@ function buildRiversidePark() {
   scene.add(parkFireflies);
 
   // 12. CỘT ĐÈN CÔNG VIÊN CỔ ĐIỂN DỌC BỜ SÔNG (Lampposts with Hanging Flower Baskets)
-  const lampPositions = [-40, -28, -16, -6, 6, 16, 28, 40];
+  const lampPositions = [-40, -28, -16, -6, 6];
   lampPositions.forEach((lx) => {
     const lampGroup = new THREE.Group();
     lampGroup.position.set(lx, 0.32, 27.5);
@@ -2441,9 +2482,8 @@ function buildRiversidePark() {
     pubDetails.obstacles.push({ x: midX, z: 28.3, w: rLen, d: 0.3 });
   }
 
-  // Hai bên cánh lan can (đoạn giữa để trống dẫn ra cầu tàu)
+  // Cánh lan can phía Tây (đoạn giữa để trống dẫn ra cầu tàu; phía Đông là Hồ bơi vô cực 100m Centuryon)
   buildRailingSection(-46, -8);
-  buildRailingSection(8, 46);
 }
 PubLoader.defer(buildRiversidePark, 'buildRiversidePark');
 
@@ -2503,6 +2543,7 @@ function buildSaigonStreetScenery() {
   );
   kBuilding.position.set(24, 5.5, -1.0);
   scene.add(kBuilding);
+  registerOccluder(kBuilding);
 
   // Biển hiệu Karaoke Neon nhấp nháy tím hồng
   const kCanvas = document.createElement('canvas');
@@ -2558,6 +2599,7 @@ function buildSaigonStreetScenery() {
   // Leave the side annex clear for the WC; the neighboring facade starts farther west.
   mBuilding.position.set(-31, 5.5, -1.0);
   scene.add(mBuilding);
+  registerOccluder(mBuilding);
 
   const mCanvas = document.createElement('canvas');
   mCanvas.width = 1024;
@@ -3760,6 +3802,9 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
 
   if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
+    if (window.GymSystem && window.GymSystem.handleInteract('E')) {
+      return;
+    }
     handleToggleSit();
   }
 
@@ -3776,6 +3821,9 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'f' || e.key === 'F') {
+    if (window.GymSystem && window.GymSystem.handleInteract('F')) {
+      return;
+    }
     if (window.VehicleSystem && (window.VehicleSystem.isRiding() || window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z))) {
       window.VehicleSystem.handleInteract();
       return;
@@ -4920,11 +4968,19 @@ function animate() {
       localPlayerState.is_walking = true;
       localPlayerState.walkTime += delta * 12;
 
-      // Leg Swing & Chibi Waddle Animation (Bước đi lắc lư Chibi đáng yêu)
-      localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.55;
-      localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.55;
-      if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.6;
-      localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.5) * 0.05;
+      // Leg Swing & Chibi Waddle Animation (Bước đi lắc lư Chibi hoặc Bơi lội dưới nước hồ vô cực)
+      if (localPlayerState.groundY <= 0.08) {
+        localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime * 1.4) * 0.42;
+        localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime * 1.4) * 0.42;
+        if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = Math.sin(localPlayerState.walkTime * 1.4) * 0.58;
+        if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = -Math.sin(localPlayerState.walkTime * 1.4) * 0.58;
+        localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.7) * 0.08;
+      } else {
+        localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.55;
+        localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.55;
+        if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.6;
+        localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.5) * 0.05;
+      }
     } else {
       localPlayerState.is_walking = false;
       localCharacter.leftLeg.rotation.x = 0;
@@ -4958,10 +5014,16 @@ function animate() {
     const nearPG = checkNearbyPG();
     const nearVehicle = window.VehicleSystem ? window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
 
+    const nearGym = window.GymSystem ? window.GymSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
+
     if (window.VehicleSystem && window.VehicleSystem.isRiding()) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "F";
       interactPrompt.querySelector('.prompt-text').textContent = "Xuống xe (Dừng dạo phố)";
+    } else if (nearGym) {
+      interactPrompt.style.display = 'flex';
+      interactPrompt.querySelector('.prompt-key').textContent = nearGym.key || "F";
+      interactPrompt.querySelector('.prompt-text').textContent = nearGym.prompt;
     } else if (nearVehicle && !nearChair) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "F";
@@ -5155,6 +5217,38 @@ window.addEventListener('resize', () => {
 // ========================================================
 // 12. User Action Buttons Event Listeners
 // ========================================================
+// Mobile HUD slide-out toggle & mobile menu button
+const mobHudToggleBtn = document.getElementById('mobHudToggleBtn');
+const mobHudCloseBtn = document.getElementById('mobHudCloseBtn');
+const mobMenuBtn = document.getElementById('mobMenuBtn');
+const hudTopEl = document.querySelector('.hud-top');
+
+if (mobHudToggleBtn && hudTopEl) {
+  mobHudToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hudTopEl.classList.toggle('is-open');
+  });
+}
+if (mobHudCloseBtn && hudTopEl) {
+  mobHudCloseBtn.addEventListener('click', () => {
+    hudTopEl.classList.remove('is-open');
+  });
+}
+if (mobMenuBtn) {
+  mobMenuBtn.addEventListener('click', () => {
+    if (window.Features && Features.openMenu) {
+      Features.openMenu();
+    }
+  });
+}
+window.addEventListener('click', (e) => {
+  if (hudTopEl && hudTopEl.classList.contains('is-open')) {
+    if (!hudTopEl.contains(e.target) && e.target !== mobHudToggleBtn && !(mobHudToggleBtn && mobHudToggleBtn.contains(e.target))) {
+      hudTopEl.classList.remove('is-open');
+    }
+  }
+});
+
 if (viewRiverBtn) {
   viewRiverBtn.addEventListener('click', toggleScenicView);
 }
@@ -5334,10 +5428,12 @@ if (interactPrompt) {
     const keyElem = interactPrompt.querySelector('.prompt-key');
     const key = keyElem ? keyElem.textContent.trim().toUpperCase() : 'E';
     if (key === 'E') {
+      if (window.GymSystem && window.GymSystem.handleInteract('E')) return;
       handleToggleSit();
     } else if (key === 'P') {
       handlePeeAction();
     } else if (key === 'F') {
+      if (window.GymSystem && window.GymSystem.handleInteract('F')) return;
       if (window.VehicleSystem && (window.VehicleSystem.isRiding() || window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z))) {
         window.VehicleSystem.handleInteract();
         return;
