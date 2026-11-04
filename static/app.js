@@ -5753,20 +5753,43 @@ connectWebSocket();
 PubLoader.afterFirstFrame(() => { loadHDREnvironment(); loadPBRDetailMaps(); });
 document.addEventListener('pointerdown', loadCheerVoice, { once: true });
 
-// Toàn màn hình (Android/desktop): ẩn thanh địa chỉ. iOS Safari không hỗ trợ API này nên nút tự ẩn;
-// ở iOS dùng "Thêm vào Màn hình chính" (đã có manifest + meta) để chạy toàn màn hình.
+// Toàn màn hình (Android/iOS/desktop): phóng to toàn màn hình hoặc hướng dẫn Add to Homescreen
 (function setupFullscreenButton() {
   const btn = document.getElementById('fullscreenBtn');
+  if (!btn) return;
   const root = document.documentElement;
-  const request = root.requestFullscreen || root.webkitRequestFullscreen;
-  if (!btn || !request) return;
+  const request = root.requestFullscreen || root.webkitRequestFullscreen || root.mozRequestFullScreen || root.msRequestFullscreen;
   document.body.classList.add('can-fullscreen');
-  const isFull = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-  btn.addEventListener('click', () => {
-    if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    else Promise.resolve(request.call(root, { navigationUI: 'hide' })).catch(() => {});
+
+  const isFull = () => Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement
+  );
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (isFull()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) exit.call(document);
+    } else if (request) {
+      Promise.resolve(request.call(root, { navigationUI: 'hide' })).catch(() => {});
+    } else {
+      window.scrollTo(0, 1);
+      if (window.Features && Features.toast) {
+        Features.toast('💡 Trên iPhone/iPad, bấm nút "Chia sẻ" ➔ "Thêm vào Màn hình chính" để chơi Toàn Màn Hình!', 'info', 4000);
+      }
+    }
   });
-  const sync = () => { btn.textContent = isFull() ? '🗗' : '⛶'; };
+
+  const sync = () => {
+    const full = isFull();
+    btn.textContent = full ? '🗗' : '⛶';
+    btn.title = full ? 'Thu nhỏ màn hình' : 'Toàn màn hình';
+  };
   document.addEventListener('fullscreenchange', sync);
   document.addEventListener('webkitfullscreenchange', sync);
+  document.addEventListener('mozfullscreenchange', sync);
+  document.addEventListener('MSFullscreenChange', sync);
 })();
