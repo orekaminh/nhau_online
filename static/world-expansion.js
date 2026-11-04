@@ -3629,6 +3629,42 @@
         return !!this.activeWorkout;
       },
 
+      updateGymHud() {
+        const hud = document.getElementById('gymActiveHud');
+        const mobBtn = document.getElementById('mobGymExitBtn');
+        const actElem = document.getElementById('gymHudActivity');
+        const statsElem = document.getElementById('gymHudStats');
+        if (!hud) return;
+
+        const prompt = document.getElementById('interactPrompt');
+        if (this.activeWorkout) {
+          hud.style.display = 'block';
+          if (prompt) {
+            prompt.style.display = 'flex';
+            const pk = prompt.querySelector('.prompt-key');
+            if (pk) pk.textContent = '🛑';
+            const pt = prompt.querySelector('.prompt-text');
+            if (pt) pt.textContent = 'Dừng tập gym (Đứng dậy)';
+          }
+          if (mobBtn) mobBtn.style.display = 'inline-flex';
+          const w = this.activeWorkout;
+          if (w.type === 'bench') {
+            if (actElem) actElem.textContent = '🏋️ Đang Đẩy Ngực Olympic 100kg';
+            if (statsElem) statsElem.textContent = `Số lần đẩy: Rep ${w.reps}/10 • +30 XP`;
+          } else if (w.type === 'dumbbell') {
+            if (actElem) actElem.textContent = '💪 Cuốn Tạ Tay Dumbbell 20kg 24K';
+            if (statsElem) statsElem.textContent = `Co bắp tay: Rep ${w.reps}/10 • +25 XP`;
+          } else if (w.type === 'treadmill') {
+            const kcals = Math.floor(w.t * 5.5);
+            if (actElem) actElem.textContent = '🏃 Chạy Bộ Cardio View Sông Sài Gòn';
+            if (statsElem) statsElem.textContent = `Tốc độ: 12.5 km/h • Đã đốt: ${kcals} kcal`;
+          }
+        } else {
+          hud.style.display = 'none';
+          if (mobBtn) mobBtn.style.display = 'none';
+        }
+      },
+
       stopWorkout() {
         if (!this.activeWorkout) return;
         const type = this.activeWorkout.type;
@@ -3636,21 +3672,28 @@
           this.barbellMesh.position.y = 1.18;
         }
         if (localCharacter) {
-          if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
-          if (localCharacter.head) localCharacter.head.rotation.x = 0;
-          if (localCharacter.leftArm) localCharacter.leftArm.rotation.set(0, 0, 0);
-          if (localCharacter.rightArm) localCharacter.rightArm.rotation.set(0, 0, 0);
+          localCharacter.mesh.rotation.order = 'XYZ';
+          localCharacter.mesh.rotation.set(0, (localPlayerState && localPlayerState.ry) || 0, 0);
+          if (localCharacter.torso) localCharacter.torso.rotation.set(0, 0, 0);
+          if (localCharacter.head) localCharacter.head.rotation.set(0, 0, 0);
+          if (localCharacter.leftArm) localCharacter.leftArm.rotation.set(0, 0, 0.22);
+          if (localCharacter.rightArm) {
+            const handTarget = new THREE.Vector3(0.34 - 0.4, 0.9 - 0.93, 0.4 - 0.02);
+            localCharacter.rightArm.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), handTarget.clone().normalize());
+            localCharacter.rightArm.rotation.set(0, 0, 0);
+          }
           if (localCharacter.leftLeg) localCharacter.leftLeg.rotation.set(0, 0, 0);
           if (localCharacter.rightLeg) localCharacter.rightLeg.rotation.set(0, 0, 0);
           localCharacter.mesh.position.y = (localPlayerState && localPlayerState.groundY) || 0.3;
         }
         this.activeWorkout = null;
+        this.updateGymHud();
         if (typeof setTicker === 'function') {
           const names = { bench: 'Bench Press 100kg', dumbbell: 'Cuốn Tạ Tay 24K', treadmill: 'Cardio View Landmark 81' };
-          setTicker(`🎉 Đã hoàn thành hiệp tập ${names[type] || ''}! Cơ bắp nở nang săn chắc, tinh thần sảng khoái!`);
+          setTicker(`🎉 Đã kết thúc hiệp tập ${names[type] || ''}! Cơ thể tràn đầy năng lượng!`);
         }
         if (window.Features && Features.toast) {
-          Features.toast('💪 Đã hoàn thành bài tập thể lực! Cơ thể dẻo dai tràn đầy sinh lực.', 'success', 3500);
+          Features.toast('💪 Đã dừng bài tập! Đứng dậy nghỉ ngơi và tiếp tục cuộc vui.', 'success', 3000);
         }
       },
 
@@ -3712,6 +3755,8 @@
           localPlayerState.z = 15.8;
           localPlayerState.ry = 0;
           playBeep(520, 0.15);
+          this.updateGymHud();
+          this.update(0.016, 0);
           if (typeof setTicker === 'function') setTicker('🏋️ Đang nằm đẩy ngực Bench Press 100kg! Bấm [F] hoặc [Space] để dừng.');
           if (window.Features && Features.toast) Features.toast('🏋️ Bắt đầu bài tập Bench Press 100kg! Bấm [F] hoặc [Space] để đứng dậy.', 'info', 4000);
           return true;
@@ -3729,6 +3774,8 @@
           localPlayerState.z = 16.5;
           localPlayerState.ry = Math.PI;
           playBeep(580, 0.15);
+          this.updateGymHud();
+          this.update(0.016, 0);
           if (typeof setTicker === 'function') setTicker('💪 Đang cuốn tạ tay Dumbbell 20kg! Bấm [F] hoặc [Space] để dừng.');
           if (window.Features && Features.toast) Features.toast('💪 Đang cuốn tạ tay Dumbbell 24K! Bấm [F] hoặc [Space] để dừng bài tập.', 'info', 4000);
           return true;
@@ -3746,6 +3793,8 @@
           localPlayerState.z = 21.3;
           localPlayerState.ry = 0;
           playBeep(620, 0.12);
+          this.updateGymHud();
+          this.update(0.016, 0);
           if (typeof setTicker === 'function') setTicker('🏃 Lên máy chạy bộ Cardio 12.5 km/h ngắm sông Landmark 81! [F] hoặc [Space] để xuống máy.');
           if (window.Features && Features.toast) Features.toast('🏃 Đang chạy Cardio tốc độ cao! Bấm [F] hoặc [Space] để bước xuống máy.', 'info', 4000);
           return true;
@@ -3786,24 +3835,30 @@
           }
         }
 
+        // Cập nhật HUD tập gym liên tục
+        this.updateGymHud();
+
         // Cập nhật hoạt ảnh bài tập Gym tương tác liên tục
         if (this.activeWorkout && localCharacter) {
           const w = this.activeWorkout;
           w.t += delta;
 
           if (w.type === 'bench') {
-            localCharacter.mesh.position.set(26.0, 0.54, 15.8);
-            localCharacter.mesh.rotation.y = 0;
-            localCharacter.mesh.rotation.z = 0;
-            localCharacter.torso.rotation.x = -Math.PI / 2; // Nằm ngửa lưng áp sát ghế
-            localCharacter.head.rotation.x = 0;
-            localCharacter.leftLeg.rotation.x = 0.6; // Co gối chân thả xuống mép ghế
-            localCharacter.rightLeg.rotation.x = 0.6;
+            localCharacter.mesh.rotation.order = 'YXZ';
+            localCharacter.mesh.rotation.set(-Math.PI / 2, 0, 0);
+            localCharacter.mesh.position.set(26.0, 0.70, 16.5);
+            localCharacter.torso.rotation.set(0, 0, 0);
+            localCharacter.head.rotation.set(0, 0, 0);
+            localCharacter.leftLeg.rotation.set(-0.55, 0, 0);
+            localCharacter.rightLeg.rotation.set(-0.55, 0, 0);
 
             const cycle = Math.sin(w.t * 3.5);
             const armAngle = -Math.PI / 2 - cycle * 0.45;
             if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = armAngle;
-            if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = armAngle;
+            if (localCharacter.rightArm) {
+              localCharacter.rightArm.quaternion.identity();
+              localCharacter.rightArm.rotation.x = armAngle;
+            }
 
             if (this.barbellMesh) {
               this.barbellMesh.position.y = 1.05 + cycle * 0.22;
@@ -3879,6 +3934,20 @@
     };
   }
 
+  function initGymExitButtons() {
+    const exitBtn = document.getElementById('gymExitBtn');
+    if (exitBtn) {
+      exitBtn.onclick = (e) => { e.preventDefault(); window.GymSystem && window.GymSystem.stopWorkout(); };
+      exitBtn.ontouchstart = (e) => { e.preventDefault(); window.GymSystem && window.GymSystem.stopWorkout(); };
+    }
+    const mobExitBtn = document.getElementById('mobGymExitBtn');
+    if (mobExitBtn) {
+      mobExitBtn.onclick = (e) => { e.preventDefault(); window.GymSystem && window.GymSystem.stopWorkout(); };
+      mobExitBtn.ontouchstart = (e) => { e.preventDefault(); window.GymSystem && window.GymSystem.stopWorkout(); };
+    }
+  }
+  document.addEventListener('DOMContentLoaded', initGymExitButtons);
+  PubLoader.defer(initGymExitButtons, 'initGymExitButtons');
   PubLoader.defer(buildCenturyonGym, 'buildCenturyonGym');
   PubLoader.defer(buildBuiVien, 'buildBuiVien');
   PubLoader.defer(buildWestPark, 'buildWestPark');

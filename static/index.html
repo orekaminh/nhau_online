@@ -150,6 +150,16 @@
       <button id="mobHudCloseBtn" class="mob-hud-close-btn mobile-only" aria-label="Thu gọn Menu">✕ Thu gọn</button>
   </header>
 
+  <!-- Centuryon Gym Active Workout Floating HUD -->
+  <div id="gymActiveHud" class="gym-active-hud" style="display: none;">
+    <div class="gym-hud-badge">CENTURYON 24K FITNESS</div>
+    <div class="gym-hud-activity" id="gymHudActivity">🏋️ Đang Đẩy Ngực Olympic 100kg</div>
+    <div class="gym-hud-stats" id="gymHudStats">Số lần đẩy: Rep 1/10 • +30 XP</div>
+    <button id="gymExitBtn" class="btn-gym-exit" title="Dừng tập luyện và đứng dậy">
+      🛑 DỪNG TẬP (ĐỨNG DẬY)
+    </button>
+  </div>
+
   <!-- Interactive Prompt when near a chair -->
   <div id="interactPrompt" class="interact-prompt" style="display: none;">
     <div class="prompt-key">E</div>
@@ -219,6 +229,10 @@
 
       <!-- Quick Action Buttons -->
       <div class="hud-actions-group">
+        <button id="mobGymExitBtn" class="btn-action btn-gym-exit-dock" style="display: none;" title="Dừng tập gym [F] / [Space]">
+          <span class="btn-icon">🛑</span>
+          <span>Dừng Tập</span>
+        </button>
         <button id="mobMenuBtn" class="btn-action btn-menu" title="Mở toàn bộ Menu tính năng [M]">
           <span class="btn-icon">☰</span>
           <span>Menu</span>
