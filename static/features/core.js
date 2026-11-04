@@ -153,10 +153,7 @@
       h('div', { id: 'fx-toasts', 'aria-live': 'polite' }),
       h('div', { id: 'fx-dock' }),
     );
-    const tools = document.querySelector('.camera-tools');
-    if (tools) {
-      tools.prepend(h('button', { id: 'fxMenuBtn', type: 'button', title: 'Menu: hồ sơ, mini-game, karaoke, xếp hạng...', text: '☰ Menu', onclick: () => F.openMenu() }));
-    }
+    // Không chèn #fxMenuBtn vào .camera-tools ở góc phải trên. Menu đặt gọn tại thanh dock hành động chính (#mobMenuBtn).
   }
 
   const inField = (e) => e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]');

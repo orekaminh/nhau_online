@@ -121,8 +121,19 @@ class EventDirector:
         room = self.room
         if event["kind"] == "patrol":
             caught, safe = [], []
+            def in_pub_zone(x, z):
+                return -22.0 <= x <= 22.0 and -6.0 <= z <= 8.5
+
             for cid, mem in list(room.members.items()):
-                (safe if mem["is_sitting"] or room.inside_wc(mem["x"], mem["z"]) else caught).append(cid)
+                mx = mem.get("x", 0.0)
+                mz = mem.get("z", 0.0)
+                if not in_pub_zone(mx, mz):
+                    # Khách đang ở ngoài quán nhậu (tập Gym Centuryon, bơi hồ 100m, công viên...) không bị phạt vỉa hè!
+                    continue
+                if mem.get("is_sitting") or room.inside_wc(mx, mz):
+                    safe.append(cid)
+                else:
+                    caught.append(cid)
             end["caught"] = [room.members[c]["name"] for c in caught]
             end["safe"] = [room.members[c]["name"] for c in safe]
             end["text"] = (f"🚨 Bị phạt 200.000đ: {', '.join(end['caught'])}." if caught

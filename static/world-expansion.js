@@ -3307,14 +3307,16 @@
     box(0.65, 0.48, 1.5, std(0x18181b, { roughness: 0.4 }), 0, 0.24, 0, benchGroup); // Đệm da đen
     box(0.08, 1.3, 0.08, goldMat, -0.42, 0.65, -0.4, benchGroup); // Giá đỡ mạ vàng
     box(0.08, 1.3, 0.08, goldMat, 0.42, 0.65, -0.4, benchGroup);
-    // Đòn tạ Olympic vàng 24K
-    const bar = cyl(0.022, 0.022, 1.8, goldMat, 0, 1.18, -0.4, benchGroup);
+    // Đòn tạ Olympic vàng 24K gắn vào cụm barbellMesh chuyển động
+    const barbellMesh = new THREE.Group();
+    barbellMesh.position.set(0, 1.18, -0.4);
+    const bar = cyl(0.022, 0.022, 1.8, goldMat, 0, 0, 0, barbellMesh);
     bar.rotation.z = Math.PI / 2;
-    // Bánh tạ vàng 45 lbs (20kg mỗi bên)
     for (const sx of [-0.75, -0.68, 0.68, 0.75]) {
-      const plate = cyl(0.24, 0.24, 0.05, goldMat, sx, 1.18, -0.4, benchGroup, 16);
+      const plate = cyl(0.24, 0.24, 0.05, goldMat, sx, 0, 0, barbellMesh, 16);
       plate.rotation.z = Math.PI / 2;
     }
+    benchGroup.add(barbellMesh);
     scene.add(benchGroup);
     obstacle(26, 16, 1.6, 1.7);
 
@@ -3591,8 +3593,27 @@
     });
 
     // ========================================================
-    // HỆ THỐNG TƯƠNG TÁC CENTURYON GYM SYSTEM
+    // HỆ THỐNG TƯƠNG TÁC CENTURYON GYM SYSTEM (ACTIVE WORKOUT ANIMATIONS & INFINITY POOL)
     // ========================================================
+    function playBeep(freq = 440, duration = 0.1) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!window._gymAudioCtx) window._gymAudioCtx = new AudioCtx();
+        const ctx = window._gymAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
     window.GymSystem = {
       ptPos: { x: 23.5, z: 16.5 },
       benchPos: { x: 26, z: 16 },
@@ -3600,120 +3621,144 @@
       treadPos: { x: 31, z: 21.5 },
       lockerPos: { x: 20, z: 20 },
       saunaPos: { x: 43.5, z: 15.5 },
+      barbellMesh: barbellMesh,
+      treadmills: treadmills,
+      activeWorkout: null,
+
+      isWorkingOut() {
+        return !!this.activeWorkout;
+      },
+
+      stopWorkout() {
+        if (!this.activeWorkout) return;
+        const type = this.activeWorkout.type;
+        if (this.barbellMesh) {
+          this.barbellMesh.position.y = 1.18;
+        }
+        if (localCharacter) {
+          if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
+          if (localCharacter.head) localCharacter.head.rotation.x = 0;
+          if (localCharacter.leftArm) localCharacter.leftArm.rotation.set(0, 0, 0);
+          if (localCharacter.rightArm) localCharacter.rightArm.rotation.set(0, 0, 0);
+          if (localCharacter.leftLeg) localCharacter.leftLeg.rotation.set(0, 0, 0);
+          if (localCharacter.rightLeg) localCharacter.rightLeg.rotation.set(0, 0, 0);
+          localCharacter.mesh.position.y = (localPlayerState && localPlayerState.groundY) || 0.3;
+        }
+        this.activeWorkout = null;
+        if (typeof setTicker === 'function') {
+          const names = { bench: 'Bench Press 100kg', dumbbell: 'Cuốn Tạ Tay 24K', treadmill: 'Cardio View Landmark 81' };
+          setTicker(`🎉 Đã hoàn thành hiệp tập ${names[type] || ''}! Cơ bắp nở nang săn chắc, tinh thần sảng khoái!`);
+        }
+        if (window.Features && Features.toast) {
+          Features.toast('💪 Đã hoàn thành bài tập thể lực! Cơ thể dẻo dai tràn đầy sinh lực.', 'success', 3500);
+        }
+      },
 
       findNearest(px, pz) {
-        if (Math.hypot(px - this.ptPos.x, pz - this.ptPos.z) < 2.8) {
-          return { key: 'F', prompt: 'Tập cùng PT riêng Hoàng Nam (Centuryon Master Trainer)' };
+        if (this.activeWorkout) {
+          return { type: 'stop', key: 'F', prompt: 'Dừng bài tập luyện [F] / [Space]' };
         }
-        if (Math.hypot(px - this.benchPos.x, pz - this.benchPos.z) < 2.0) {
-          return { key: 'F', prompt: 'Đẩy ngực Olympic Bench Press 100kg' };
+        const items = [
+          { type: 'pt', key: 'F', dist: Math.hypot(px - this.ptPos.x, pz - this.ptPos.z), maxDist: 2.0, prompt: 'Tập cùng PT riêng Hoàng Nam (Centuryon Master Trainer)' },
+          { type: 'bench', key: 'F', dist: Math.hypot(px - this.benchPos.x, pz - this.benchPos.z), maxDist: 2.0, prompt: 'Nằm đẩy ngực Olympic Bench Press 100kg [F]' },
+          { type: 'dumb', key: 'F', dist: Math.hypot(px - this.dumbPos.x, pz - this.dumbPos.z), maxDist: 2.0, prompt: 'Cầm tạ tay Dumbbell 24K cuốn bắp tay [F]' },
+          { type: 'tread', key: 'F', dist: Math.hypot(px - this.treadPos.x, pz - this.treadPos.z), maxDist: 2.6, prompt: 'Lên máy chạy bộ Cardio view Landmark 81 [F]' },
+          { type: 'locker', key: 'F', dist: Math.hypot(px - this.lockerPos.x, pz - this.lockerPos.z), maxDist: 2.4, prompt: 'Cất đồ & Nhận khăn tắm Centuryon 24K' },
+          { type: 'sauna', key: 'E', dist: Math.hypot(px - this.saunaPos.x, pz - this.saunaPos.z), maxDist: 3.2, prompt: 'Ngồi xông hơi đá muối Himalaya giải bia rượu [E]' },
+        ];
+        let best = null;
+        for (const item of items) {
+          if (item.dist <= item.maxDist) {
+            if (!best || item.dist < best.dist) best = item;
+          }
         }
-        if (Math.hypot(px - this.dumbPos.x, pz - this.dumbPos.z) < 2.2) {
-          return { key: 'F', prompt: 'Tập tạ tay Dumbbell 24K (20kg)' };
-        }
-        if (Math.hypot(px - this.treadPos.x, pz - this.treadPos.z) < 3.2 && pz > 20.0) {
-          return { key: 'F', prompt: 'Chạy bộ Cardio trên máy view Landmark 81' };
-        }
-        if (Math.hypot(px - this.lockerPos.x, pz - this.lockerPos.z) < 2.6) {
-          return { key: 'F', prompt: 'Cất đồ & Nhận khăn tắm Centuryon 24K' };
-        }
-        if (Math.hypot(px - this.saunaPos.x, pz - this.saunaPos.z) < 3.4 && pz < 18.0) {
-          return { key: 'E', prompt: 'Ngồi xông hơi đá muối Himalaya giải bia rượu' };
-        }
-        return null;
+        return best;
       },
 
       handleInteract(requestedKey) {
+        if (this.activeWorkout) {
+          this.stopWorkout();
+          return true;
+        }
         const px = localPlayerState.x, pz = localPlayerState.z;
         const target = this.findNearest(px, pz);
         if (!target) return false;
         if (requestedKey && target.key !== requestedKey) return false;
 
-        // Âm thanh còi & tạ
         playBeep(440, 0.12);
 
-        // 1. PT Riêng Hoàng Nam
-        if (Math.hypot(px - this.ptPos.x, pz - this.ptPos.z) < 2.8) {
+        if (target.type === 'pt') {
           playBeep(880, 0.25);
           if (localCharacter) {
             localCharacter.torso.rotation.x = -0.5;
             setTimeout(() => { if (localCharacter) localCharacter.torso.rotation.x = 0; }, 800);
           }
-          if (typeof setTicker === 'function') {
-            setTicker('💪 PT Hoàng Nam: "Xuống chậm 3 giây, hít sâu gồng cơ bụng, đẩy dứt khoát! Form chuẩn lắm đại gia!"');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🏋️ PT Hoàng Nam huấn luyện nhiệt huyết! +50 XP thể lực. Giảm 50% độ say bia rượu!', 'success', 5000);
-          }
-          if (typeof sendAction === 'function') {
-            sendAction({ action: 'award', xp: 50, reason: 'Tập cùng PT riêng Centuryon' });
-          }
-          if (selfMember) {
-            selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 35);
-          }
+          if (typeof setTicker === 'function') setTicker('💪 PT Hoàng Nam: "Xuống chậm 3 giây, hít sâu gồng cơ bụng, đẩy dứt khoát! Form chuẩn lắm đại gia!"');
+          if (window.Features && Features.toast) Features.toast('🏋️ PT Hoàng Nam huấn luyện nhiệt huyết! +50 XP thể lực. Giảm 50% độ say bia rượu!', 'success', 5000);
+          if (typeof sendAction === 'function') sendAction({ action: 'award', xp: 50, reason: 'Tập cùng PT riêng Centuryon' });
+          if (selfMember) selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 35);
           return true;
         }
 
-        // 2. Bench Press 100kg
-        if (Math.hypot(px - this.benchPos.x, pz - this.benchPos.z) < 2.0) {
+        if (target.type === 'bench') {
+          this.activeWorkout = {
+            type: 'bench',
+            t: 0,
+            reps: 0,
+            lastPhase: 0,
+            origPos: { x: localPlayerState.x, y: localPlayerState.groundY, z: localPlayerState.z, ry: localPlayerState.ry }
+          };
+          localPlayerState.x = 26.0;
+          localPlayerState.z = 15.8;
+          localPlayerState.ry = 0;
           playBeep(520, 0.15);
-          setTimeout(() => playBeep(660, 0.15), 180);
-          if (typeof setTicker === 'function') {
-            setTicker('🏋️ Bạn đang đẩy ngực 100kg: 1... 2... 3... Cố lên! Ngực nở nang vạm vỡ!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('💪 Đẩy tạ ngực 100kg thành công! +30 XP thể hình.', 'info', 4000);
-          }
-          if (typeof sendAction === 'function') {
-            sendAction({ action: 'award', xp: 30, reason: 'Bench Press 100kg' });
-          }
+          if (typeof setTicker === 'function') setTicker('🏋️ Đang nằm đẩy ngực Bench Press 100kg! Bấm [F] hoặc [Space] để dừng.');
+          if (window.Features && Features.toast) Features.toast('🏋️ Bắt đầu bài tập Bench Press 100kg! Bấm [F] hoặc [Space] để đứng dậy.', 'info', 4000);
           return true;
         }
 
-        // 3. Dumbbell 20kg
-        if (Math.hypot(px - this.dumbPos.x, pz - this.dumbPos.z) < 2.2) {
+        if (target.type === 'dumb') {
+          this.activeWorkout = {
+            type: 'dumbbell',
+            t: 0,
+            reps: 0,
+            lastPhase: 0,
+            origPos: { x: localPlayerState.x, y: localPlayerState.groundY, z: localPlayerState.z, ry: localPlayerState.ry }
+          };
+          localPlayerState.x = 31.0;
+          localPlayerState.z = 16.5;
+          localPlayerState.ry = Math.PI;
           playBeep(580, 0.15);
-          if (typeof setTicker === 'function') {
-            setTicker('💪 Nâng tạ tay Dumbbell 20kg: Cơ bắp tay cuồn cuộn như đá tảng!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('💪 Nâng tạ tay 20kg thành công! +25 XP.', 'info', 4000);
-          }
-          if (typeof sendAction === 'function') {
-            sendAction({ action: 'award', xp: 25, reason: 'Nâng tạ tay 24K' });
-          }
+          if (typeof setTicker === 'function') setTicker('💪 Đang cuốn tạ tay Dumbbell 20kg! Bấm [F] hoặc [Space] để dừng.');
+          if (window.Features && Features.toast) Features.toast('💪 Đang cuốn tạ tay Dumbbell 24K! Bấm [F] hoặc [Space] để dừng bài tập.', 'info', 4000);
           return true;
         }
 
-        // 4. Chạy bộ Cardio
-        if (Math.hypot(px - this.treadPos.x, pz - this.treadPos.z) < 3.2 && pz > 20.0) {
+        if (target.type === 'tread') {
+          this.activeWorkout = {
+            type: 'treadmill',
+            t: 0,
+            reps: 0,
+            lastPhase: 0,
+            origPos: { x: localPlayerState.x, y: localPlayerState.groundY, z: localPlayerState.z, ry: localPlayerState.ry }
+          };
+          localPlayerState.x = 31.0;
+          localPlayerState.z = 21.3;
+          localPlayerState.ry = 0;
           playBeep(620, 0.12);
-          if (typeof setTicker === 'function') {
-            setTicker('🏃 Bạn đang chạy bộ Cardio 12km/h ngắm hoàng hôn bến sông & Landmark 81! Đốt 200 Calo bia.');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🏃 Chạy bộ Cardio hoàn tất! Đốt cháy calo mồi nhậu. +25 XP.', 'info', 4000);
-          }
-          if (typeof sendAction === 'function') {
-            sendAction({ action: 'award', xp: 25, reason: 'Cardio ngắm Landmark 81' });
-          }
+          if (typeof setTicker === 'function') setTicker('🏃 Lên máy chạy bộ Cardio 12.5 km/h ngắm sông Landmark 81! [F] hoặc [Space] để xuống máy.');
+          if (window.Features && Features.toast) Features.toast('🏃 Đang chạy Cardio tốc độ cao! Bấm [F] hoặc [Space] để bước xuống máy.', 'info', 4000);
           return true;
         }
 
-        // 5. Locker & Khăn Tắm 24K
-        if (Math.hypot(px - this.lockerPos.x, pz - this.lockerPos.z) < 2.6) {
+        if (target.type === 'locker') {
           playBeep(780, 0.2);
-          if (typeof setTicker === 'function') {
-            setTicker('🧺 Bạn đã cất đồ vào Locker thông minh & nhận khăn bông Centuryon thơm mùi tinh dầu sả chanh!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🧺 Nhận khăn tắm Centuryon 24K mềm mại! Sẵn sàng bơi lội & xông hơi.', 'success', 4000);
-          }
+          if (typeof setTicker === 'function') setTicker('🧺 Bạn đã cất đồ vào Locker thông minh & nhận khăn bông Centuryon thơm mùi tinh dầu sả chanh!');
+          if (window.Features && Features.toast) Features.toast('🧺 Nhận khăn tắm Centuryon 24K mềm mại! Sẵn sàng bơi lội & xông hơi.', 'success', 4000);
           return true;
         }
 
-        // 6. Xông Hơi Đá Muối Himalaya
-        if (Math.hypot(px - this.saunaPos.x, pz - this.saunaPos.z) < 3.4 && pz < 18.0) {
+        if (target.type === 'sauna') {
           playBeep(330, 0.35);
           setTimeout(() => playBeep(440, 0.4), 250);
           if (selfMember) {
@@ -3721,15 +3766,9 @@
             selfMember.bladder_level = 0;
             selfMember.status = 'tinh_tao';
           }
-          if (typeof setTicker === 'function') {
-            setTicker('🧖 Xông hơi đá nóng & đá muối Himalaya thành công! Cồn bia rượu đào thải 100%, sảng khoái tuyệt đối!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🧖 ĐÃ GIẢI HẾT BIA RƯỢU! Xông hơi Centuryon phục hồi 100% sinh lực. +40 XP.', 'success', 5000);
-          }
-          if (typeof sendAction === 'function') {
-            sendAction({ action: 'award', xp: 40, reason: 'Xông hơi giải rượu Centuryon' });
-          }
+          if (typeof setTicker === 'function') setTicker('🧖 Xông hơi đá nóng & đá muối Himalaya thành công! Cồn bia rượu đào thải 100%, sảng khoái tuyệt đối!');
+          if (window.Features && Features.toast) Features.toast('🧖 ĐÃ GIẢI HẾT BIA RƯỢU! Xông hơi Centuryon phục hồi 100% sinh lực. +40 XP.', 'success', 5000);
+          if (typeof sendAction === 'function') sendAction({ action: 'award', xp: 40, reason: 'Xông hơi giải rượu Centuryon' });
           return true;
         }
 
@@ -3742,7 +3781,97 @@
           if (!this.lastSwam || t - this.lastSwam > 15) {
             this.lastSwam = t;
             if (window.Features && Features.toast) {
-              Features.toast('🏊 Bạn đang bơi tại Hồ Vô Cực 100m Landmark 81! Nước mát lạnh sảng khoái.', 'info', 4000);
+              Features.toast('🏊 Bạn đang bơi sải tại Hồ Vô Cực 100m Landmark 81! Nước trong xanh mát lạnh sảng khoái.', 'info', 4000);
+            }
+          }
+        }
+
+        // Cập nhật hoạt ảnh bài tập Gym tương tác liên tục
+        if (this.activeWorkout && localCharacter) {
+          const w = this.activeWorkout;
+          w.t += delta;
+
+          if (w.type === 'bench') {
+            localCharacter.mesh.position.set(26.0, 0.54, 15.8);
+            localCharacter.mesh.rotation.y = 0;
+            localCharacter.mesh.rotation.z = 0;
+            localCharacter.torso.rotation.x = -Math.PI / 2; // Nằm ngửa lưng áp sát ghế
+            localCharacter.head.rotation.x = 0;
+            localCharacter.leftLeg.rotation.x = 0.6; // Co gối chân thả xuống mép ghế
+            localCharacter.rightLeg.rotation.x = 0.6;
+
+            const cycle = Math.sin(w.t * 3.5);
+            const armAngle = -Math.PI / 2 - cycle * 0.45;
+            if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = armAngle;
+            if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = armAngle;
+
+            if (this.barbellMesh) {
+              this.barbellMesh.position.y = 1.05 + cycle * 0.22;
+            }
+
+            if (cycle > 0.92 && w.lastPhase <= 0.92) {
+              w.reps++;
+              playBeep(720, 0.09); // Leng keng kim loại
+              if (typeof setTicker === 'function') {
+                setTicker(`🏋️ Bench Press 100kg: Rep ${w.reps}/10! Cơ ngực căng tròn vạm vỡ! Bấm [F] hoặc [Space] để dừng.`);
+              }
+              if (w.reps % 5 === 0) {
+                if (typeof sendAction === 'function') sendAction({ action: 'award', xp: 20, reason: 'Bench Press Reps' });
+                if (selfMember) selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 15);
+              }
+            }
+            w.lastPhase = cycle;
+
+          } else if (w.type === 'dumbbell') {
+            localCharacter.mesh.position.set(31.0, 0.3, 16.5);
+            localCharacter.mesh.rotation.y = Math.PI;
+            localCharacter.mesh.rotation.z = 0;
+            localCharacter.torso.rotation.x = 0.05;
+            localCharacter.leftLeg.rotation.x = 0;
+            localCharacter.rightLeg.rotation.x = 0;
+
+            const curlL = Math.max(0, Math.sin(w.t * 3.6));
+            const curlR = Math.max(0, Math.sin(w.t * 3.6 + Math.PI));
+            if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -curlL * 2.1;
+            if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = -curlR * 2.1;
+
+            if (curlL > 0.94 && w.lastPhase <= 0.94) {
+              w.reps++;
+              playBeep(640, 0.08);
+              if (typeof setTicker === 'function') {
+                setTicker(`💪 Cuốn tạ tay 20kg: ${w.reps} lần cuốn — Bắp tay cuộn cứng như thép! [F] / [Space] để dừng.`);
+              }
+              if (w.reps % 6 === 0) {
+                if (typeof sendAction === 'function') sendAction({ action: 'award', xp: 15, reason: 'Dumbbell Curls' });
+                if (selfMember) selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 12);
+              }
+            }
+            w.lastPhase = curlL;
+
+          } else if (w.type === 'treadmill') {
+            localCharacter.mesh.position.set(31.0, 0.52, 21.3);
+            localCharacter.mesh.rotation.y = 0;
+            localCharacter.mesh.rotation.z = 0;
+            localCharacter.torso.rotation.x = 0.22;
+
+            const runCycle = w.t * 14;
+            localCharacter.leftLeg.rotation.x = Math.sin(runCycle) * 0.85;
+            localCharacter.rightLeg.rotation.x = -Math.sin(runCycle) * 0.85;
+            if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -Math.sin(runCycle) * 0.9;
+            if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = Math.sin(runCycle) * 0.9;
+            localCharacter.mesh.position.y = 0.52 + Math.abs(Math.sin(runCycle * 2)) * 0.04;
+
+            const kcals = Math.floor(w.t * 5.5);
+            if (Math.floor(w.t) % 3 === 0 && Math.floor(w.t) !== w.lastPhase) {
+              w.lastPhase = Math.floor(w.t);
+              playBeep(520, 0.05);
+              if (typeof setTicker === 'function') {
+                setTicker(`🏃 Đang chạy Cardio 12.5 km/h · Đã đốt ${kcals} kcal mồi nhậu · Bấm [F] hoặc [Space] để xuống máy.`);
+              }
+              if (kcals > 0 && kcals % 30 === 0) {
+                if (typeof sendAction === 'function') sendAction({ action: 'award', xp: 15, reason: 'Cardio Treadmill' });
+                if (selfMember) selfMember.drunk_level = Math.max(0, selfMember.drunk_level - 10);
+              }
             }
           }
         }

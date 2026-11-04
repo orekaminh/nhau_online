@@ -1382,7 +1382,7 @@ body.comfort-mode .ticker-text { transition: none; }
     cursor: pointer;
     margin-top: 6px;
   }
-  .camera-tools { top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); gap: 4px; padding: 5px; }
+  .camera-tools { display: none !important; } /* Tự ẩn thanh camera trên mobile cho màn hình rộng thoáng, dùng cảm ứng vuốt xoay và pinch zoom */
   .btn-menu {
     background: linear-gradient(135deg, #1e293b, #0f172a);
     border-color: #38bdf8 !important;

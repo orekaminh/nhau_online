@@ -3178,6 +3178,24 @@ function buildSaigonRiver() {
 }
 PubLoader.defer(buildSaigonRiver, 'buildSaigonRiver');
 
+// Vòng sóng nước tương tác khi bơi lội hồ bơi 100m Centuryon hoặc sông Sài Gòn
+let poolRipple = null, poolRippleMat = null;
+function initPoolRipple() {
+  const geo = new THREE.RingGeometry(0.35, 0.85, 20);
+  poolRippleMat = new THREE.MeshBasicMaterial({
+    color: 0x7dd3fc,
+    transparent: true,
+    opacity: 0,
+    side: THREE.DoubleSide
+  });
+  poolRipple = window.poolRipple = new THREE.Mesh(geo, poolRippleMat);
+  poolRipple.rotation.x = -Math.PI / 2;
+  poolRipple.position.y = 0.08;
+  poolRipple.visible = false;
+  scene.add(poolRipple);
+}
+PubLoader.defer(initPoolRipple, 'initPoolRipple');
+
 // ========================================================
 // 7. TÒA THÁP LANDMARK 81 & SKYLINE SÀI GÒN VỀ ĐÊM
 // ========================================================
@@ -3516,6 +3534,7 @@ function createCharacter3D(colorHex) {
     head,
     beerMug,
     armSwing,
+    rightArm: armSwing,
     leftArm,
     leftLeg: left.g,
     rightLeg: right.g,
@@ -3526,7 +3545,7 @@ function createCharacter3D(colorHex) {
 
 // Local Player State
 let localCharacter = null;
-const localPlayerState = {
+const localPlayerState = window.localPlayerState = {
   x: 0,
   y: 0.3,
   z: 4,
@@ -3802,6 +3821,10 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
 
   if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
+    if (window.GymSystem && window.GymSystem.isWorkingOut()) {
+      window.GymSystem.stopWorkout();
+      return;
+    }
     if (window.GymSystem && window.GymSystem.handleInteract('E')) {
       return;
     }
@@ -3835,6 +3858,11 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.code === 'Space') {
+    if (window.GymSystem && window.GymSystem.isWorkingOut()) {
+      e.preventDefault();
+      window.GymSystem.stopWorkout();
+      return;
+    }
     if (window.VehicleSystem && window.VehicleSystem.isRiding()) {
       e.preventDefault();
       window.VehicleSystem.exitRide();
@@ -4381,7 +4409,7 @@ function enableOfflineDemo() {
   localPlayerState.x = selfMember.x;
   localPlayerState.z = selfMember.z;
   localPlayerState.ry = selfMember.ry;
-  localCharacter = createCharacter3D(selfMember.color);
+  localCharacter = window.localCharacter = createCharacter3D(selfMember.color);
   scene.add(localCharacter.mesh);
   updateDrunkVisuals(0, "Tỉnh Táo");
   updateBladderVisuals(0);
@@ -4485,7 +4513,7 @@ function connectWebSocket() {
 
           // Tạo nhân vật 3D của mình
           if (!localCharacter) {
-            localCharacter = createCharacter3D(selfMember.color);
+            localCharacter = window.localCharacter = createCharacter3D(selfMember.color);
             scene.add(localCharacter.mesh);
             if (window.Features) Features.dress(localCharacter, selfMember.outfit, selfMember.color);
           }
@@ -4894,7 +4922,7 @@ function animate() {
   const delta = Math.min(clock.getDelta(), 0.05);
 
   // Local Character Movement & Physics (Theo hướng nhìn của Camera)
-  if (localCharacter && !localPlayerState.is_sitting && !localPlayerState.is_riding_car && (!selfMember || selfMember.status !== 'guc_nga')) {
+  if (localCharacter && !localPlayerState.is_sitting && !localPlayerState.is_riding_car && !(window.GymSystem && window.GymSystem.isWorkingOut()) && (!selfMember || selfMember.status !== 'guc_nga')) {
     // Vector hướng tới & sang phải dựa theo góc xoay cameraYaw
     const forwardX = -Math.sin(cameraYaw);
     const forwardZ = -Math.cos(cameraYaw);
@@ -4968,14 +4996,8 @@ function animate() {
       localPlayerState.is_walking = true;
       localPlayerState.walkTime += delta * 12;
 
-      // Leg Swing & Chibi Waddle Animation (Bước đi lắc lư Chibi hoặc Bơi lội dưới nước hồ vô cực)
-      if (localPlayerState.groundY <= 0.08) {
-        localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime * 1.4) * 0.42;
-        localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime * 1.4) * 0.42;
-        if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = Math.sin(localPlayerState.walkTime * 1.4) * 0.58;
-        if (localCharacter.rightArm) localCharacter.rightArm.rotation.x = -Math.sin(localPlayerState.walkTime * 1.4) * 0.58;
-        localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.7) * 0.08;
-      } else {
+      // Leg Swing & Chibi Waddle Animation trên cạn
+      if (localPlayerState.groundY > 0.08) {
         localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime) * 0.55;
         localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.55;
         if (localCharacter.leftArm) localCharacter.leftArm.rotation.x = -Math.sin(localPlayerState.walkTime) * 0.6;
@@ -4983,16 +5005,87 @@ function animate() {
       }
     } else {
       localPlayerState.is_walking = false;
-      localCharacter.leftLeg.rotation.x = 0;
-      localCharacter.rightLeg.rotation.x = 0;
-      localCharacter.mesh.rotation.z = 0;
-      if (localCharacter.leftArm) localCharacter.leftArm.rotation.x *= 0.8;
+      if (localPlayerState.groundY > 0.08) {
+        localCharacter.leftLeg.rotation.x = 0;
+        localCharacter.rightLeg.rotation.x = 0;
+        localCharacter.mesh.rotation.z = 0;
+        if (localCharacter.leftArm) localCharacter.leftArm.rotation.x *= 0.8;
+      }
     }
 
     localPlayerState.groundY = WORLD_BOUNDS.groundY(localPlayerState.x, localPlayerState.z);
-    localCharacter.mesh.position.set(localPlayerState.x, localPlayerState.groundY, localPlayerState.z);
-    localCharacter.mesh.rotation.y = localPlayerState.ry;
-    if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
+    const isSwimming = (localPlayerState.groundY <= 0.08);
+
+    if (isSwimming) {
+      // NỔI BẬP BỀNH & NẰM SẤP BƠI LỘI CHÂN THẬT
+      const swimBob = Math.sin(clock.elapsedTime * 3.2) * 0.035;
+      localCharacter.mesh.position.set(localPlayerState.x, 0.04 + swimBob, localPlayerState.z);
+      localCharacter.mesh.rotation.y = localPlayerState.ry;
+
+      if (localPlayerState.is_walking) {
+        // NẰM SẤP BƠI SẢI (Prone Swimming Crawl)
+        localCharacter.torso.rotation.x = 1.35; // Nằm sấp sát mặt nước (~77 độ)
+        localCharacter.head.rotation.x = -0.58;  // Ngẩng đầu lên khỏi mặt nước thở và nhìn trước
+        localCharacter.mesh.rotation.z = Math.sin(localPlayerState.walkTime * 0.8) * 0.12;
+
+        const sCycle = localPlayerState.walkTime * 1.5;
+        if (localCharacter.leftArm) {
+          localCharacter.leftArm.rotation.x = Math.sin(sCycle) * 1.3 + 0.3;
+          localCharacter.leftArm.rotation.z = 0.35;
+        }
+        if (localCharacter.rightArm) {
+          localCharacter.rightArm.rotation.x = Math.sin(sCycle + Math.PI) * 1.3 + 0.3;
+          localCharacter.rightArm.rotation.z = -0.35;
+        }
+
+        localCharacter.leftLeg.rotation.x = Math.sin(localPlayerState.walkTime * 2.4) * 0.45;
+        localCharacter.rightLeg.rotation.x = -Math.sin(localPlayerState.walkTime * 2.4) * 0.45;
+        localCharacter.leftLeg.rotation.z = 0.1;
+        localCharacter.rightLeg.rotation.z = -0.1;
+      } else {
+        // ĐẠP NƯỚC THẢ NỔI TẠI CHỖ (Treading Water)
+        localCharacter.torso.rotation.x = 0.45;
+        localCharacter.head.rotation.x = -0.2;
+        if (localCharacter.leftArm) {
+          localCharacter.leftArm.rotation.x = Math.sin(clock.elapsedTime * 2.8) * 0.35 + 0.2;
+          localCharacter.leftArm.rotation.z = 0.45;
+        }
+        if (localCharacter.rightArm) {
+          localCharacter.rightArm.rotation.x = -Math.sin(clock.elapsedTime * 2.8) * 0.35 + 0.2;
+          localCharacter.rightArm.rotation.z = -0.45;
+        }
+        localCharacter.leftLeg.rotation.x = Math.sin(clock.elapsedTime * 3.0) * 0.25;
+        localCharacter.rightLeg.rotation.x = -Math.sin(clock.elapsedTime * 3.0) * 0.25;
+        localCharacter.leftLeg.rotation.z = 0.12;
+        localCharacter.rightLeg.rotation.z = -0.12;
+        localCharacter.mesh.rotation.z = 0;
+      }
+
+      // Vòng sóng nước lan tỏa quanh thân
+      if (poolRipple) {
+        poolRipple.visible = true;
+        poolRipple.position.x = localPlayerState.x;
+        poolRipple.position.z = localPlayerState.z;
+        const ripT = (clock.elapsedTime * (localPlayerState.is_walking ? 2.5 : 1.3)) % 1;
+        const ripScale = 1.0 + ripT * 1.8;
+        poolRipple.scale.set(ripScale, ripScale, 1);
+        poolRippleMat.opacity = (1 - ripT) * (localPlayerState.is_walking ? 0.65 : 0.32);
+      }
+    } else {
+      if (poolRipple) poolRipple.visible = false;
+      localCharacter.mesh.position.set(localPlayerState.x, localPlayerState.groundY, localPlayerState.z);
+      localCharacter.mesh.rotation.y = localPlayerState.ry;
+
+      // Khi ở trên cạn và không tập gym -> Phục hồi góc đứng thẳng
+      if (!(window.GymSystem && window.GymSystem.isWorkingOut())) {
+        if (localCharacter.torso) localCharacter.torso.rotation.x = 0;
+        if (localCharacter.head) localCharacter.head.rotation.x = 0;
+        if (localCharacter.leftArm) localCharacter.leftArm.rotation.z = 0;
+        if (localCharacter.rightArm) localCharacter.rightArm.rotation.z = 0;
+        if (localCharacter.leftLeg) localCharacter.leftLeg.rotation.z = 0;
+        if (localCharacter.rightLeg) localCharacter.rightLeg.rotation.z = 0;
+      }
+    }
 
     // Gửi vị trí lên server (khoảng 20Hz để mượt mạng)
     networkTimer += delta;
@@ -5174,19 +5267,47 @@ function animate() {
     while (diff > Math.PI) diff -= Math.PI * 2;
     rp.mesh.rotation.y += diff * 0.2;
 
-    if (rp.sitting) {
+    const rpSwim = (rp.mesh.position.y <= 0.08) || (window.WORLD_BOUNDS && window.WORLD_BOUNDS.groundY(rp.mesh.position.x, rp.mesh.position.z) <= 0.08);
+    if (rpSwim && !rp.sitting) {
+      const rpBob = Math.sin((clock.elapsedTime + rp.mesh.position.x) * 3.2) * 0.035;
+      rp.mesh.position.y = 0.04 + rpBob;
+      if (rp.is_walking) {
+        rp.walkTime += delta * 12;
+        rp.charParts.torso.rotation.x = 1.35;
+        rp.charParts.head.rotation.x = -0.58;
+        const sCycle = rp.walkTime * 1.5;
+        if (rp.charParts.leftArm) { rp.charParts.leftArm.rotation.x = Math.sin(sCycle) * 1.3 + 0.3; rp.charParts.leftArm.rotation.z = 0.35; }
+        if (rp.charParts.rightArm) { rp.charParts.rightArm.rotation.x = Math.sin(sCycle + Math.PI) * 1.3 + 0.3; rp.charParts.rightArm.rotation.z = -0.35; }
+        rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime * 2.4) * 0.45;
+        rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime * 2.4) * 0.45;
+      } else {
+        rp.charParts.torso.rotation.x = 0.45;
+        rp.charParts.head.rotation.x = -0.2;
+        if (rp.charParts.leftArm) { rp.charParts.leftArm.rotation.x = Math.sin(clock.elapsedTime * 2.8) * 0.35; rp.charParts.leftArm.rotation.z = 0.45; }
+        if (rp.charParts.rightArm) { rp.charParts.rightArm.rotation.x = -Math.sin(clock.elapsedTime * 2.8) * 0.35; rp.charParts.rightArm.rotation.z = -0.45; }
+        rp.charParts.leftLeg.rotation.x = Math.sin(clock.elapsedTime * 3.0) * 0.25;
+        rp.charParts.rightLeg.rotation.x = -Math.sin(clock.elapsedTime * 3.0) * 0.25;
+      }
+    } else if (rp.sitting) {
       applySitPose(rp.charParts, rp.mesh, sitY, delta);
     } else if (rp.is_walking) {
       rp.walkTime += delta * 12;
+      rp.charParts.torso.rotation.x = 0;
+      rp.charParts.head.rotation.x = 0;
+      if (rp.charParts.leftArm) rp.charParts.leftArm.rotation.z = 0;
+      if (rp.charParts.rightArm) rp.charParts.rightArm.rotation.z = 0;
       rp.charParts.leftLeg.rotation.x = Math.sin(rp.walkTime) * 0.55;
       rp.charParts.rightLeg.rotation.x = -Math.sin(rp.walkTime) * 0.55;
       if (rp.charParts.leftArm) rp.charParts.leftArm.rotation.x = -Math.sin(rp.walkTime) * 0.6;
       rp.mesh.rotation.z = Math.sin(rp.walkTime * 0.5) * 0.05;
     } else {
+      rp.charParts.torso.rotation.x = 0;
+      rp.charParts.head.rotation.x = 0;
+      if (rp.charParts.leftArm) { rp.charParts.leftArm.rotation.z = 0; rp.charParts.leftArm.rotation.x *= 0.8; }
+      if (rp.charParts.rightArm) rp.charParts.rightArm.rotation.z = 0;
       rp.charParts.leftLeg.rotation.x = 0;
       rp.charParts.rightLeg.rotation.x = 0;
       rp.mesh.rotation.z = 0;
-      if (rp.charParts.leftArm) rp.charParts.leftArm.rotation.x *= 0.8;
     }
   });
 

@@ -90,7 +90,8 @@ button:focus-visible, .fx-btn:focus-visible, .fx-tile:focus-visible, .fx-chip:fo
 .fx-tile-label { font-weight: 700; font-size: .85rem; }
 .fx-tile small { color: var(--fx-dim); font-size: .7rem; }
 .fx-badge { position: absolute; top: 6px; right: 8px; min-width: 20px; padding: 0 6px; border-radius: 99px; background: #ef4444; color: #fff; font-style: normal; font-size: .72rem; font-weight: 800; line-height: 20px; }
-#fxMenuBtn { background: #7c3aed !important; border-color: #a78bfa !important; font-weight: 800; }
+#fxMenuBtn, .camera-tools #fxMenuBtn { display: none !important; }
+.btn-menu { background: #7c3aed !important; border-color: #a78bfa !important; font-weight: 800; }
 
 /* ---------- Toast ---------- */
 #fx-toasts { position: fixed; left: 50%; transform: translateX(-50%); top: 150px; z-index: 450; width: min(440px, calc(100vw - 24px)); display: grid; gap: 6px; pointer-events: none; }

@@ -202,7 +202,15 @@
       ev.fx = { el, nextSiren: 0 };
     },
     tick(ev, dt, t) {
-      if (t >= ev.fx.nextSiren) { ev.fx.nextSiren = t + 2.6; if (typeof playSirenSound === 'function') playSirenSound(); }
+      const lp = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+      const inPub = lp ? (lp.x >= -23 && lp.x <= 23 && lp.z >= -7 && lp.z <= 9) : true;
+      if (ev.fx && ev.fx.el) {
+        ev.fx.el.style.display = inPub ? 'block' : 'none';
+      }
+      if (t >= ev.fx.nextSiren) {
+        ev.fx.nextSiren = t + 2.6;
+        if (inPub && typeof playSirenSound === 'function') playSirenSound();
+      }
     },
     end(ev) { ev.fx.el.remove(); },
   };
