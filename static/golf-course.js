@@ -26,17 +26,25 @@
   const std = (color, extra) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.7 }, extra));
   const glow = (color) => new THREE.MeshBasicMaterial({ color });
 
+  function getScene() {
+    if (window.scene) return window.scene;
+    if (typeof scene !== 'undefined' && scene) return scene;
+    return null;
+  }
+
   function box(w, h, d, mat, x, y, z, parent) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     m.position.set(x, y, z);
-    (parent || scene).add(m);
+    const target = parent || getScene();
+    if (target) target.add(m);
     return m;
   }
 
   function cyl(rt, rb, h, mat, x, y, z, parent, seg) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), mat);
     m.position.set(x, y, z);
-    (parent || scene).add(m);
+    const target = parent || getScene();
+    if (target) target.add(m);
     return m;
   }
 
@@ -44,6 +52,51 @@
     if (window.pubDetails && window.pubDetails.obstacles) {
       window.pubDetails.obstacles.push({ x, z, w, d });
     }
+  }
+
+  // Khai báo ngay WORLD_BOUNDS.golf để chống kẹp z khi người chơi bấm dịch chuyển
+  const golfBounds = {
+    constrain(x, z) {
+      if (x >= -63 && x <= -40 && z < 96.5) {
+        return null;
+      }
+      if (x >= -195 && x <= -30 && z >= 96.0 && z <= 225) {
+        if (x >= -126 && x <= -94 && z >= 146 && z <= 178) {
+          if (Math.abs(x - (-110)) < 2.0) {
+            return { x: -110, z };
+          }
+          const distToCenter = Math.hypot(x - (-110), z - 162);
+          if (distToCenter > 6.4) {
+            const ang = Math.atan2(z - 162, x - (-110));
+            return { x: -110 + Math.cos(ang) * 17.5, z: 162 + Math.sin(ang) * 17.5 };
+          }
+        }
+        return {
+          x: Math.max(-193, Math.min(-32, x)),
+          z: Math.max(96.0, Math.min(223, z))
+        };
+      }
+      return null;
+    },
+    groundY(x, z) {
+      if (x >= -126 && x <= -94 && z >= 146 && z <= 178) {
+        const distIsland = Math.hypot(x - (-110), z - 162);
+        if (distIsland < 6.4) return 0.52;
+        if (Math.abs(x - (-110)) < 2.0) return 0.58;
+        return 0.16;
+      }
+      const ps = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+      if (x >= -85 && x <= -63 && z >= 115 && z <= 129 && (ps && ps.y > 2.5)) {
+        return 4.65;
+      }
+      if (x >= -195 && x <= -30 && z >= 96.0 && z <= 225) {
+        return 0.35;
+      }
+      return null;
+    }
+  };
+  if (window.WORLD_BOUNDS) {
+    window.WORLD_BOUNDS.golf = golfBounds;
   }
 
   // Âm thanh tổng hợp Web Audio chân thực (Tiếng vụt gậy Whoosh, Tiếng đập gậy titan TINK!, Tiếng bóng rơi cốc Plop)
@@ -195,11 +248,16 @@
   // ========================================================
   function buildGolfWorld() {
     if (window._golfWorldBuilt) return;
+    const targetScene = getScene();
+    if (!targetScene) {
+      setTimeout(buildGolfWorld, 150);
+      return;
+    }
     window._golfWorldBuilt = true;
 
     const golfGroup = new THREE.Group();
     golfGroup.name = 'RoyalSaigonGolfResort';
-    scene.add(golfGroup);
+    targetScene.add(golfGroup);
 
     // Bảng vật liệu chính của sân golf (Có emissive tự phát sáng nhẹ để rực rỡ lung linh trong đêm)
     const fairwayMat = std(0x22c55e, { roughness: 0.80, metalness: 0.05, emissive: 0x05482e, emissiveIntensity: 0.38 }); // Cỏ Fairway xanh tươi
@@ -620,7 +678,7 @@
     // ----------------------------------------------------
     // 8. CÂY CỐI, HOA CẢNH QUAN & ĐÈN BOLLARD LUNG LINH
     // ----------------------------------------------------
-    if (window.Veg && Veg.makeTree) {
+    if (window.Veg && window.Veg.makeTree) {
       // Hàng cọ hoàng gia (Royal Palms) dọc lối đi và bờ sông
       const palmCoords = [
         [-62, 112], [-62, 122], [-62, 132],
@@ -630,7 +688,7 @@
         [-175, 125], [-178, 150], [-175, 175], [-172, 195]
       ];
       palmCoords.forEach(([tx, tz], i) => {
-        const tree = Veg.makeTree(i % 3 === 0 ? 'palm' : (i % 2 === 0 ? 'tall' : 'flame'), 880 + i, 1.1);
+        const tree = window.Veg.makeTree(i % 3 === 0 ? 'palm' : (i % 2 === 0 ? 'tall' : 'flame'), 880 + i, 1.1);
         tree.position.set(tx, 0.32, tz);
         golfGroup.add(tree);
         obstacle(tx, tz, 1.2, 1.2);
@@ -732,7 +790,8 @@
     const pubShuttleBuggy = createGolfBuggy(0xf8fafc, 0x10b981);
     pubShuttleBuggy.position.set(-9.5, 0.16, 28.5);
     pubShuttleBuggy.rotation.y = -Math.PI / 2;
-    scene.add(pubShuttleBuggy);
+    const scShut = getScene();
+    if (scShut) scShut.add(pubShuttleBuggy);
     obstacle(-9.5, 28.5, 2.0, 3.2);
 
     // Biển đón xe điện Quán Nhậu Bờ Sông
@@ -741,7 +800,7 @@
       ['Đón sang Sân Golf Hoàng Gia [F]', 28, 108, false]
     ], 3.8, 1.6, 512, 180, '#fef08a', '#064e3b');
     pubShuttleSign.position.set(-9.5, 2.3, 27.2);
-    scene.add(pubShuttleSign);
+    if (scShut) scShut.add(pubShuttleSign);
 
     // 3. Đội xe Golf Buggy đậu tại Bãi xe Clubhouse
     for (let i = 0; i < 3; i++) {
@@ -804,6 +863,9 @@
     // KẾT NỐI VÀO WORLD_BOUNDS (CHO PHÉP ĐI LẠI TỰ DO TOÀN SÂN GOLF)
     // ----------------------------------------------------
     if (window.WORLD_BOUNDS) {
+      window.WORLD_BOUNDS.golf = golfBounds;
+    }
+    if (false) {
       window.WORLD_BOUNDS.golf = {
         constrain(x, z) {
           // Nếu đang đi trên hành lang kết nối Cầu Đi Bộ (-63..-40, z < 96.5) thì nhường quyền cho bridge.constrain
@@ -941,8 +1003,8 @@
         if (typeof setTicker === 'function') {
           setTicker('🚗 Xe điện VIP đang đưa bạn qua Cầu Đi Bộ sang Sân Golf Quốc Tế...');
         }
-        if (window.Features && Features.toast) {
-          Features.toast('⛳ Đang di chuyển sang Sân Golf Hoàng Gia Royal Saigon!', 'info', 2500);
+        if (window.Features && window.Features.toast) {
+          window.Features.toast('⛳ Đang di chuyển sang Sân Golf Hoàng Gia Royal Saigon!', 'info', 2500);
         }
         setTimeout(() => {
           teleportToGolf();
@@ -984,8 +1046,8 @@
         if (typeof setTicker === 'function') {
           setTicker('🍸 Thưởng thức ly Champagne Moët & Chandon tại 19th Hole Lounge ngắm Landmark 81 cực chill!');
         }
-        if (window.Features && Features.toast) {
-          Features.toast('🥂 Đại gia thưởng thức đồ uống thượng hạng! Giảm 30% say xỉn. +45 XP.', 'success', 4000);
+        if (window.Features && window.Features.toast) {
+          window.Features.toast('🥂 Đại gia thưởng thức đồ uống thượng hạng! Giảm 30% say xỉn. +45 XP.', 'success', 4000);
         }
         if (typeof sendAction === 'function') {
           sendAction({ action: 'award', xp: 45, reason: '19th Hole Lounge VIP' });
@@ -1024,7 +1086,7 @@
       const ballMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const ballMesh = new THREE.Mesh(ballGeo, ballMat);
       ballMesh.position.set(startX, startY, startZ);
-      scene.add(ballMesh);
+      const scBall = getScene(); if (scBall) scBall.add(ballMesh);
 
       // Vệt sáng Neon rực rỡ bám theo quả bóng (Trail Line)
       const trailGeo = new THREE.BufferGeometry();
@@ -1035,7 +1097,7 @@
         opacity: 0.85
       });
       const trailLine = new THREE.Line(trailGeo, trailMat);
-      scene.add(trailLine);
+      if (scBall) scBall.add(trailLine);
 
       // Tính toán lực vung ngẫu nhiên 220 - 325 Yards
       const powerPct = Math.floor(82 + Math.random() * 18);
@@ -1079,8 +1141,8 @@
         if (typeof setTicker === 'function') {
           setTicker(`🎉 BIRDIE! Gạt bóng vào cốc cờ ${holeName} cực kỳ chuẩn xác! +50 XP.`);
         }
-        if (window.Features && Features.toast) {
-          Features.toast(`🏌️ CÚ PUTT TUYỆT HẢO! Bóng lăn êm ái vào lỗ cờ ${holeName}. +50 XP!`, 'success', 4500);
+        if (window.Features && window.Features.toast) {
+          window.Features.toast(`🏌️ CÚ PUTT TUYỆT HẢO! Bóng lăn êm ái vào lỗ cờ ${holeName}. +50 XP!`, 'success', 4500);
         }
         if (typeof sendAction === 'function') {
           sendAction({ action: 'award', xp: 50, reason: `Putting Hole In ${holeName}` });
@@ -1184,8 +1246,11 @@
 
         // Hết thời gian bay: dọn dẹp bóng
         if (b.t >= b.maxT + 2.0 || b.bounces >= 4) {
-          scene.remove(b.mesh);
-          scene.remove(b.trailLine);
+          const scRem = getScene();
+          if (scRem) {
+            scRem.remove(b.mesh);
+            scRem.remove(b.trailLine);
+          }
           if (b.mesh.geometry) b.mesh.geometry.dispose();
           if (b.trailGeo) b.trailGeo.dispose();
           activeBalls.splice(i, 1);
@@ -1196,11 +1261,13 @@
 
   // DỊCH CHUYỂN TỨC THỜI SANG SÂN GOLF QUỐC TẾ
   function teleportToGolf() {
+    const ps = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+
     // 1. Tự động đứng dậy nếu đang ngồi ghế
-    if (localPlayerState && localPlayerState.is_sitting) {
-      localPlayerState.is_sitting = false;
-      localPlayerState.table_id = -1;
-      localPlayerState.seat_id = -1;
+    if (ps && ps.is_sitting) {
+      ps.is_sitting = false;
+      ps.table_id = -1;
+      ps.seat_id = -1;
       const sitStandText = document.getElementById('sitStandText');
       const sitStandBtn = document.getElementById('sitStandBtn');
       if (sitStandText) sitStandText.textContent = 'Ngồi Ghế';
@@ -1208,30 +1275,49 @@
       if (typeof sendAction === 'function') sendAction({ action: 'stand' });
     }
 
+    // Hủy lệnh click chuột đi dở ở bờ Nam để nhân vật không tự chạy ngược về
+    if (typeof clickTarget !== 'undefined') clickTarget = null;
+    if (window.clickTarget !== undefined) window.clickTarget = null;
+
     // 2. Tắt góc nhìn Landmark 81 nếu đang mở
     if (typeof leaveScenicView === 'function') leaveScenicView();
 
     // 3. Đưa nhân vật tới Sân Tập VIP Driving Range (ngắm thẳng Fairway & Landmark 81)
-    localPlayerState.x = -74.0;
-    localPlayerState.z = 124.0;
-    localPlayerState.ry = 0;
-    localPlayerState.groundY = 0.35;
-    if (localCharacter && localCharacter.mesh) {
-      localCharacter.mesh.position.set(-74.0, 0.35, 124.0);
-      localCharacter.mesh.rotation.set(0, 0, 0);
+    if (ps) {
+      ps.x = -74.0;
+      ps.z = 124.0;
+      ps.ry = Math.PI; // Quay mặt về hướng Bắc nhìn Fairway & các bảng cự ly
+      ps.groundY = 0.35;
+    }
+    const lc = window.localCharacter || (typeof localCharacter !== 'undefined' ? localCharacter : null);
+    if (lc && lc.mesh) {
+      lc.mesh.position.set(-74.0, 0.35, 124.0);
+      lc.mesh.rotation.set(0, Math.PI, 0);
     }
 
-    // 4. Snap Camera tức thì bao quát toàn bộ thảm cỏ sân golf
-    cameraYaw = 0;
-    cameraPitch = 0.65;
+    // 4. Snap Camera tức thì bao quát toàn bộ thảm cỏ sân golf (nhìn từ sau lưng về hướng Bắc)
     const isMobile = matchMedia('(pointer: coarse), (max-width: 768px)').matches;
-    cameraDistance = isMobile ? 10.5 : 9.5;
-    if (window.camera && window.cameraLookTarget) {
-      cameraLookTarget.set(-74.0, 1.2, 124.0);
-      const horiz = cameraDistance * Math.cos(cameraPitch);
-      camera.position.set(-74.0, 1.2 + cameraDistance * Math.sin(cameraPitch), 124.0 - horiz);
-      camera.lookAt(cameraLookTarget);
-      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = true;
+    const camDist = isMobile ? 10.5 : 9.5;
+    const camPitchVal = 0.65;
+    const camYawVal = Math.PI; // Camera hướng về phía Bắc (+Z) ngắm thẳng Fairway và Landmark 81
+
+    if (window.setCameraView) {
+      window.setCameraView(camYawVal, camPitchVal, camDist, true);
+    } else {
+      if (typeof cameraYaw !== 'undefined') cameraYaw = camYawVal;
+      if (typeof cameraPitch !== 'undefined') cameraPitch = camPitchVal;
+      if (typeof cameraDistance !== 'undefined') cameraDistance = camDist;
+      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = false;
+    }
+
+    const cam = window.camera || (typeof camera !== 'undefined' ? camera : null);
+    const lookTarget = window.cameraLookTarget || (typeof cameraLookTarget !== 'undefined' ? cameraLookTarget : null);
+    if (cam && lookTarget) {
+      lookTarget.set(-74.0, 1.2, 124.0);
+      const horiz = camDist * Math.cos(camPitchVal);
+      // camYaw = Math.PI => Camera lùi về z = 124 - horiz, nhìn về phía trước +Z
+      cam.position.set(-74.0, 1.2 + camDist * Math.sin(camPitchVal), 124.0 - horiz);
+      cam.lookAt(lookTarget);
     }
 
     // 5. Đồng bộ vị trí với máy chủ
@@ -1241,7 +1327,7 @@
         x: -74.0,
         z: 124.0,
         y: 0.05,
-        ry: 0,
+        ry: Math.PI,
         is_walking: false
       });
     }
@@ -1251,18 +1337,20 @@
     if (typeof setTicker === 'function') {
       setTicker('🌟 Đã đến Sân Golf Quốc Tế Royal Saigon! Bấm [F] trên thảm tập để vung gậy Driver!');
     }
-    if (window.Features && Features.toast) {
-      Features.toast('⛳ Đã đến Sân Golf Quốc Tế! Bước lên thảm cỏ bấm [F] phát bóng Driver.', 'success', 5000);
+    if (window.Features && window.Features.toast) {
+      window.Features.toast('⛳ Đã đến Sân Golf Quốc Tế! Bước lên thảm cỏ bấm [F] phát bóng Driver.', 'success', 5000);
     }
     updateGolfButtonState();
   }
 
   // DỊCH CHUYỂN TỨC THỜI VỀ BẾN QUÁN NHẬU
   function teleportToPub() {
-    if (localPlayerState && localPlayerState.is_sitting) {
-      localPlayerState.is_sitting = false;
-      localPlayerState.table_id = -1;
-      localPlayerState.seat_id = -1;
+    const ps = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+
+    if (ps && ps.is_sitting) {
+      ps.is_sitting = false;
+      ps.table_id = -1;
+      ps.seat_id = -1;
       const sitStandText = document.getElementById('sitStandText');
       const sitStandBtn = document.getElementById('sitStandBtn');
       if (sitStandText) sitStandText.textContent = 'Ngồi Ghế';
@@ -1270,25 +1358,42 @@
       if (typeof sendAction === 'function') sendAction({ action: 'stand' });
     }
 
-    localPlayerState.x = -4.0;
-    localPlayerState.z = 28.0;
-    localPlayerState.ry = Math.PI;
-    localPlayerState.groundY = 0.32;
-    if (localCharacter && localCharacter.mesh) {
-      localCharacter.mesh.position.set(-4.0, 0.32, 28.0);
-      localCharacter.mesh.rotation.set(0, Math.PI, 0);
+    if (typeof clickTarget !== 'undefined') clickTarget = null;
+    if (window.clickTarget !== undefined) window.clickTarget = null;
+
+    if (ps) {
+      ps.x = -4.0;
+      ps.z = 28.0;
+      ps.ry = Math.PI;
+      ps.groundY = 0.32;
+    }
+    const lc = window.localCharacter || (typeof localCharacter !== 'undefined' ? localCharacter : null);
+    if (lc && lc.mesh) {
+      lc.mesh.position.set(-4.0, 0.32, 28.0);
+      lc.mesh.rotation.set(0, Math.PI, 0);
     }
 
-    cameraYaw = 0;
-    cameraPitch = 0.72;
     const isMobile = matchMedia('(pointer: coarse), (max-width: 768px)').matches;
-    cameraDistance = isMobile ? 10.5 : 9.5;
-    if (window.camera && window.cameraLookTarget) {
-      cameraLookTarget.set(-4.0, 1.2, 28.0);
-      const horiz = cameraDistance * Math.cos(cameraPitch);
-      camera.position.set(-4.0, 1.2 + cameraDistance * Math.sin(cameraPitch), 28.0 + horiz);
-      camera.lookAt(cameraLookTarget);
-      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = true;
+    const camDist = isMobile ? 10.5 : 9.5;
+    const camPitchVal = 0.72;
+    const camYawVal = 0;
+
+    if (window.setCameraView) {
+      window.setCameraView(camYawVal, camPitchVal, camDist, true);
+    } else {
+      if (typeof cameraYaw !== 'undefined') cameraYaw = camYawVal;
+      if (typeof cameraPitch !== 'undefined') cameraPitch = camPitchVal;
+      if (typeof cameraDistance !== 'undefined') cameraDistance = camDist;
+      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = false;
+    }
+
+    const cam = window.camera || (typeof camera !== 'undefined' ? camera : null);
+    const lookTarget = window.cameraLookTarget || (typeof cameraLookTarget !== 'undefined' ? cameraLookTarget : null);
+    if (cam && lookTarget) {
+      lookTarget.set(-4.0, 1.2, 28.0);
+      const horiz = camDist * Math.cos(camPitchVal);
+      cam.position.set(-4.0, 1.2 + camDist * Math.sin(camPitchVal), 28.0 + horiz);
+      cam.lookAt(lookTarget);
     }
 
     if (typeof sendAction === 'function') {
@@ -1306,19 +1411,23 @@
     if (typeof setTicker === 'function') {
       setTicker('🍻 Đã trở về Bến Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
     }
-    if (window.Features && Features.toast) {
-      Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
+    if (window.Features && window.Features.toast) {
+      window.Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
     }
     updateGolfButtonState();
   }
 
-  // ĐIỀU HƯỚNG VỊ TRÍ THÔNG MINH
+  // ĐIỀU HƯỚNG VỊ TRÍ THÔNG MINH (CHỐNG TOGGLE KÉP BẰNG DEBOUNCE 800MS)
+  let lastToggleTime = 0;
   function toggleGolfLocation() {
-    // Nếu đang ở quán hoặc ở gần cầu chưa vào sân tập (z < 110) -> Sang ngay Sân Golf!
-    if (!localPlayerState || localPlayerState.z < 110) {
+    const now = Date.now();
+    if (now - lastToggleTime < 800) return;
+    lastToggleTime = now;
+
+    const ps = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+    if (!ps || ps.z < 110) {
       teleportToGolf();
     } else {
-      // Đã ở sâu trong sân golf -> Quay về Quán Nhậu
       teleportToPub();
     }
   }
@@ -1335,32 +1444,32 @@
   // Cập nhật nhãn nút bấm nhẹ nhàng, không hủy diệt DOM của nút
   let lastGolfState = null;
   function updateGolfButtonState() {
-    const inGolf = (localPlayerState && localPlayerState.z >= 110);
+    const ps = window.localPlayerState || (typeof localPlayerState !== 'undefined' ? localPlayerState : null);
+    const inGolf = (ps && ps.z >= 110);
     if (inGolf === lastGolfState) return;
     lastGolfState = inGolf;
-
     const golfBtnText = document.getElementById('golfBtnText');
     const golfBtn = document.getElementById('golfBtn');
-    if (golfBtnText) {
-      golfBtnText.textContent = inGolf ? 'Về Quán' : 'Sân Golf';
-    }
-    if (golfBtn) {
-      golfBtn.title = inGolf ? 'Quay về Quán Nhậu Bờ Sông' : 'Di chuyển nhanh sang Sân Golf Quốc Tế Royal Saigon';
-      if (inGolf) golfBtn.classList.add('in-golf-mode');
-      else golfBtn.classList.remove('in-golf-mode');
+    if (inGolf) {
+      if (golfBtnText) golfBtnText.textContent = 'Về Quán';
+      if (golfBtn) {
+        golfBtn.classList.add('in-golf-mode');
+        golfBtn.title = 'Trở về Quán Nhậu Bờ Sông';
+      }
+    } else {
+      if (golfBtnText) golfBtnText.textContent = 'Sân Golf';
+      if (golfBtn) {
+        golfBtn.classList.remove('in-golf-mode');
+        golfBtn.title = 'Sang Sân Golf Quốc Tế Royal Saigon 18 Lỗ';
+      }
     }
   }
 
-  // Kết nối nút bấm với cơ chế chống rung (debounce) mượt mà
-  let lastToggleTime = 0;
   function handleGolfButtonClick(e) {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    const now = performance.now();
-    if (now - lastToggleTime < 450) return;
-    lastToggleTime = now;
     toggleGolfLocation();
   }
 
@@ -1369,31 +1478,30 @@
     if (golfBtn && !golfBtn._golfBound) {
       golfBtn._golfBound = true;
       golfBtn.addEventListener('click', handleGolfButtonClick);
-      golfBtn.addEventListener('pointerup', handleGolfButtonClick);
     }
     updateGolfButtonState();
   }
 
   // Đăng ký cập nhật nhịp đập khung hình
-  if (window.Features && Features.addTick) {
-    Features.addTick((delta, t) => {
+  if (window.Features && window.Features.addTick) {
+    window.Features.addTick((delta, t) => {
       for (const a of animators) a(delta, t);
       if (window.GolfSystem) window.GolfSystem.update(delta, t);
     });
   }
 
   // Khởi chạy khi môi trường 3D sẵn sàng
-  if (window.PubLoader && PubLoader.defer) {
-    PubLoader.defer(buildGolfWorld, 'buildGolfWorld');
+  if (window.PubLoader && window.PubLoader.defer) {
+    window.PubLoader.defer(buildGolfWorld, 'buildGolfWorld');
   } else {
-    setTimeout(buildGolfWorld, 500);
+    setTimeout(buildGolfWorld, 300);
   }
 
   document.addEventListener('DOMContentLoaded', initGolfButtons);
-  if (window.PubLoader && PubLoader.defer) {
-    PubLoader.defer(initGolfButtons, 'initGolfButtons');
+  if (window.PubLoader && window.PubLoader.defer) {
+    window.PubLoader.defer(initGolfButtons, 'initGolfButtons');
   } else {
-    setTimeout(initGolfButtons, 600);
+    setTimeout(initGolfButtons, 400);
   }
 
 })();

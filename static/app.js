@@ -378,7 +378,7 @@ function playPourBeerSound() {
 // ========================================================
 // 2. Three.js 3D Scene Initialization (Cinematic PBR Edition)
 // ========================================================
-const scene = new THREE.Scene();
+const scene = window.scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070b14);
 scene.fog = new THREE.FogExp2(0x070b14, 0.013);
 
@@ -2496,7 +2496,7 @@ peeSpots.push(
 // ========================================================
 // 5.5. CẢNH VẬT ĐƯỜNG PHỐ SÀI GÒN (KARAOKE, MASSAGE, WC, CỘT ĐIỆN)
 // ========================================================
-const pubDetails = createPubDetails(scene);
+const pubDetails = window.pubDetails = createPubDetails(scene);
 
 // Vật cản cứng để không đi xuyên: tòa nhà Karaoke/Massage, cột điện, xe nước mía, xe máy đậu vỉa hè.
 // (Tường WC đã có sẵn trong pubDetails.obstacles; cây và cột đèn công viên thêm khi dựng công viên.)
@@ -3571,11 +3571,20 @@ try {
   const saved = localStorage.getItem('pub_comfort');
   if (saved !== null && !reducedMotion.matches) comfortMode = saved === 'true';
 } catch (_) { /* Storage may be unavailable in private browsing. */ }
-let cameraYaw = 0;
-let cameraPitch = 0.72; // Góc nhìn Isometric 3/4 từ trên xuống thoáng đãng như Nhà Tù Online
-let cameraDistance = mobileControls ? 10.5 : 9.8;
+let cameraYaw = window.cameraYaw = 0;
+let cameraPitch = window.cameraPitch = 0.72; // Góc nhìn Isometric 3/4 từ trên xuống thoáng đãng như Nhà Tù Online
+let cameraDistance = window.cameraDistance = mobileControls ? 10.5 : 9.8;
 const cameraPointers = new Map();
-const cameraLookTarget = new THREE.Vector3();
+const cameraLookTarget = window.cameraLookTarget = new THREE.Vector3();
+
+window.setCameraView = function(yaw, pitch, distance, snapImmediate) {
+  if (yaw !== undefined && yaw !== null) cameraYaw = window.cameraYaw = yaw;
+  if (pitch !== undefined && pitch !== null) cameraPitch = window.cameraPitch = pitch;
+  if (distance !== undefined && distance !== null) cameraDistance = window.cameraDistance = Math.max(4.0, Math.min(42.0, distance));
+  if (snapImmediate) {
+    cameraTargetReady = false;
+  }
+};
 let cameraTargetReady = false;
 let wasInWC = false;
 let pinchDistance = 0;
@@ -5458,7 +5467,10 @@ if (viewRiverBtn) {
 if (golfBtn) {
   golfBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    if (window.GolfSystem && window.GolfSystem.toggleGolfLocation) {
+    if (typeof clickTarget !== 'undefined') clickTarget = null;
+    if (window.toggleGolfLocation) {
+      window.toggleGolfLocation();
+    } else if (window.GolfSystem && window.GolfSystem.toggleGolfLocation) {
       window.GolfSystem.toggleGolfLocation();
     }
   });
