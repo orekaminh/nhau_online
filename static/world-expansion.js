@@ -3461,41 +3461,41 @@
     scene.add(saunaSign);
 
     // 8. HỒ BƠI 100M VÔ CỰC (INFINITY POOL 100M OVERLOOKING SAIGON RIVER & LANDMARK 81)
-    // Trải dài từ x = -10 đến x = 90 (ĐÚNG 100 MÉT!), chiều rộng z = 25.5 đến 35.5 (10m)
+    // Dời sang phía Đông x = 12 đến x = 112 (ĐÚNG 100 MÉT!), cách chân cầu Bạch Đằng (x = -4) tận 16m rộng thoáng!
     const poolGroup = new THREE.Group();
-    poolGroup.position.set(40, 0, 30.5);
+    poolGroup.position.set(62, 0, 30.5);
 
     // Thành hồ bằng gỗ Teak chống trượt & Đá cẩm thạch trắng
     const teakMat = std(0x78350f, { roughness: 0.7 });
     const whiteMarble = std(0xf8fafc, { roughness: 0.2 });
 
     // Sàn gỗ bao quanh 100m bên bờ (z = 25.2)
-    box(102.0, 0.35, 1.2, teakMat, 40, 0.18, 25.1);
+    box(102.0, 0.35, 1.2, teakMat, 62, 0.18, 25.1);
 
     // Đáy hồ bơi màu xanh ngọc lam Caribbean
-    const poolFloor = box(100.0, 0.1, 10.0, std(0x0284c7, { roughness: 0.4 }), 40, -0.05, 30.5);
+    const poolFloor = box(100.0, 0.1, 10.0, std(0x0284c7, { roughness: 0.4 }), 62, -0.05, 30.5);
 
     // Nước hồ bơi vô cực trong vắt
-    const poolWater = box(100.0, 0.28, 9.8, waterMat, 40, 0.16, 30.5);
+    const poolWater = box(100.0, 0.28, 9.8, waterMat, 62, 0.16, 30.5);
 
     // Vách kính tràn viền vô cực (Infinity Edge Glass Weir) ở mép ngoài sông (z = 35.5)
-    const infinityGlass = box(100.0, 0.85, 0.08, std(0xa5f3fc, { transparent: true, opacity: 0.45, roughness: 0.05 }), 40, 0.55, 35.5);
+    const infinityGlass = box(100.0, 0.85, 0.08, std(0xa5f3fc, { transparent: true, opacity: 0.45, roughness: 0.05 }), 62, 0.55, 35.5);
     // Máng hứng nước tràn phản chiếu róc rách
-    box(100.0, 0.2, 0.6, std(0x0369a1, { roughness: 0.3 }), 40, 0.02, 35.85);
+    box(100.0, 0.2, 0.6, std(0x0369a1, { roughness: 0.3 }), 62, 0.02, 35.85);
 
-    // Hai vách kính hai đầu hồi hồ bơi (x = -10 và x = 90)
-    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), -10, 0.55, 30.5);
-    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), 90, 0.55, 30.5);
+    // Hai vách kính hai đầu hồi hồ bơi (x = 12 và x = 112)
+    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), 12, 0.55, 30.5);
+    box(0.12, 0.85, 10.0, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), 112, 0.55, 30.5);
 
     // 8 Dải đèn LED âm nước phát sáng xanh ngọc lung linh trong đêm
     const poolLeds = [];
-    for (let px = -5; px <= 85; px += 13) {
+    for (let px = 18; px <= 106; px += 13) {
       const led = box(0.8, 0.04, 8.0, glow(0x38bdf8), px, 0.02, 30.5);
       poolLeds.push(led);
     }
 
     // 4 Chòi VIP Cabana ven hồ bơi với rèm trắng rủ bay theo gió
-    for (const cx of [6, 26, 56, 78]) {
+    for (const cx of [18, 42, 72, 98]) {
       const cab = new THREE.Group();
       cab.position.set(cx, 0.35, 25.1);
       box(3.2, 0.1, 2.6, teakMat, 0, 0.05, 0, cab); // Sàn gỗ
@@ -3514,19 +3514,19 @@
     }
 
     // Giường tắm nắng ngâm nước (Aqua Sun Loungers) tại thềm nước cạn
-    for (let lx = 14; lx <= 44; lx += 4.5) {
+    for (let lx = 26; lx <= 56; lx += 4.5) {
       const lounger = box(1.8, 0.22, 0.75, whiteMarble, lx, 0.22, 27.2);
       lounger.rotation.y = 0.1;
     }
 
-    // Cầu nhảy hồ bơi (Diving Board & Teak Ladder) ở x = 20, z = 25.4
-    const diveBoard = box(0.7, 0.08, 3.2, goldMat, 20, 0.85, 27.0);
-    box(0.08, 0.6, 0.08, std(0x475569), 19.8, 0.55, 25.6);
-    box(0.08, 0.6, 0.08, std(0x475569), 20.2, 0.55, 25.6);
+    // Cầu nhảy hồ bơi (Diving Board & Teak Ladder) ở x = 34, z = 25.4
+    const diveBoard = box(0.7, 0.08, 3.2, goldMat, 34, 0.85, 27.0);
+    box(0.08, 0.6, 0.08, std(0x475569), 33.8, 0.55, 25.6);
+    box(0.08, 0.6, 0.08, std(0x475569), 34.2, 0.55, 25.6);
 
     // Phao hồng hạc khổng lồ bơm hơi (Giant Inflatable Flamingo Float)
     const floatGroup = new THREE.Group();
-    floatGroup.position.set(38, 0.25, 31);
+    floatGroup.position.set(60, 0.25, 31);
     const floatRing = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.32, 10, 20), std(0xf43f5e, { roughness: 0.3 }));
     floatRing.rotation.x = Math.PI / 2;
     floatGroup.add(floatRing);
@@ -3540,15 +3540,15 @@
     if (window.WORLD_BOUNDS) {
       window.WORLD_BOUNDS.gym = {
         constrain(x, z) {
-          // Hồ bơi 100m vô cực mở rộng tới z = 35.8
-          if (x >= -10.2 && x <= 90.2 && z >= 24.5 && z <= 35.8) {
-            return { x: Math.max(-9.6, Math.min(89.6, x)), z: Math.min(35.5, z) };
+          // Hồ bơi 100m vô cực mở rộng từ x = 11.8 đến x = 112.2 (hoàn toàn giải phóng chân cầu ở x = -4)
+          if (x >= 11.8 && x <= 112.2 && z >= 24.5 && z <= 35.8) {
+            return { x: Math.max(12.4, Math.min(111.6, x)), z: Math.min(35.5, z) };
           }
           return null;
         },
         groundY(x, z) {
           // Bơi trong hồ bơi 100m vô cực (mặt nước sâu ngang hông, bơi lội tung tăng)
-          if (x >= -9.8 && x <= 89.8 && z >= 25.8 && z <= 35.4) {
+          if (x >= 12.2 && x <= 111.8 && z >= 25.8 && z <= 35.4) {
             return 0.06;
           }
           // Sàn CLB Centuryon cao ráo sang trọng

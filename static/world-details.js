@@ -12,14 +12,15 @@ window.WORLD_BOUNDS = {
       const gf = this.golf.constrain(x, z);
       if (gf) return gf;
     }
+    // Ưu tiên cầu đi bộ trước để người chơi bước lên cầu mượt mà không bị kẹt
+    if (this.bridge && z > 32.5) {
+      const r = this.bridge.constrain(x, z);
+      if (r) return r;
+    }
     const cx = Math.max(this.minX, Math.min(this.maxX, x));
     if (this.gym) {
       const g = this.gym.constrain(cx, z);
       if (g) return g;
-    }
-    if (this.bridge && z > this.maxZ - 0.7) {
-      const r = this.bridge.constrain(x, z);
-      if (r) return r;
     }
     return { x: cx, z: Math.max(this.minZAt(cx), Math.min(this.maxZ - 0.7, z)) };
   },
@@ -27,6 +28,11 @@ window.WORLD_BOUNDS = {
     if (this.golf) {
       const gy = this.golf.groundY(x, z);
       if (gy !== null && gy !== undefined) return gy;
+    }
+    // Độ cao mặt cầu khi đi bộ qua sông
+    if (this.bridge && z > 32.5) {
+      const by = this.bridge.groundY(x, z);
+      if (by > 0.3) return by;
     }
     if (this.gym) {
       const gy = this.gym.groundY(x, z);

@@ -638,12 +638,12 @@
       return buggy;
     }
 
-    // A. XE ĐIỆN SHUTTLE 1: ĐẬU TẠI BẾN QUÁN NHẬU (BỜ NAM - x = -4, z = 33)
+    // A. XE ĐIỆN SHUTTLE 1: ĐẬU TẠI BÃI XE VEN CẦU TÀU (x = -9.5, z = 28.5) - KHÔNG CHẮN ĐƯỜNG LÊN CẦU!
     const pubShuttleBuggy = createGolfBuggy(0xf8fafc, 0x10b981);
-    pubShuttleBuggy.position.set(-4.5, 0.32, 33.2);
-    pubShuttleBuggy.rotation.y = 0;
+    pubShuttleBuggy.position.set(-9.5, 0.32, 28.5);
+    pubShuttleBuggy.rotation.y = 0.25;
     scene.add(pubShuttleBuggy);
-    obstacle(-4.5, 33.2, 2.2, 3.2);
+    obstacle(-9.5, 28.5, 2.2, 3.0);
 
     // Biển đón xe điện tại bến Quán Nhậu
     const shuttleSignPub = signPlane([
@@ -651,7 +651,7 @@
       ['Đưa đón miễn phí sang Sân Golf Quốc Tế', 26, 92, false],
       ['Bấm [F] để lên xe vi vu qua sông', 24, 132, false]
     ], 3.8, 1.5, 512, 180, '#34d399', '#052e16', '#10b981');
-    shuttleSignPub.position.set(-2.2, 1.8, 33.2);
+    shuttleSignPub.position.set(-9.5, 1.8, 30.6);
     shuttleSignPub.rotation.y = Math.PI;
     scene.add(shuttleSignPub);
 
@@ -810,7 +810,7 @@
 
   window.GolfSystem = {
     // Vị trí các điểm tương tác chính
-    pubShuttlePos: { x: -4.5, z: 33.2 },     // Điểm đón xe điện tại Quán Nhậu
+    pubShuttlePos: { x: -9.5, z: 28.5 },     // Điểm đón xe điện tại Quán Nhậu
     resortShuttlePos: { x: -54.0, z: 106.0 }, // Điểm đón xe điện tại Sân Golf
     teeBox1Pos: { x: -115.0, z: 115.0 },     // Tee Box Hố 1
     drivingRangePos: { x: -74.0, z: 124.0 }, // Khoang tập Driving Range
@@ -893,7 +893,7 @@
         }
         setTimeout(() => {
           localPlayerState.x = -4.0;
-          localPlayerState.z = 31.0;
+          localPlayerState.z = 30.0;
           localPlayerState.ry = Math.PI;
           if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 31.0);
           if (typeof setTicker === 'function') {
@@ -1179,7 +1179,7 @@
         if (localPlayerState && localPlayerState.z > 80) {
           // Đang ở sân golf -> về quán
           localPlayerState.x = -4.0;
-          localPlayerState.z = 31.0;
+          localPlayerState.z = 30.0;
           localPlayerState.ry = Math.PI;
           if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 31.0);
           if (window.Features && Features.toast) Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
