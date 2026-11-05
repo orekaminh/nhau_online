@@ -942,22 +942,11 @@
           setTicker('🚗 Xe điện VIP đang đưa bạn qua Cầu Đi Bộ sang Sân Golf Quốc Tế...');
         }
         if (window.Features && Features.toast) {
-          Features.toast('⛳ Đang di chuyển sang Sân Golf Hoàng Gia Royal Saigon!', 'info', 3000);
+          Features.toast('⛳ Đang di chuyển sang Sân Golf Hoàng Gia Royal Saigon!', 'info', 2500);
         }
         setTimeout(() => {
-          localPlayerState.x = -52.0;
-          localPlayerState.z = 106.0;
-          localPlayerState.ry = 0;
-          if (localCharacter) localCharacter.mesh.position.set(-52.0, 0.35, 106.0);
-          playGolfSound('cheer_fanfare');
-          if (typeof setTicker === 'function') {
-            setTicker('🌟 Chào mừng đại gia đến Sân Golf Quốc Tế Royal Saigon & Country Club!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🏌️ Đã đến Sân Golf Quốc Tế 18 Lỗ! Không gian bao la xanh mướt tuyệt đẹp.', 'success', 5000);
-          }
-          updateGolfButtonState();
-        }, 600);
+          teleportToGolf();
+        }, 400);
         return true;
       }
 
@@ -968,15 +957,8 @@
           setTicker('🚗 Xe điện đang đưa bạn về lại Bến Quán Nhậu Bờ Sông...');
         }
         setTimeout(() => {
-          localPlayerState.x = -4.0;
-          localPlayerState.z = 30.0;
-          localPlayerState.ry = Math.PI;
-          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 30.0);
-          if (typeof setTicker === 'function') {
-            setTicker('🍻 Đã trở về Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
-          }
-          updateGolfButtonState();
-        }, 600);
+          teleportToPub();
+        }, 400);
         return true;
       }
 
@@ -1212,57 +1194,182 @@
     }
   };
 
-  // Cập nhật nhãn nút bấm HUD linh hoạt theo vị trí người chơi
-  function updateGolfButtonState() {
-    const golfBtn = document.getElementById('golfBtn');
-    if (!golfBtn) return;
-    const inGolf = (localPlayerState && localPlayerState.z > 70);
-    golfBtn.innerHTML = inGolf ? '🍻 Về Quán' : '⛳ Sân Golf';
-    golfBtn.title = inGolf ? 'Quay về Quán Nhậu Bờ Sông' : 'Di chuyển nhanh sang Sân Golf Quốc Tế Royal Saigon';
-    if (inGolf) {
-      golfBtn.classList.add('in-golf-mode');
+  // DỊCH CHUYỂN TỨC THỜI SANG SÂN GOLF QUỐC TẾ
+  function teleportToGolf() {
+    // 1. Tự động đứng dậy nếu đang ngồi ghế
+    if (localPlayerState && localPlayerState.is_sitting) {
+      localPlayerState.is_sitting = false;
+      localPlayerState.table_id = -1;
+      localPlayerState.seat_id = -1;
+      const sitStandText = document.getElementById('sitStandText');
+      const sitStandBtn = document.getElementById('sitStandBtn');
+      if (sitStandText) sitStandText.textContent = 'Ngồi Ghế';
+      if (sitStandBtn) sitStandBtn.classList.remove('is-sitting');
+      if (typeof sendAction === 'function') sendAction({ action: 'stand' });
+    }
+
+    // 2. Tắt góc nhìn Landmark 81 nếu đang mở
+    if (typeof leaveScenicView === 'function') leaveScenicView();
+
+    // 3. Đưa nhân vật tới Sân Tập VIP Driving Range (ngắm thẳng Fairway & Landmark 81)
+    localPlayerState.x = -74.0;
+    localPlayerState.z = 124.0;
+    localPlayerState.ry = 0;
+    localPlayerState.groundY = 0.35;
+    if (localCharacter && localCharacter.mesh) {
+      localCharacter.mesh.position.set(-74.0, 0.35, 124.0);
+      localCharacter.mesh.rotation.set(0, 0, 0);
+    }
+
+    // 4. Snap Camera tức thì bao quát toàn bộ thảm cỏ sân golf
+    cameraYaw = 0;
+    cameraPitch = 0.65;
+    const isMobile = matchMedia('(pointer: coarse), (max-width: 768px)').matches;
+    cameraDistance = isMobile ? 10.5 : 9.5;
+    if (window.camera && window.cameraLookTarget) {
+      cameraLookTarget.set(-74.0, 1.2, 124.0);
+      const horiz = cameraDistance * Math.cos(cameraPitch);
+      camera.position.set(-74.0, 1.2 + cameraDistance * Math.sin(cameraPitch), 124.0 - horiz);
+      camera.lookAt(cameraLookTarget);
+      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = true;
+    }
+
+    // 5. Đồng bộ vị trí với máy chủ
+    if (typeof sendAction === 'function') {
+      sendAction({
+        action: 'move',
+        x: -74.0,
+        z: 124.0,
+        y: 0.05,
+        ry: 0,
+        is_walking: false
+      });
+    }
+
+    // 6. Âm thanh rộn ràng & thông báo
+    playGolfSound('cheer_fanfare');
+    if (typeof setTicker === 'function') {
+      setTicker('🌟 Đã đến Sân Golf Quốc Tế Royal Saigon! Bấm [F] trên thảm tập để vung gậy Driver!');
+    }
+    if (window.Features && Features.toast) {
+      Features.toast('⛳ Đã đến Sân Golf Quốc Tế! Bước lên thảm cỏ bấm [F] phát bóng Driver.', 'success', 5000);
+    }
+    updateGolfButtonState();
+  }
+
+  // DỊCH CHUYỂN TỨC THỜI VỀ BẾN QUÁN NHẬU
+  function teleportToPub() {
+    if (localPlayerState && localPlayerState.is_sitting) {
+      localPlayerState.is_sitting = false;
+      localPlayerState.table_id = -1;
+      localPlayerState.seat_id = -1;
+      const sitStandText = document.getElementById('sitStandText');
+      const sitStandBtn = document.getElementById('sitStandBtn');
+      if (sitStandText) sitStandText.textContent = 'Ngồi Ghế';
+      if (sitStandBtn) sitStandBtn.classList.remove('is-sitting');
+      if (typeof sendAction === 'function') sendAction({ action: 'stand' });
+    }
+
+    localPlayerState.x = -4.0;
+    localPlayerState.z = 28.0;
+    localPlayerState.ry = Math.PI;
+    localPlayerState.groundY = 0.32;
+    if (localCharacter && localCharacter.mesh) {
+      localCharacter.mesh.position.set(-4.0, 0.32, 28.0);
+      localCharacter.mesh.rotation.set(0, Math.PI, 0);
+    }
+
+    cameraYaw = 0;
+    cameraPitch = 0.72;
+    const isMobile = matchMedia('(pointer: coarse), (max-width: 768px)').matches;
+    cameraDistance = isMobile ? 10.5 : 9.5;
+    if (window.camera && window.cameraLookTarget) {
+      cameraLookTarget.set(-4.0, 1.2, 28.0);
+      const horiz = cameraDistance * Math.cos(cameraPitch);
+      camera.position.set(-4.0, 1.2 + cameraDistance * Math.sin(cameraPitch), 28.0 + horiz);
+      camera.lookAt(cameraLookTarget);
+      if (typeof cameraTargetReady !== 'undefined') cameraTargetReady = true;
+    }
+
+    if (typeof sendAction === 'function') {
+      sendAction({
+        action: 'move',
+        x: -4.0,
+        z: 28.0,
+        y: 0.02,
+        ry: Math.PI,
+        is_walking: false
+      });
+    }
+
+    playGolfSound('putt');
+    if (typeof setTicker === 'function') {
+      setTicker('🍻 Đã trở về Bến Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
+    }
+    if (window.Features && Features.toast) {
+      Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
+    }
+    updateGolfButtonState();
+  }
+
+  // ĐIỀU HƯỚNG VỊ TRÍ THÔNG MINH
+  function toggleGolfLocation() {
+    // Nếu đang ở quán hoặc ở gần cầu chưa vào sân tập (z < 110) -> Sang ngay Sân Golf!
+    if (!localPlayerState || localPlayerState.z < 110) {
+      teleportToGolf();
     } else {
-      golfBtn.classList.remove('in-golf-mode');
+      // Đã ở sâu trong sân golf -> Quay về Quán Nhậu
+      teleportToPub();
     }
   }
 
-  // Kết nối nút bấm nhanh trên giao diện
+  window.teleportToGolf = teleportToGolf;
+  window.teleportToPub = teleportToPub;
+  window.toggleGolfLocation = toggleGolfLocation;
+  if (window.GolfSystem) {
+    window.GolfSystem.teleportToGolf = teleportToGolf;
+    window.GolfSystem.teleportToPub = teleportToPub;
+    window.GolfSystem.toggleGolfLocation = toggleGolfLocation;
+  }
+
+  // Cập nhật nhãn nút bấm nhẹ nhàng, không hủy diệt DOM của nút
+  let lastGolfState = null;
+  function updateGolfButtonState() {
+    const inGolf = (localPlayerState && localPlayerState.z >= 110);
+    if (inGolf === lastGolfState) return;
+    lastGolfState = inGolf;
+
+    const golfBtnText = document.getElementById('golfBtnText');
+    const golfBtn = document.getElementById('golfBtn');
+    if (golfBtnText) {
+      golfBtnText.textContent = inGolf ? 'Về Quán' : 'Sân Golf';
+    }
+    if (golfBtn) {
+      golfBtn.title = inGolf ? 'Quay về Quán Nhậu Bờ Sông' : 'Di chuyển nhanh sang Sân Golf Quốc Tế Royal Saigon';
+      if (inGolf) golfBtn.classList.add('in-golf-mode');
+      else golfBtn.classList.remove('in-golf-mode');
+    }
+  }
+
+  // Kết nối nút bấm với cơ chế chống rung (debounce) mượt mà
+  let lastToggleTime = 0;
+  function handleGolfButtonClick(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = performance.now();
+    if (now - lastToggleTime < 450) return;
+    lastToggleTime = now;
+    toggleGolfLocation();
+  }
+
   function initGolfButtons() {
     const golfBtn = document.getElementById('golfBtn');
     if (golfBtn && !golfBtn._golfBound) {
       golfBtn._golfBound = true;
-      golfBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const inGolf = (localPlayerState && localPlayerState.z > 70);
-        if (inGolf) {
-          // Đang ở sân golf -> về quán
-          localPlayerState.x = -4.0;
-          localPlayerState.z = 30.0;
-          localPlayerState.ry = Math.PI;
-          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 30.0);
-          playGolfSound('putt');
-          if (typeof setTicker === 'function') {
-            setTicker('🍻 Đã trở về Bến Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
-          }
-        } else {
-          // Đang ở quán -> sang sân golf
-          localPlayerState.x = -52.0;
-          localPlayerState.z = 106.0;
-          localPlayerState.ry = 0;
-          if (localCharacter) localCharacter.mesh.position.set(-52.0, 0.35, 106.0);
-          playGolfSound('cheer_fanfare');
-          if (typeof setTicker === 'function') {
-            setTicker('🌟 Chào mừng đại gia đến Sân Golf Quốc Tế Royal Saigon & Country Club!');
-          }
-          if (window.Features && Features.toast) {
-            Features.toast('⛳ Đã đến Sân Golf Quốc Tế Royal Saigon! Không gian bao la xanh mướt tuyệt đẹp.', 'success', 5000);
-          }
-        }
-        updateGolfButtonState();
-      });
+      golfBtn.addEventListener('click', handleGolfButtonClick);
+      golfBtn.addEventListener('pointerup', handleGolfButtonClick);
     }
     updateGolfButtonState();
   }

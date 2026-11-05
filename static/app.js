@@ -3783,7 +3783,8 @@ extraActions.id = 'extraActions';
 extraActions.className = 'extra-actions';
 const actionsGroup = document.querySelector('.hud-actions-group');
 actionsGroup.appendChild(extraActions);
-for (const button of [eatSnackBtn, peeBtn, vomitBtn, viewRiverBtn, soberBtn, billBtn]) extraActions.appendChild(button);
+const golfBtn = document.getElementById('golfBtn');
+for (const button of [eatSnackBtn, peeBtn, vomitBtn, viewRiverBtn, golfBtn, soberBtn, billBtn].filter(Boolean)) extraActions.appendChild(button);
 const moreActionsBtn = document.getElementById('moreActionsBtn');
 // Keep the toggle next to the cheer button so the hidden skills are easy to find.
 actionsGroup.appendChild(moreActionsBtn);
@@ -5452,6 +5453,15 @@ window.addEventListener('click', (e) => {
 
 if (viewRiverBtn) {
   viewRiverBtn.addEventListener('click', toggleScenicView);
+}
+
+if (golfBtn) {
+  golfBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.GolfSystem && window.GolfSystem.toggleGolfLocation) {
+      window.GolfSystem.toggleGolfLocation();
+    }
+  });
 }
 
 // 1 2 3 DÔÔÔ!
