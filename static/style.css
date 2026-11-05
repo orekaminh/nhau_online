@@ -1714,6 +1714,18 @@ body.comfort-mode .tag-bubble { animation: none; opacity: 1; transform: none; }
   border-color: #6ee7b7 !important;
 }
 
+.btn-golf.in-golf-mode {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 100%) !important;
+  color: #fffbeb !important;
+  border-color: #fde047 !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45) !important;
+}
+
+.btn-golf.in-golf-mode:hover {
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.65) !important;
+  border-color: #fef08a !important;
+}
+
 .golf-shot-hud {
   position: fixed;
   top: 85px;

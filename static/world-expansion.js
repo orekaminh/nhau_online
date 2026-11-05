@@ -2699,8 +2699,12 @@
         return { x: BR.A.x + BR.dir.x * tt * BR.len + BR.nrm.x * l, z: BR.A.z + BR.dir.z * tt * BR.len + BR.nrm.z * l };
       }
       if (z > 60) {
+        if (window.WORLD_BOUNDS && window.WORLD_BOUNDS.golf) {
+          const gf = window.WORLD_BOUNDS.golf.constrain(x, z);
+          if (gf) return gf;
+        }
         const L = BR.landing;
-        return { x: Math.max(L.x0 + 0.5, Math.min(L.x1 - 0.5, x)), z: Math.max(L.z0, Math.min(L.z1 - 0.6, z)) };
+        return { x: Math.max(-193, Math.min(-32, x)), z: Math.max(L.z0, Math.min(223, z)) };
       }
       return null;
     },
@@ -2988,12 +2992,13 @@
     scene.add(r1, r2);
     const inner = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.12, 8, 40), glow(0xffd98a));
     inner.rotation.x = Math.PI / 2; inner.scale.set(1.3, 0.9, 1); inner.position.set(cx + 1.5, 4.0, cz + 0.8); scene.add(inner);
-    for (const [px, pz, h] of [[cx + 5.2, cz - 1.5, 4.1], [cx + 5.0, cz + 3.0, 4.1], [cx - 1.0, cz + 3.4, 4.1], [cx - 5.8, cz - 0.4, 3.4], [cx - 2.0, cz - 2.0, 3.4]]) {
+    // Cột đỡ mái vòm (chừa khoảng trống rộng 12m ở giữa để đi thẳng sang sân golf)
+    for (const [px, pz, h] of [[cx + 6.2, cz - 1.5, 4.1], [cx + 6.0, cz + 3.0, 4.1], [cx - 6.8, cz - 0.4, 3.4], [cx - 6.5, cz + 3.0, 3.4]]) {
       cyl(0.22, 0.26, h, roofMat, px, h / 2 + 0.3, pz);
       obstacle(px, pz, 0.6, 0.6);
     }
-    // Cây xanh + đèn bờ đối diện
-    const tr = [[L.x0 + 1.5, L.z1 - 1.2], [L.x0 + 5, L.z1 - 0.8], [L.x1 - 1.5, L.z1 - 1.2], [L.x1 - 5, L.z1 - 0.8], [cx + 8, cz + 3.5], [cx - 8.5, cz + 3.2]];
+    // Cây xanh + đèn bờ đối diện (giải tỏa lối đi thông thoáng sang Sân Golf Quốc Tế)
+    const tr = [[L.x0 + 1.5, L.z1 - 1.2], [L.x1 - 1.5, L.z1 - 1.2], [cx + 8.5, cz + 3.5], [cx - 8.5, cz + 3.2]];
     tr.forEach(([x, z], i) => {
       const t = Veg.makeTree(i % 3 === 2 ? 'palm' : (i % 2 ? 'broadleaf' : 'flame'), 300 + i, 0.9);
       t.position.set(x, 0.32, z);

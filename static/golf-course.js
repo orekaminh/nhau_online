@@ -2,9 +2,11 @@
 // ROYAL SAIGON GOLF & COUNTRY CLUB
 // Sân Golf Quốc Tế 18 Lỗ Bán Đảo Sông Sài Gòn & View Landmark 81
 // Bao gồm:
-//  - Fairway & Rough uốn lượn rộng 150m x 120m, cỏ nhung cao cấp
+//  - Fairway & Rough uốn lượn rộng 165m x 130m, cỏ nhung phát sáng cao cấp ban đêm
+//  - Hệ thống đèn pha cao áp sân golf ban đêm chuyên nghiệp (Championship Stadium Floodlights)
+//  - Cổng chào Hoàng Gia 24K rực rỡ đón khách ngay chân Cầu Đi Bộ
 //  - 3 Bẫy cát Sand Bunkers uốn cong tự nhiên
-//  - Hồ nước bẫy nước (Water Hazard) với đài phun nước phát sáng
+//  - Hồ nước bẫy nước (Water Hazard) với đài phun nước phát sáng đổi màu
 //  - Cầu gỗ resort uốn cong bắc qua Island Green Hole 9
 //  - Cờ lỗ kim loại tung bay (Hole 1, Hole 9, Hole 18) & Cốc golf
 //  - Sân tập VIP Driving Range 2 tầng với 6 khoang phát bóng, lưới an toàn 16m
@@ -72,31 +74,32 @@
       whiteNoise.buffer = noiseBuffer;
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(400, now);
+      filter.frequency.setValueAtTime(450, now);
       filter.frequency.exponentialRampToValueAtTime(1400, now + 0.12);
-      filter.Q.value = 3.0;
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.001, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.35, now + 0.1);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      filter.frequency.exponentialRampToValueAtTime(300, now + 0.22);
+      filter.Q.value = 3.5;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
       whiteNoise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(ctx.destination);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
       whiteNoise.start(now);
+      whiteNoise.stop(now + 0.23);
 
-      // 2. Tiếng chạm bóng kim loại Titan đanh giòn TINK!
+      // 2. Tiếng chạm mặt gậy kim loại đanh chắc TINK! (High-pitch Titan Impact)
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const impactGain = ctx.createGain();
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
-      osc1.frequency.setValueAtTime(2450, now + 0.09);
-      osc1.frequency.exponentialRampToValueAtTime(800, now + 0.26);
-      osc2.frequency.setValueAtTime(4900, now + 0.09);
-      osc2.frequency.exponentialRampToValueAtTime(1200, now + 0.22);
-      impactGain.gain.setValueAtTime(0.001, now);
-      impactGain.gain.setValueAtTime(0.45, now + 0.095);
-      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(2600, now + 0.09);
+      osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+      osc2.frequency.setValueAtTime(4200, now + 0.09);
+      osc2.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+      impactGain.gain.setValueAtTime(0.65, now + 0.09);
+      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
       osc1.connect(impactGain);
       osc2.connect(impactGain);
       impactGain.connect(ctx.destination);
@@ -191,63 +194,142 @@
   // XÂY DỰNG SÂN GOLF QUỐC TẾ (BUILD GOLF RESORT WORLD)
   // ========================================================
   function buildGolfWorld() {
+    if (window._golfWorldBuilt) return;
+    window._golfWorldBuilt = true;
+
     const golfGroup = new THREE.Group();
     golfGroup.name = 'RoyalSaigonGolfResort';
     scene.add(golfGroup);
 
-    // Bảng vật liệu chính của sân golf
-    const fairwayMat = std(0x22c55e, { roughness: 0.85, metalness: 0.05 }); // Cỏ Fairway xanh tươi
-    const roughMat = std(0x15803d, { roughness: 0.95 });                     // Cỏ Rough xanh thẫm
-    const greenMat = std(0x16a34a, { roughness: 0.65 });                     // Thảm cỏ gạt Putting Green mượt mà
-    const sandMat = std(0xfef08a, { roughness: 0.95, metalness: 0.05 });    // Cát thạch anh mịn màu vàng óng
-    const waterMat = std(0x0284c7, { roughness: 0.08, metalness: 0.4, transparent: true, opacity: 0.82 });
+    // Bảng vật liệu chính của sân golf (Có emissive tự phát sáng nhẹ để rực rỡ lung linh trong đêm)
+    const fairwayMat = std(0x22c55e, { roughness: 0.80, metalness: 0.05, emissive: 0x05482e, emissiveIntensity: 0.38 }); // Cỏ Fairway xanh tươi
+    const roughMat = std(0x166534, { roughness: 0.90, emissive: 0x064e3b, emissiveIntensity: 0.30 });                     // Cỏ Rough xanh thẫm
+    const greenMat = std(0x10b981, { roughness: 0.60, emissive: 0x047857, emissiveIntensity: 0.45 });                     // Thảm cỏ gạt Putting Green mượt mà
+    const sandMat = std(0xfef08a, { roughness: 0.95, metalness: 0.05, emissive: 0x854d0e, emissiveIntensity: 0.26 });    // Cát thạch anh mịn màu vàng óng
+    const waterMat = std(0x0284c7, { roughness: 0.08, metalness: 0.35, emissive: 0x0369a1, emissiveIntensity: 0.35, transparent: true, opacity: 0.85 });
     const darkSlate = std(0x0f172a, { roughness: 0.5 });
-    const goldMat = std(0xf59e0b, { metalness: 0.9, roughness: 0.2 });
-    const whiteEnamel = std(0xf8fafc, { roughness: 0.25 });
+    const goldMat = std(0xf59e0b, { metalness: 0.9, roughness: 0.2, emissive: 0xd97706, emissiveIntensity: 0.25 });
+    const whiteEnamel = std(0xf8fafc, { roughness: 0.25, emissive: 0x94a3b8, emissiveIntensity: 0.1 });
     const teakWood = std(0x78350f, { roughness: 0.75 });
 
     // ----------------------------------------------------
-    // 1. NỀN TỔNG THỂ SÂN GOLF RỘNG 150M x 120M (x: -185..-35, z: 98..218)
+    // HỆ THỐNG CHIẾU SÁNG BAN ĐÊM ĐỈNH CAO (CHAMPIONSHIP NIGHT LIGHTING)
     // ----------------------------------------------------
-    const mainLawn = box(152, 0.35, 122, roughMat, -110, 0.16, 158, golfGroup);
+    // Nguồn sáng định hướng bao phủ toàn bộ sân golf
+    const golfSun = new THREE.DirectionalLight(0xf0fdf4, 1.4);
+    golfSun.position.set(-80, 50, 130);
+    golfSun.target.position.set(-110, 0, 160);
+    golfGroup.add(golfSun);
+    golfGroup.add(golfSun.target);
+
+    // Ánh sáng bán cầu làm sáng bừng thảm cỏ xanh
+    const golfHemi = new THREE.HemisphereLight(0xdcfce7, 0x064e3b, 1.6);
+    golfGroup.add(golfHemi);
+
+    // Cột đèn pha cao áp sân golf ban đêm 16m chuyên dụng
+    function createStadiumFloodlight(x, z, rotY = 0) {
+      const flGroup = new THREE.Group();
+      flGroup.position.set(x, 0, z);
+
+      // Cột thép cao áp 16m
+      cyl(0.35, 0.5, 16, darkSlate, 0, 8, 0, flGroup);
+      obstacle(x, z, 1.2, 1.2);
+
+      // Giàn đỡ đèn ngang 4.5m
+      const crossbar = box(4.5, 0.35, 0.6, darkSlate, 0, 15.6, 0, flGroup);
+      crossbar.rotation.y = rotY;
+
+      // 4 Chóa đèn LED siêu sáng trắng tuyết
+      for (let bi = -1.8; bi <= 1.8; bi += 1.2) {
+        box(0.9, 0.65, 0.45, darkSlate, bi * Math.cos(rotY), 15.6, bi * Math.sin(rotY), flGroup);
+        const face = box(0.82, 0.55, 0.05, new THREE.MeshBasicMaterial({ color: 0xffffff }), bi * Math.cos(rotY), 15.6, bi * Math.sin(rotY) + 0.24, flGroup);
+      }
+
+      // Đèn PointLight tỏa sáng mạnh mẽ xuống mặt cỏ
+      const floodLight = new THREE.PointLight(0xfffbeb, 3.2, 55, 1.1);
+      floodLight.position.set(0, 15.2, 0.5);
+      flGroup.add(floodLight);
+
+      golfGroup.add(flGroup);
+    }
+
+    // 8 Cụm đèn pha cao áp bố trí vòng quanh sân golf
+    const floodlightSpots = [
+      [-52, 103, 0],         // Ngay Cổng chào & Bến đón xe điện
+      [-86, 122, 0],         // Driving Range cánh trái
+      [-62, 122, 0],         // Driving Range cánh phải
+      [-115, 116, 0.4],      // Bệ phát bóng Tee Box Hố 1
+      [-115, 158, 0],        // Giữa Fairway chính
+      [-110, 168, -0.3],     // Island Green Hố 9 & Hồ nước
+      [-145, 188, 0.2],      // Green Hố 1
+      [-38, 122, -0.5]       // Clubhouse & 19th Hole Lounge
+    ];
+    floodlightSpots.forEach(([fx, fz, fry]) => createStadiumFloodlight(fx, fz, fry));
+
+    // ----------------------------------------------------
+    // 1. NỀN TỔNG THỂ SÂN GOLF RỘNG 165M x 130M (x: -195..-30, z: 96..225)
+    // ----------------------------------------------------
+    const mainLawn = box(165, 0.35, 129, roughMat, -112, 0.16, 160, golfGroup);
     mainLawn.receiveShadow = true;
 
     // Đường Fairway chính Hole 1 & Hole 18 uốn lượn (dải cỏ mượt mà cắt sọc đan xen)
-    for (let fz = 105; fz <= 210; fz += 18) {
-      const stripeMat = (Math.floor(fz / 18) % 2 === 0) ? fairwayMat : std(0x16a34a, { roughness: 0.8 });
-      const stripe = box(42, 0.38, 17.5, stripeMat, -115, 0.18, fz, golfGroup);
+    for (let fz = 105; fz <= 218; fz += 18) {
+      const stripeMat = (Math.floor(fz / 18) % 2 === 0) ? fairwayMat : std(0x16a34a, { roughness: 0.8, emissive: 0x05482e, emissiveIntensity: 0.35 });
+      const stripe = box(44, 0.38, 17.5, stripeMat, -115, 0.18, fz, golfGroup);
       stripe.receiveShadow = true;
     }
 
     // ----------------------------------------------------
-    // 2. KHU VỰC CỔNG CHÀO & QUẢNG TRƯỜNG ĐÓN KHÁCH (x: -54, z: 104)
-    // Nối liền trực tiếp với Cầu Đi Bộ Bạch Đằng ở x = -50, z = 100
+    // 2. KHU VỰC CỔNG CHÀO HOÀNG GIA & ĐẠI LỘ ĐÓN KHÁCH (x: -52, z: 96.5..118)
+    // NỐI LIỀN TRỰC TIẾP CHÂN CẦU ĐI BỘ BẠCH ĐẰNG (x = -50, z = 96.5)
     // ----------------------------------------------------
-    const plazaPaving = box(28, 0.38, 18, std(0xe2e8f0, { roughness: 0.6 }), -52, 0.18, 105, golfGroup);
-    plazaPaving.receiveShadow = true;
+    // Đại lộ lát đá cẩm thạch trắng đón khách bước ra từ cầu đi bộ
+    const grandBoulevard = box(16, 0.38, 22, std(0xe2e8f0, { roughness: 0.55, emissive: 0x334155, emissiveIntensity: 0.15 }), -52, 0.19, 107.5, golfGroup);
+    grandBoulevard.receiveShadow = true;
 
-    // Thảm đỏ VIP đón khách từ cầu đi bộ bước vào sân golf
-    const redCarpet = box(3.6, 0.40, 16, std(0xb91c1c, { roughness: 0.7 }), -52, 0.20, 105, golfGroup);
+    // Thảm đỏ hoàng gia trải dài đón khách từ chân cầu vào sân golf
+    const redCarpet = box(4.5, 0.41, 22, std(0xb91c1c, { roughness: 0.6, emissive: 0x881337, emissiveIntensity: 0.35 }), -52, 0.21, 107.5, golfGroup);
 
-    // Cổng chào Hoành Tráng phong cách kiến trúc Resort 5 Sao
-    const gatePillars = [-64, -40];
+    // Cổng chào Hoành Tráng mạ vàng 24K phong cách Resort 5 Sao ngay trước mặt cầu đi bộ
+    const gatePillars = [-60, -44];
     gatePillars.forEach(px => {
-      cyl(0.65, 0.75, 6.2, darkSlate, px, 3.1, 102, golfGroup);
-      cyl(0.78, 0.78, 0.45, goldMat, px, 5.8, 102, golfGroup);
-      obstacle(px, 102, 1.4, 1.4);
+      // Cột chính đen cẩm thạch
+      cyl(0.65, 0.75, 5.2, darkSlate, px, 2.6, 101.5, golfGroup);
+      // Đai vàng hoàng gia
+      cyl(0.78, 0.78, 0.45, goldMat, px, 4.8, 101.5, golfGroup);
+      // Đèn lồng vàng đỉnh cột
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), glow(0xfef08a));
+      lantern.position.set(px, 5.4, 101.5);
+      golfGroup.add(lantern);
+      const lLight = new THREE.PointLight(0xfef08a, 1.8, 12);
+      lLight.position.set(px, 5.4, 101.5);
+      golfGroup.add(lLight);
+      obstacle(px, 101.5, 1.4, 1.4);
     });
-    // Dầm cổng mạ vàng vắt ngang
-    box(26, 0.85, 1.2, darkSlate, -52, 6.2, 102, golfGroup);
-    box(26.2, 0.15, 1.3, goldMat, -52, 5.75, 102, golfGroup);
 
-    // Biển hiệu 3D lớn mặt trước cổng chào
+    // Dầm cổng ngang mạ vàng vắt ngang
+    box(18, 0.75, 1.2, darkSlate, -52, 5.2, 101.5, golfGroup);
+    box(18.2, 0.15, 1.3, goldMat, -52, 4.8, 101.5, golfGroup);
+    box(4.5, 0.6, 0.3, goldMat, -52, 5.8, 101.5, golfGroup); // Vương miện vàng đỉnh cổng
+
+    // Biển hiệu 3D lớn phát sáng rực rỡ mặt trước cổng chào hướng thẳng về Cầu Đi Bộ
     const mainSign = signPlane([
-      ['ROYAL SAIGON GOLF & COUNTRY CLUB', 68, 55, true],
-      ['18-HOLE CHAMPIONSHIP • VIP DRIVING RANGE • 19th HOLE LOUNGE', 30, 115, false]
-    ], 19.5, 2.5, 1024, 180, '#fef08a', '#032014', '#10b981');
-    mainSign.position.set(-52, 6.4, 101.3);
-    mainSign.rotation.y = Math.PI;
+      ['⛳ ROYAL SAIGON GOLF & COUNTRY CLUB ⛳', 58, 52, true],
+      ['SÂN GOLF QUỐC TẾ 18 LỖ • VIP DRIVING RANGE • 19th HOLE LOUNGE', 28, 114, false]
+    ], 16.5, 2.2, 1024, 180, '#fef08a', '#032014', '#10b981');
+    mainSign.position.set(-52, 3.8, 100.8);
+    mainSign.rotation.y = Math.PI; // Quay mặt thẳng về hướng người đi qua cầu
     golfGroup.add(mainSign);
+
+    // Biển chỉ dẫn hướng đi phát sáng neon
+    const guideSign = signPlane([
+      ['⬅️ SÂN TẬP DRIVING RANGE', 36, 45, true],
+      ['⬆️ FAIRWAY HOLE 1 (PAR 4)', 36, 85, true],
+      ['➡️ 19th HOLE LOUNGE & PRO SHOP', 34, 125, true]
+    ], 3.8, 2.2, 512, 256, '#fef08a', '#064e3b', '#f59e0b');
+    guideSign.position.set(-47.5, 2.0, 103.5);
+    guideSign.rotation.y = Math.PI;
+    golfGroup.add(guideSign);
 
     // ----------------------------------------------------
     // 3. 5-STAR LUXURY CLUBHOUSE & 19TH HOLE LOUNGE (x: -42, z: 122)
@@ -260,25 +342,25 @@
     chDeck.receiveShadow = true;
 
     // Tòa nhà chính: Tường kính Panorama nhìn ra Fairway & Sông Sài Gòn
-    const chGlass = box(16, 5.2, 18, std(0x0f172a, { transparent: true, opacity: 0.4, roughness: 0.1 }), 0, 2.7, 0, chGroup);
+    const chGlass = box(14, 5.2, 14, std(0x0f172a, { transparent: true, opacity: 0.4, roughness: 0.1 }), 0, 2.7, 0, chGroup);
     // Khung cột thép vàng hiện đại
-    for (const cx of [-7.8, 0, 7.8]) {
-      for (const cz of [-8.8, 8.8]) {
+    for (const cx of [-6.8, 0, 6.8]) {
+      for (const cz of [-6.8, 6.8]) {
         cyl(0.35, 0.35, 5.6, goldMat, cx, 2.8, cz, chGroup);
         obstacle(-42 + cx, 122 + cz, 0.8, 0.8);
       }
     }
     // Mái che kiểu vát giật cấp sang trọng
-    box(18, 0.65, 20.5, darkSlate, 0, 5.4, 0, chGroup);
-    box(18.2, 0.12, 20.7, goldMat, 0, 5.1, 0, chGroup);
-    obstacle(-42, 122, 16.5, 18.5);
+    box(16, 0.65, 16.5, darkSlate, 0, 5.4, 0, chGroup);
+    box(16.2, 0.12, 16.7, goldMat, 0, 5.1, 0, chGroup);
+    obstacle(-42, 122, 11, 12); // Chỉ cản lõi nhà chính, chừa hiên gỗ đi lại thoải mái
 
     // Biển hiệu "THE 19th HOLE LOUNGE & PRO SHOP"
     const loungeSign = signPlane([
       ['THE 19th HOLE VIP LOUNGE', 60, 52, true],
       ['Champagne • Whisky • Craft Beer • Pro Shop', 28, 108, false]
     ], 9.5, 1.8, 512, 160, '#fde047', '#0f172a');
-    loungeSign.position.set(0, 4.2, 9.1);
+    loungeSign.position.set(0, 4.2, 7.1);
     chGroup.add(loungeSign);
 
     // Bàn ghế thư giãn ngoài hiên ngắm cảnh (Patio sets với dù che nắng)
@@ -326,13 +408,16 @@
         obstacle(-74 + cx, 122 + cz, 0.7, 0.7);
       }
     }
-    obstacle(-74, 122, 24, 14);
+    // Chỉ chặn tường sau và 2 vách bên hông, chừa mặt tiền mở hoàn toàn để bước vào thảm tập
+    obstacle(-74, 115.8, 24, 1.2);   // Tường sau
+    obstacle(-85.5, 122, 1.2, 12);   // Vách trái
+    obstacle(-62.5, 122, 1.2, 12);   // Vách phải
 
     // 6 Thảm tập phát bóng (Hitting Mats) với Tee cao su & Rổ bóng golf
     const bays = [-8.5, -3.5, 1.5, 6.5];
     bays.forEach((bx, idx) => {
       // Thảm cỏ tập xanh sẫm
-      box(2.2, 0.08, 3.2, std(0x065f46, { roughness: 0.9 }), bx, 0.48, 2.5, drGroup);
+      box(2.2, 0.08, 3.2, std(0x065f46, { roughness: 0.9, emissive: 0x064e3b, emissiveIntensity: 0.35 }), bx, 0.48, 2.5, drGroup);
       // Tee cao su cắm bóng golf
       cyl(0.015, 0.02, 0.12, std(0xfacc15), bx, 0.58, 2.2, drGroup);
       const teeBall = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), whiteEnamel);
@@ -369,7 +454,7 @@
         lamp.position.set(netX, 16.8, netZ);
         golfGroup.add(lamp);
         if (!lite) {
-          const flood = new THREE.PointLight(0xfff7ed, 1.8, 55);
+          const flood = new THREE.PointLight(0xfff7ed, 2.2, 55);
           flood.position.set(netX, 16.5, netZ);
           golfGroup.add(flood);
         }
@@ -432,7 +517,7 @@
       fountainJets.push(jet);
     }
     // Đèn LED chiếu sáng đài phun nước đổi màu
-    const fLight = new THREE.PointLight(0x38bdf8, 2.0, 16);
+    const fLight = new THREE.PointLight(0x38bdf8, 2.5, 18);
     fLight.position.set(0, 1.8, 0);
     lakeGroup.add(fLight);
 
@@ -538,8 +623,8 @@
     if (window.Veg && Veg.makeTree) {
       // Hàng cọ hoàng gia (Royal Palms) dọc lối đi và bờ sông
       const palmCoords = [
-        [-62, 108], [-62, 116], [-62, 126], [-62, 136],
-        [-38, 108], [-38, 116], [-38, 126], [-38, 136],
+        [-62, 112], [-62, 122], [-62, 132],
+        [-42, 112], [-42, 122], [-42, 132],
         [-100, 140], [-95, 145], [-92, 155], [-94, 168],
         [-130, 140], [-135, 150], [-138, 165],
         [-175, 125], [-178, 150], [-175, 175], [-172, 195]
@@ -553,8 +638,8 @@
     }
 
     // Đèn cột sân golf thấp (Bollard Path Lights) dọc lối đi xe điện
-    for (let bz = 105; bz <= 145; bz += 6.5) {
-      for (const bx of [-63, -37]) {
+    for (let bz = 104; bz <= 145; bz += 6.5) {
+      for (const bx of [-61, -43]) {
         cyl(0.07, 0.08, 0.95, darkSlate, bx, 0.65, bz, golfGroup);
         const lamp = cyl(0.072, 0.072, 0.22, glow(0xfef08a), bx, 1.05, bz, golfGroup);
       }
@@ -594,134 +679,123 @@
       for (const lx of [-0.55, 0.55]) {
         box(0.28, 0.12, 0.05, glow(0xffedd5), lx, 0.65, 1.42, buggy);
       }
+      const bHeadlight = new THREE.PointLight(0xfffbeb, 1.5, 14);
+      bHeadlight.position.set(0, 0.75, 1.8);
+      buggy.add(bHeadlight);
 
       // Kính chắn gió phía trước gập được
       const windshield = box(1.5, 0.75, 0.04, std(0xa5f3fc, { transparent: true, opacity: 0.45 }), 0, 1.25, 0.38, buggy);
       windshield.rotation.x = -0.15;
 
-      // Hàng ghế nệm da đôi êm ái
-      box(1.35, 0.18, 0.65, leather, 0, 0.62, -0.15, buggy); // Đệm ngồi
-      box(1.35, 0.55, 0.15, leather, 0, 0.95, -0.45, buggy); // Tựa lưng
+      // Ghế ngồi bọc da cao cấp hàng trước & sau
+      box(1.4, 0.2, 0.55, leather, 0, 0.68, 0.05, buggy); // Đệm ngồi
+      box(1.4, 0.45, 0.15, leather, 0, 0.98, -0.22, buggy); // Tựa lưng
 
-      // Vô-lăng thể thao & Bảng đồng hồ kỹ thuật số
-      const steeringCol = cyl(0.025, 0.025, 0.6, darkSlate, 0.32, 0.92, 0.2, buggy);
-      steeringCol.rotation.x = 0.55;
-      const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.025, 8, 16), darkSlate);
-      wheelRing.position.set(0.32, 1.15, 0.05);
-      wheelRing.rotation.x = 0.55;
-      buggy.add(wheelRing);
+      // Vô lăng thể thao & bảng táp-lô hiển thị GPS sân golf
+      box(0.9, 0.25, 0.4, darkSlate, 0, 0.92, 0.42, buggy);
+      const steer = cyl(0.18, 0.18, 0.04, darkSlate, 0.32, 1.05, 0.32, buggy, 12);
+      steer.rotation.x = 0.5;
 
-      // Cột chống mui xe mạ chrome đen
-      for (const sx of [-0.72, 0.72]) {
-        cyl(0.03, 0.03, 1.2, chrome, sx, 1.45, 0.28, buggy);
-        cyl(0.03, 0.03, 1.2, chrome, sx, 1.45, -0.65, buggy);
+      // Mái che nắng che mưa & Cột chống thép mạ chrome
+      for (const px of [-0.72, 0.72]) {
+        cyl(0.025, 0.025, 1.4, chrome, px, 1.3, -0.9, buggy);
+        cyl(0.025, 0.025, 1.4, chrome, px, 1.3, 0.45, buggy);
       }
-      // Mái che vòm thời thượng
-      box(1.65, 0.08, 2.4, whiteEnamel, 0, 2.05, -0.12, buggy);
+      box(1.65, 0.12, 2.7, whiteEnamel, 0, 2.05, -0.2, buggy);
 
-      // Giá để túi gậy golf phía sau xe
-      box(1.4, 0.12, 0.75, darkSlate, 0, 0.55, -0.95, buggy);
-      box(1.4, 0.45, 0.06, chrome, 0, 0.8, -1.35, buggy);
-
-      // 2 Túi gậy golf da cao cấp (Leather Golf Stand Bags)
-      for (const [bx, bagColor] of [[-0.38, 0xb91c1c], [0.38, 0x1e3a8a]]) {
-        const bag = cyl(0.16, 0.14, 0.85, std(bagColor), bx, 0.98, -1.0, buggy);
-        bag.rotation.x = -0.25;
-        // Đầu gậy driver, gậy sắt, putter mạ chrome lấp lánh thò ra
-        for (let ci = 0; ci < 4; ci++) {
-          const club = cyl(0.012, 0.012, 0.45, chrome, bx + (ci % 2 ? 0.06 : -0.06), 1.42, -1.05 + ci * 0.04, buggy);
-          club.rotation.z = (ci - 1.5) * 0.15;
-          cyl(0.03, 0.05, 0.08, chrome, bx + (ci % 2 ? 0.06 : -0.06), 1.62, -1.05 + ci * 0.04, buggy); // Đầu gậy Titan
+      // Giá để túi gậy golf phía sau xe (Golf Bag Carrier)
+      box(1.4, 0.3, 0.65, darkSlate, 0, 0.6, -1.05, buggy);
+      // 2 Túi gậy golf da cao cấp kèm bộ gậy Driver, Iron, Putter
+      const bagColors = [0x1e3a8a, 0xb91c1c];
+      [-0.4, 0.4].forEach((gx, idx) => {
+        // Thân túi golf
+        cyl(0.18, 0.18, 0.9, std(bagColors[idx], { roughness: 0.5 }), gx, 1.05, -1.05, buggy);
+        // Đầu bọc gậy Driver titan mạ vàng nhô ra
+        for (let k = 0; k < 3; k++) {
+          const club = cyl(0.015, 0.015, 0.45, chrome, gx + (k - 1) * 0.08, 1.55, -1.05, buggy);
+          club.rotation.z = (k - 1) * 0.25;
+          const head = box(0.08, 0.05, 0.12, goldMat, gx + (k - 1) * 0.15, 1.75, -1.05, buggy);
         }
-      }
+      });
 
       return buggy;
     }
 
-    // A. XE ĐIỆN SHUTTLE 1: ĐẬU TẠI BÃI XE VEN CẦU TÀU (x = -9.5, z = 28.5) - KHÔNG CHẮN ĐƯỜNG LÊN CẦU!
+    // 1. Xe điện đưa đón VIP đón khách ngay tại cổng chào sân golf
+    const welcomeBuggy = createGolfBuggy(0x064e3b, 0xfacc15); // Màu xanh lục bảo viền vàng hoàng gia
+    welcomeBuggy.position.set(-49.0, 0.16, 104.5);
+    welcomeBuggy.rotation.y = Math.PI; // Đầu xe quay về hướng đón khách từ cầu đi bộ
+    golfGroup.add(welcomeBuggy);
+    obstacle(-49.0, 104.5, 2.0, 3.2);
+
+    // 2. Xe điện đưa đón tại Bến Quán Nhậu (Bờ Nam sông Sài Gòn)
     const pubShuttleBuggy = createGolfBuggy(0xf8fafc, 0x10b981);
-    pubShuttleBuggy.position.set(-9.5, 0.32, 28.5);
-    pubShuttleBuggy.rotation.y = 0.25;
+    pubShuttleBuggy.position.set(-9.5, 0.16, 28.5);
+    pubShuttleBuggy.rotation.y = -Math.PI / 2;
     scene.add(pubShuttleBuggy);
-    obstacle(-9.5, 28.5, 2.2, 3.0);
+    obstacle(-9.5, 28.5, 2.0, 3.2);
 
-    // Biển đón xe điện tại bến Quán Nhậu
-    const shuttleSignPub = signPlane([
-      ['⛳ XE ĐIỆN SHUTTLE SÂN GOLF', 52, 45, true],
-      ['Đưa đón miễn phí sang Sân Golf Quốc Tế', 26, 92, false],
-      ['Bấm [F] để lên xe vi vu qua sông', 24, 132, false]
-    ], 3.8, 1.5, 512, 180, '#34d399', '#052e16', '#10b981');
-    shuttleSignPub.position.set(-9.5, 1.8, 30.6);
-    shuttleSignPub.rotation.y = Math.PI;
-    scene.add(shuttleSignPub);
+    // Biển đón xe điện Quán Nhậu Bờ Sông
+    const pubShuttleSign = signPlane([
+      ['VIP SHUTTLE BUGGY', 52, 45, true],
+      ['Đón sang Sân Golf Hoàng Gia [F]', 28, 108, false]
+    ], 3.8, 1.6, 512, 180, '#fef08a', '#064e3b');
+    pubShuttleSign.position.set(-9.5, 2.3, 27.2);
+    scene.add(pubShuttleSign);
 
-    // B. XE ĐIỆN SHUTTLE 2: ĐẬU TẠI CLUBHOUSE SÂN GOLF (BỜ BẮC - x = -54, z = 106)
-    const resortShuttleBuggy = createGolfBuggy(0xf8fafc, 0xf59e0b);
-    resortShuttleBuggy.position.set(-54.0, 0.35, 106.0);
-    resortShuttleBuggy.rotation.y = Math.PI;
-    golfGroup.add(resortShuttleBuggy);
-    obstacle(-54.0, 106.0, 2.2, 3.2);
-
-    // C. XE GOLF TUẦN TRA ĐẶT TẠI KHU TẬP DRIVING RANGE (x = -82, z = 118)
-    const courseBuggy = createGolfBuggy(0x1e293b, 0x38bdf8);
-    courseBuggy.position.set(-82.0, 0.35, 118.0);
-    courseBuggy.rotation.y = 0.5;
-    golfGroup.add(courseBuggy);
-    obstacle(-82.0, 118.0, 2.2, 3.2);
+    // 3. Đội xe Golf Buggy đậu tại Bãi xe Clubhouse
+    for (let i = 0; i < 3; i++) {
+      const bColor = i === 0 ? 0xf8fafc : (i === 1 ? 0x0284c7 : 0xe11d48);
+      const b = createGolfBuggy(bColor, 0xfacc15);
+      b.position.set(-58, 0.16, 114 + i * 4.2);
+      b.rotation.y = Math.PI / 2;
+      golfGroup.add(b);
+      obstacle(-58, 114 + i * 4.2, 3.2, 2.0);
+    }
 
     // ----------------------------------------------------
-    // 10. NHÂN VẬT GOLFER & CADDY CHUYÊN NGHIỆP TRÊN SÂN
+    // 10. NHÂN VẬT GOLFER & CADDY CHIBI HOẠT BÁT
     // ----------------------------------------------------
-    function makeGolferNPC(skinColor, shirtColor, pantsColor, x, z, ry, isFemale = false) {
+    function makeGolferNPC(skinHex, shirtHex, pantsHex, x, z, ry, isCaddy = false) {
       const gGroup = new THREE.Group();
-      gGroup.position.set(x, 0.35, z);
+      gGroup.position.set(x, 0.32, z);
       gGroup.rotation.y = ry;
 
-      const skin = std(skinColor, { roughness: 0.8 });
-      const shirt = std(shirtColor, { roughness: 0.6 });
-      const pants = std(pantsColor, { roughness: 0.7 });
-      const white = std(0xf8fafc, { roughness: 0.3 });
+      const skin = std(skinHex, { roughness: 0.7 });
+      const shirt = std(shirtHex, { roughness: 0.6 });
+      const pants = std(pantsHex, { roughness: 0.7 });
+      const shoe = std(0x18181b, { roughness: 0.8 });
 
-      // Chân & Giày golf đinh
-      cyl(0.08, 0.08, 0.6, isFemale ? skin : pants, -0.16, 0.35, 0, gGroup);
-      cyl(0.08, 0.08, 0.6, isFemale ? skin : pants, 0.16, 0.35, 0, gGroup);
-      box(0.14, 0.12, 0.28, white, -0.16, 0.06, 0.04, gGroup);
-      box(0.14, 0.12, 0.28, white, 0.16, 0.06, 0.04, gGroup);
-      if (isFemale) {
-        // Chân váy thể thao
-        cyl(0.24, 0.34, 0.32, pants, 0, 0.72, 0, gGroup);
+      // Chân & Giày thể thao
+      for (const lx of [-0.14, 0.14]) {
+        cyl(0.08, 0.08, 0.45, pants, lx, 0.22, 0, gGroup);
+        box(0.14, 0.1, 0.26, shoe, lx, 0.05, 0.05, gGroup);
       }
-
-      // Thân áo Polo
-      box(0.52, 0.62, 0.32, shirt, 0, 1.05, 0, gGroup);
-
-      // Cổ & Đầu + Mũ Visor / Mũ Lưỡi Trai
-      cyl(0.09, 0.09, 0.16, skin, 0, 1.42, 0, gGroup);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), skin);
-      head.position.set(0, 1.62, 0);
+      // Thân áo Polo thể thao
+      box(0.48, 0.55, 0.28, shirt, 0, 0.65, 0, gGroup);
+      // Đầu & Mũ lưỡi trai golf
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), skin);
+      head.position.set(0, 1.1, 0);
       gGroup.add(head);
+      // Mũ lưỡi trai (Golf Cap)
+      const cap = cyl(0.26, 0.26, 0.12, std(shirtHex), 0, 1.25, 0, gGroup);
+      const visor = box(0.3, 0.03, 0.2, std(shirtHex), 0, 1.22, 0.24, gGroup);
 
-      // Nón Visor trắng thời thượng
-      cyl(0.24, 0.24, 0.08, white, 0, 1.74, 0, gGroup);
-      box(0.26, 0.03, 0.22, white, 0, 1.72, 0.18, gGroup); // Lưỡi trai
-
-      // Tay cầm gậy golf
-      const armL = cyl(0.06, 0.06, 0.55, shirt, -0.28, 1.0, 0.12, gGroup);
-      armL.rotation.x = 0.4;
-      const armR = cyl(0.06, 0.06, 0.55, shirt, 0.28, 1.0, 0.12, gGroup);
-      armR.rotation.x = 0.4;
-
-      // Cây gậy Driver mạ titan cầm trên tay
-      const clubShaft = cyl(0.012, 0.012, 1.1, std(0xe2e8f0, { metalness: 0.9 }), 0.15, 0.72, 0.35, gGroup);
-      clubShaft.rotation.x = 0.35;
-      cyl(0.04, 0.06, 0.09, std(0xe2e8f0, { metalness: 0.95 }), 0.15, 0.22, 0.52, gGroup);
+      // Caddy đeo túi gậy golf
+      if (isCaddy) {
+        const bag = cyl(0.14, 0.14, 0.75, std(0x15803d), -0.28, 0.72, -0.15, gGroup);
+        bag.rotation.z = -0.3;
+      }
 
       golfGroup.add(gGroup);
       obstacle(x, z, 0.8, 0.8);
       return gGroup;
     }
 
-    // Caddy xinh đẹp tại Tee Box 1
+    // Caddy xinh đẹp chào đón khách ngay tại thảm đỏ Cổng chào
+    const welcomeCaddy = makeGolferNPC(0xfcd34d, 0xf8fafc, 0x10b981, -46.5, 104.5, Math.PI, true);
+
+    // Caddy tại Tee Box 1
     const caddy1 = makeGolferNPC(0xfcd34d, 0xf8fafc, 0x10b981, -113.5, 114.2, -1.8, true);
     // Golfer đại gia đang tập vung gậy
     const golfer1 = makeGolferNPC(0xd49b73, 0x0284c7, 0x1e293b, -76.0, 122.5, 0.1, false);
@@ -732,12 +806,16 @@
     if (window.WORLD_BOUNDS) {
       window.WORLD_BOUNDS.golf = {
         constrain(x, z) {
-          // Khu vực Sân Golf Quốc Tế bờ bắc: x từ -185 đến -35, z từ 96 đến 218
-          if (x >= -185 && x <= -35 && z >= 96 && z <= 218) {
+          // Nếu đang đi trên hành lang kết nối Cầu Đi Bộ (-63..-40, z < 96.5) thì nhường quyền cho bridge.constrain
+          if (x >= -63 && x <= -40 && z < 96.5) {
+            return null;
+          }
+          // Khu vực Sân Golf Quốc Tế bờ bắc: x từ -195 đến -30, z từ 96.0 đến 225
+          if (x >= -195 && x <= -30 && z >= 96.0 && z <= 225) {
             // Không để người chơi lọt vào giữa hồ nước bẫy nước sâu
             if (x >= -126 && x <= -94 && z >= 146 && z <= 178) {
               // Cầu gỗ cho phép đi qua
-              if (Math.abs(x - (-110)) < 1.8) {
+              if (Math.abs(x - (-110)) < 2.0) {
                 return { x: -110, z };
               }
               // Island green cho phép đi
@@ -749,8 +827,8 @@
               }
             }
             return {
-              x: Math.max(-183, Math.min(-36, x)),
-              z: Math.max(97, Math.min(216, z))
+              x: Math.max(-193, Math.min(-32, x)),
+              z: Math.max(96.0, Math.min(223, z))
             };
           }
           return null;
@@ -760,7 +838,7 @@
           if (x >= -126 && x <= -94 && z >= 146 && z <= 178) {
             const distIsland = Math.hypot(x - (-110), z - 162);
             if (distIsland < 6.4) return 0.52; // Mặt cỏ Island Green cao ráo
-            if (Math.abs(x - (-110)) < 1.8) return 0.58; // Cầu gỗ
+            if (Math.abs(x - (-110)) < 2.0) return 0.58; // Cầu gỗ
             return 0.16; // Bơi trong hồ bẫy nước
           }
           // Sàn tầng 2 driving range
@@ -768,7 +846,7 @@
             return 4.65;
           }
           // Mặt cỏ sân golf cao hơn vỉa hè một chút
-          if (x >= -185 && x <= -35 && z >= 96 && z <= 218) {
+          if (x >= -195 && x <= -30 && z >= 96.0 && z <= 225) {
             return 0.35;
           }
           return null;
@@ -780,27 +858,25 @@
     // HOẠT ẢNH LIÊN TỤC (TICK ANIMATIONS)
     // ----------------------------------------------------
     animators.push((delta, t) => {
-      // 1. Đài phun nước nghệ thuật phun nước bồng bềnh
+      // 1. Cờ lỗ bay phất phới trong gió sông Sài Gòn
+      const flagWave = Math.sin(t * 5.2) * 0.18;
+      flag9Mesh.rotation.y = flagWave;
+      flag1Mesh.rotation.y = flagWave;
+
+      // 2. Đài phun nước nghệ thuật giữa hồ bẫy nước dao động nhịp nhàng
       fountainJets.forEach((jet, i) => {
-        jet.scale.y = 1 + Math.sin(t * 4.5 + i) * 0.25;
+        const pulse = 1.0 + Math.sin(t * 3.5 + i * 0.8) * 0.35;
+        jet.scale.set(1, pulse, 1);
       });
-      fLight.color.setHSL(0.55 + Math.sin(t * 0.8) * 0.15, 0.9, 0.6);
 
-      // 2. Cờ lỗ 1, 9, 18 phất phới theo chiều gió
-      if (flag9Mesh) flag9Mesh.rotation.y = Math.sin(t * 3.2) * 0.22;
-      if (flag1Mesh) flag1Mesh.rotation.y = Math.sin(t * 3.0 + 1.2) * 0.24;
+      // 3. Đèn đổi màu nghệ thuật dưới hồ
+      fLight.color.setHSL((t * 0.08) % 1, 0.9, 0.55);
 
-      // 3. Cúp vô địch vàng xoay nhẹ phản chiếu ánh đèn
-      if (trophyBowl) trophyBowl.rotation.y += delta * 0.4;
-      if (trophyBall) trophyBall.rotation.y += delta * 0.4;
-
-      // 4. Các vòng tròn mục tiêu Target Greens nhấp nháy êm dịu
-      targets.forEach((tgt, idx) => {
-        // Nhẹ nhàng nổi bật trong đêm
-      });
+      // 4. Cập nhật nhãn nút di chuyển nhanh
+      updateGolfButtonState();
     });
 
-    console.log('[Royal Saigon Golf] Đã dựng thành công Sân Golf Quốc Tế 18 Lỗ rộng lớn & sang trọng!');
+    console.log('[Royal Saigon Golf] Đã dựng thành công Sân Golf Quốc Tế 18 Lỗ rực rỡ, lung linh ban đêm!');
   }
 
   // ========================================================
@@ -810,8 +886,8 @@
 
   window.GolfSystem = {
     // Vị trí các điểm tương tác chính
-    pubShuttlePos: { x: -9.5, z: 28.5 },     // Điểm đón xe điện tại Quán Nhậu
-    resortShuttlePos: { x: -54.0, z: 106.0 }, // Điểm đón xe điện tại Sân Golf
+    pubShuttlePos: { x: -9.5, z: 28.5 },      // Điểm đón xe điện tại Quán Nhậu
+    resortShuttlePos: { x: -49.0, z: 104.5 }, // Điểm đón xe điện tại Cổng Sân Golf
     teeBox1Pos: { x: -115.0, z: 115.0 },     // Tee Box Hố 1
     drivingRangePos: { x: -74.0, z: 124.0 }, // Khoang tập Driving Range
     puttingGreenPos: { x: -110.0, z: 162.0 }, // Green Hố 9 (Island Green)
@@ -868,7 +944,6 @@
         if (window.Features && Features.toast) {
           Features.toast('⛳ Đang di chuyển sang Sân Golf Hoàng Gia Royal Saigon!', 'info', 3000);
         }
-        // Hiệu ứng đưa người chơi qua sân golf
         setTimeout(() => {
           localPlayerState.x = -52.0;
           localPlayerState.z = 106.0;
@@ -881,6 +956,7 @@
           if (window.Features && Features.toast) {
             Features.toast('🏌️ Đã đến Sân Golf Quốc Tế 18 Lỗ! Không gian bao la xanh mướt tuyệt đẹp.', 'success', 5000);
           }
+          updateGolfButtonState();
         }, 600);
         return true;
       }
@@ -895,10 +971,11 @@
           localPlayerState.x = -4.0;
           localPlayerState.z = 30.0;
           localPlayerState.ry = Math.PI;
-          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 31.0);
+          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 30.0);
           if (typeof setTicker === 'function') {
             setTicker('🍻 Đã trở về Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
           }
+          updateGolfButtonState();
         }, 600);
         return true;
       }
@@ -948,105 +1025,86 @@
       const nx = shootDirX / dirLen, nz = shootDirZ / dirLen;
 
       // Xoay nhân vật vào tư thế đánh golf
-      if (localCharacter) {
+      if (localPlayerState) {
         localPlayerState.ry = Math.atan2(nx, nz) - Math.PI / 2;
-        // Hoạt ảnh gập người và vung hai cánh tay
-        if (localCharacter.torso) localCharacter.torso.rotation.x = 0.25;
-        if (localCharacter.rightArm) localCharacter.rightArm.rotation.set(-1.2, 0, 0.4);
-        if (localCharacter.leftArm) localCharacter.leftArm.rotation.set(-1.2, 0, -0.2);
+        if (localCharacter) localCharacter.mesh.rotation.y = localPlayerState.ry;
       }
 
-      // Phát âm thanh tiếng vụt gió Whoosh + TINK kim loại
+      // Âm thanh vung gậy & chạm bóng TINK!
       playGolfSound('swing_drive');
 
-      // Tạo quả bóng golf 3D bay vút lên trời
-      const startX = localPlayerState.x + nx * 0.4;
-      const startY = 0.5;
-      const startZ = localPlayerState.z + nz * 0.4;
+      // Tạo quả bóng golf 3D bay xé gió
+      const startX = isDrivingRange ? localPlayerState.x : -115.0;
+      const startY = 0.55;
+      const startZ = isDrivingRange ? localPlayerState.z + 1.2 : 115.0;
 
-      const ballMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 })
-      );
+      const ballGeo = new THREE.SphereGeometry(0.12, 14, 14);
+      const ballMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const ballMesh = new THREE.Mesh(ballGeo, ballMat);
       ballMesh.position.set(startX, startY, startZ);
       scene.add(ballMesh);
 
-      // Vệt sáng lấp lánh sau quả bóng (Neon Ball Trail)
+      // Vệt sáng Neon rực rỡ bám theo quả bóng (Trail Line)
+      const trailGeo = new THREE.BufferGeometry();
       const trailMat = new THREE.LineBasicMaterial({
-        color: 0x38bdf8,
+        color: isDrivingRange ? 0x38bdf8 : 0xfacc15,
+        linewidth: 3,
         transparent: true,
-        opacity: 0.9,
-        linewidth: 2
+        opacity: 0.85
       });
-      const trailPts = [ballMesh.position.clone()];
-      const trailGeo = new THREE.BufferGeometry().setFromPoints(trailPts);
       const trailLine = new THREE.Line(trailGeo, trailMat);
       scene.add(trailLine);
 
-      // Tính toán vận tốc bóng bay khí động học
-      const powerPct = Math.floor(92 + Math.random() * 8); // 92% - 100%
-      const carryYards = Math.floor(255 + Math.random() * 45); // 255 - 300 Yards!
-      const flightDuration = 2.4; // 2.4 giây bóng bay trên không
+      // Tính toán lực vung ngẫu nhiên 220 - 325 Yards
+      const powerPct = Math.floor(82 + Math.random() * 18);
+      const yards = Math.floor(220 + (powerPct / 100) * 105);
+      const forwardSpeed = (yards / 300) * 48; // m/s
+      const upVelocity = 18 + (powerPct / 100) * 6;
 
-      const vx = nx * (carryYards * 0.35);
-      const vz = nz * (carryYards * 0.35);
-      const vy = 16.5 + Math.random() * 2.5; // Bay bổng lên độ cao 30 mét
-
-      activeBalls.push({
+      const ballData = {
         mesh: ballMesh,
-        trailLine,
-        trailPts,
-        trailGeo,
+        trailLine: trailLine,
+        trailGeo: trailGeo,
+        trailPts: [new THREE.Vector3(startX, startY, startZ)],
         pos: new THREE.Vector3(startX, startY, startZ),
-        vel: new THREE.Vector3(vx, vy, vz),
-        gravity: 12.8,
+        vel: new THREE.Vector3(nx * forwardSpeed, upVelocity, nz * forwardSpeed),
+        gravity: 19.6,
         t: 0,
-        maxT: flightDuration,
-        bounces: 0,
-        carryYards,
-        powerPct,
-        isRange: isDrivingRange
-      });
+        maxT: 4.0,
+        bounces: 0
+      };
+      activeBalls.push(ballData);
 
-      // Kết thúc hoạt ảnh vung gậy trên nhân vật sau 0.6s
+      // Hiển thị thẻ HUD thông số cú đánh
       setTimeout(() => {
-        if (localCharacter) {
-          if (localCharacter.torso) localCharacter.torso.rotation.set(0, 0, 0);
-          if (localCharacter.rightArm) localCharacter.rightArm.rotation.set(0, 0, 0);
-          if (localCharacter.leftArm) localCharacter.leftArm.rotation.set(0, 0, 0.22);
-        }
+        this.showShotHud('DRIVER TEE SHOT', powerPct, yards);
         this.isSwinging = false;
-      }, 700);
-
-      // Hiển thị HUD cú đánh siêu ngầu
-      this.showShotHud('DRIVER TEE SHOT', powerPct, carryYards);
+      }, 900);
     },
 
     // THỰC HIỆN CÚ GẠT BÓNG PUTTING
     performPuttingShot(holeName) {
+      this.isSwinging = true;
       playGolfSound('putt');
-      if (typeof setTicker === 'function') {
-        setTicker(`⛳ Đang căn chỉnh đường lăn bóng Putter trên Green ${holeName}...`);
-      }
 
-      if (localCharacter && localCharacter.torso) {
-        localCharacter.torso.rotation.x = 0.35;
-        setTimeout(() => { if (localCharacter && localCharacter.torso) localCharacter.torso.rotation.x = 0; }, 600);
+      if (typeof setTicker === 'function') {
+        setTicker(`⛳ Đang căn lực gạt bóng Putter vào cờ ${holeName}...`);
       }
 
       setTimeout(() => {
         playGolfSound('cup_drop');
         playGolfSound('cheer_fanfare');
         if (typeof setTicker === 'function') {
-          setTicker(`🎉 BIRDIE! Cú gạt bóng Putter chuẩn xác 100% lọt ngay vào cốc cờ ${holeName}! Thật đẳng cấp!`);
+          setTicker(`🎉 BIRDIE! Gạt bóng vào cốc cờ ${holeName} cực kỳ chuẩn xác! +50 XP.`);
         }
         if (window.Features && Features.toast) {
-          Features.toast(`🏆 HOLE IN! Gạt bóng vào lỗ ${holeName} thành công rực rỡ! +40 XP Golf Pro.`, 'success', 5000);
+          Features.toast(`🏌️ CÚ PUTT TUYỆT HẢO! Bóng lăn êm ái vào lỗ cờ ${holeName}. +50 XP!`, 'success', 4500);
         }
         if (typeof sendAction === 'function') {
-          sendAction({ action: 'award', xp: 40, reason: 'Putt Into Cup' });
+          sendAction({ action: 'award', xp: 50, reason: `Putting Hole In ${holeName}` });
         }
-      }, 750);
+        this.isSwinging = false;
+      }, 1200);
     },
 
     // HIỂN THỊ THẺ KẾT QUẢ CÚ ĐÁNH GOLF
@@ -1154,11 +1212,59 @@
     }
   };
 
-  // Khởi chạy khi môi trường 3D sẵn sàng
-  if (window.PubLoader && PubLoader.defer) {
-    PubLoader.defer(buildGolfWorld, 'buildGolfWorld');
-  } else {
-    setTimeout(buildGolfWorld, 1000);
+  // Cập nhật nhãn nút bấm HUD linh hoạt theo vị trí người chơi
+  function updateGolfButtonState() {
+    const golfBtn = document.getElementById('golfBtn');
+    if (!golfBtn) return;
+    const inGolf = (localPlayerState && localPlayerState.z > 70);
+    golfBtn.innerHTML = inGolf ? '🍻 Về Quán' : '⛳ Sân Golf';
+    golfBtn.title = inGolf ? 'Quay về Quán Nhậu Bờ Sông' : 'Di chuyển nhanh sang Sân Golf Quốc Tế Royal Saigon';
+    if (inGolf) {
+      golfBtn.classList.add('in-golf-mode');
+    } else {
+      golfBtn.classList.remove('in-golf-mode');
+    }
+  }
+
+  // Kết nối nút bấm nhanh trên giao diện
+  function initGolfButtons() {
+    const golfBtn = document.getElementById('golfBtn');
+    if (golfBtn && !golfBtn._golfBound) {
+      golfBtn._golfBound = true;
+      golfBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const inGolf = (localPlayerState && localPlayerState.z > 70);
+        if (inGolf) {
+          // Đang ở sân golf -> về quán
+          localPlayerState.x = -4.0;
+          localPlayerState.z = 30.0;
+          localPlayerState.ry = Math.PI;
+          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 30.0);
+          playGolfSound('putt');
+          if (typeof setTicker === 'function') {
+            setTicker('🍻 Đã trở về Bến Quán Nhậu Bờ Sông! Tiếp tục 1, 2, 3 DÔ cùng anh em!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
+          }
+        } else {
+          // Đang ở quán -> sang sân golf
+          localPlayerState.x = -52.0;
+          localPlayerState.z = 106.0;
+          localPlayerState.ry = 0;
+          if (localCharacter) localCharacter.mesh.position.set(-52.0, 0.35, 106.0);
+          playGolfSound('cheer_fanfare');
+          if (typeof setTicker === 'function') {
+            setTicker('🌟 Chào mừng đại gia đến Sân Golf Quốc Tế Royal Saigon & Country Club!');
+          }
+          if (window.Features && Features.toast) {
+            Features.toast('⛳ Đã đến Sân Golf Quốc Tế Royal Saigon! Không gian bao la xanh mướt tuyệt đẹp.', 'success', 5000);
+          }
+        }
+        updateGolfButtonState();
+      });
+    }
+    updateGolfButtonState();
   }
 
   // Đăng ký cập nhật nhịp đập khung hình
@@ -1169,34 +1275,18 @@
     });
   }
 
-  // Kết nối nút bấm nhanh nếu có
-  function initGolfButtons() {
-    const golfBtn = document.getElementById('golfBtn');
-    if (golfBtn) {
-      golfBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        // Di chuyển ngay sang sân golf hoặc về quán
-        if (localPlayerState && localPlayerState.z > 80) {
-          // Đang ở sân golf -> về quán
-          localPlayerState.x = -4.0;
-          localPlayerState.z = 30.0;
-          localPlayerState.ry = Math.PI;
-          if (localCharacter) localCharacter.mesh.position.set(-4.0, 0.32, 31.0);
-          if (window.Features && Features.toast) Features.toast('🍻 Đã trở về Bến Quán Nhậu Bờ Sông!', 'info', 3000);
-        } else {
-          // Đang ở quán -> sang sân golf
-          localPlayerState.x = -52.0;
-          localPlayerState.z = 106.0;
-          localPlayerState.ry = 0;
-          if (localCharacter) localCharacter.mesh.position.set(-52.0, 0.35, 106.0);
-          playGolfSound('cheer_fanfare');
-          if (window.Features && Features.toast) Features.toast('⛳ Đã đến Sân Golf Quốc Tế Royal Saigon 18 Lỗ!', 'success', 4000);
-        }
-      });
-    }
+  // Khởi chạy khi môi trường 3D sẵn sàng
+  if (window.PubLoader && PubLoader.defer) {
+    PubLoader.defer(buildGolfWorld, 'buildGolfWorld');
+  } else {
+    setTimeout(buildGolfWorld, 500);
   }
 
   document.addEventListener('DOMContentLoaded', initGolfButtons);
-  if (window.PubLoader && PubLoader.defer) PubLoader.defer(initGolfButtons, 'initGolfButtons');
+  if (window.PubLoader && PubLoader.defer) {
+    PubLoader.defer(initGolfButtons, 'initGolfButtons');
+  } else {
+    setTimeout(initGolfButtons, 600);
+  }
 
 })();
