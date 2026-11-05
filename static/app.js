@@ -3825,6 +3825,9 @@ window.addEventListener('keydown', (e) => {
       window.GymSystem.stopWorkout();
       return;
     }
+    if (window.GolfSystem && window.GolfSystem.handleInteract('E')) {
+      return;
+    }
     if (window.GymSystem && window.GymSystem.handleInteract('E')) {
       return;
     }
@@ -3844,6 +3847,9 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'f' || e.key === 'F') {
+    if (window.GolfSystem && window.GolfSystem.handleInteract('F')) {
+      return;
+    }
     if (window.GymSystem && window.GymSystem.handleInteract('F')) {
       return;
     }
@@ -5146,6 +5152,7 @@ function animate() {
     const nearVehicle = window.VehicleSystem ? window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
 
     const nearGym = window.GymSystem ? window.GymSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
+    const nearGolf = window.GolfSystem ? window.GolfSystem.findNearest(localPlayerState.x, localPlayerState.z) : null;
 
     if (window.GymSystem && window.GymSystem.isWorkingOut()) {
       interactPrompt.style.display = 'flex';
@@ -5155,6 +5162,10 @@ function animate() {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = "F";
       interactPrompt.querySelector('.prompt-text').textContent = "Xuống xe (Dừng dạo phố)";
+    } else if (nearGolf) {
+      interactPrompt.style.display = 'flex';
+      interactPrompt.querySelector('.prompt-key').textContent = nearGolf.key || "F";
+      interactPrompt.querySelector('.prompt-text').textContent = nearGolf.prompt;
     } else if (nearGym) {
       interactPrompt.style.display = 'flex';
       interactPrompt.querySelector('.prompt-key').textContent = nearGym.key || "F";
@@ -5622,11 +5633,13 @@ if (interactPrompt) {
     const keyElem = interactPrompt.querySelector('.prompt-key');
     const key = keyElem ? keyElem.textContent.trim().toUpperCase() : 'E';
     if (key === 'E') {
+      if (window.GolfSystem && window.GolfSystem.handleInteract('E')) return;
       if (window.GymSystem && window.GymSystem.handleInteract('E')) return;
       handleToggleSit();
     } else if (key === 'P') {
       handlePeeAction();
     } else if (key === 'F') {
+      if (window.GolfSystem && window.GolfSystem.handleInteract('F')) return;
       if (window.GymSystem && window.GymSystem.handleInteract('F')) return;
       if (window.VehicleSystem && (window.VehicleSystem.isRiding() || window.VehicleSystem.findNearest(localPlayerState.x, localPlayerState.z))) {
         window.VehicleSystem.handleInteract();

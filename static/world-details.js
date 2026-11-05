@@ -1,12 +1,17 @@
-// Giới hạn đi lại của người chơi: quán + công viên (Tây) + phố Bùi Viện (Đông). Dùng chung với app.js.
+// Giới hạn đi lại của người chơi: quán + công viên (Tây) + phố Bùi Viện (Đông) + Sân Golf Quốc Tế (Bắc). Dùng chung với app.js.
 window.WORLD_BOUNDS = {
   minX: -118, maxX: 118, minZ: -4.5, maxZ: 33.5,
   // Phía sau dãy bar Bùi Viện có nội thất quán nên cho đi sâu hơn.
   minZAt: (x) => (x > 59 && x < 117 ? -12.2 : -4.5),
   bridge: null,   // world-expansion.js gắn cầu đi bộ vào đây: { constrain(x,z), groundY(x,z) }
   gym: null,      // Centuryon Luxury Fitness & 100m Infinity pool
-  // Kẹp vị trí vào vùng đi được (có tính cả cầu đi bộ qua sông và hồ bơi vô cực)
+  golf: null,     // Royal Saigon Golf & Country Club 18-Hole Championship
+  // Kẹp vị trí vào vùng đi được (có tính cả cầu đi bộ qua sông, hồ bơi vô cực và sân golf)
   clamp(x, z) {
+    if (this.golf) {
+      const gf = this.golf.constrain(x, z);
+      if (gf) return gf;
+    }
     const cx = Math.max(this.minX, Math.min(this.maxX, x));
     if (this.gym) {
       const g = this.gym.constrain(cx, z);
@@ -19,6 +24,10 @@ window.WORLD_BOUNDS = {
     return { x: cx, z: Math.max(this.minZAt(cx), Math.min(this.maxZ - 0.7, z)) };
   },
   groundY(x, z) {
+    if (this.golf) {
+      const gy = this.golf.groundY(x, z);
+      if (gy !== null && gy !== undefined) return gy;
+    }
     if (this.gym) {
       const gy = this.gym.groundY(x, z);
       if (gy !== null && gy !== undefined) return gy;
